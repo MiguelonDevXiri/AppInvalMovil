@@ -1,0 +1,11 @@
+{
+  "projectType": "mobile",
+  "instructions": [
+    "Read CLAUDE.md FIRST — long-running agent protocol",
+    "NEVER commit to master — use develop or feature branches only",
+    "Task files in .claude/task/",
+    "NEVER remove or edit feature descriptions in features.json",
+    "This is Miguel's existing app — don't break what already works",
+    "Reference data/machineChecklists.ts for checklist structure"
+  ]
+}
