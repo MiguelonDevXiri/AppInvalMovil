@@ -77,6 +77,15 @@ export default function HomeScreen() {
           >
             Ver Inspecciones Registradas
           </Button>
+
+          <Button 
+            mode="contained" 
+            style={styles.automisaButton}
+            icon="factory"
+            onPress={() => router.push('/automisa-login')}
+          >
+            Automisa Inspecciones
+          </Button>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -140,5 +149,10 @@ const styles = StyleSheet.create({
     marginVertical: 8,
     paddingVertical: 12,
     backgroundColor: '#0891b2', // Azul cyan
+  },
+  automisaButton: {
+    marginVertical: 8,
+    paddingVertical: 12,
+    backgroundColor: '#7c3aed', // Purple - Automisa
   },
 });

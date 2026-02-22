@@ -44,6 +44,11 @@ export default function Layout() {
         <Stack.Screen name="photos" />
         <Stack.Screen name="report" />
         
+        {/* RUTAS AUTOMISA */}
+        <Stack.Screen name="automisa-login" />
+        <Stack.Screen name="automisa-home" />
+        <Stack.Screen name="automisa-checklist" />
+
         {/* NUEVAS RUTAS DEL SISTEMA ACTECO */}
         <Stack.Screen name="acteco-report-form" />
         <Stack.Screen name="acteco-general-photo" />
