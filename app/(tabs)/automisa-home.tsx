@@ -6,12 +6,27 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { BRAND_COLORS } from '../../constants/Colors';
 import { getCompanyName, getMyInspections, logout } from '../../utils/api';
 
+// Machine type abbreviations and colors
+const TYPE_ABBREV: Record<string, string> = {
+  autocompactador: 'AC',
+  'compactador-estatico': 'CE',
+  'prensa-vertical': 'PV',
+  volteador: 'VT',
+  rotoprensa: 'RP',
+  'caja-estatica': 'CJ',
+  contenedor: 'CT',
+  otros: 'OT',
+};
+
 const TYPE_COLORS: Record<string, string> = {
   AC: '#1e3a8a',
-  PV: '#16a34a',
   CE: '#ca8a04',
-  GR: '#7c3aed',
-  RE: '#0891b2',
+  PV: '#16a34a',
+  VT: '#7c3aed',
+  RP: '#0891b2',
+  CJ: '#dc2626',
+  CT: '#ea580c',
+  OT: '#6b7280',
 };
 
 export default function AutomisaHomeScreen() {
@@ -52,34 +67,42 @@ export default function AutomisaHomeScreen() {
     router.push({
       pathname: '/automisa-checklist',
       params: {
-        woId: item.woId,
-        machineType: item.machineType,
-        machineName: item.machineName,
-        licensePlate: item.licensePlate,
+        woId: item.wo_id,
+        machineType: item.machine_type,
+        machineName: item.machine_name,
+        licensePlate: item.license_plate,
         location: item.location || '',
       },
     });
   };
 
-  const renderItem = ({ item }: { item: any }) => (
-    <TouchableOpacity onPress={() => handleSelect(item)} activeOpacity={0.7}>
-      <Card style={styles.card}>
-        <Card.Content style={styles.cardContent}>
-          <View style={styles.cardRow}>
-            <Chip
-              style={[styles.typeBadge, { backgroundColor: TYPE_COLORS[item.machineType] || BRAND_COLORS.grayDark }]}
-              textStyle={styles.typeBadgeText}
-            >
-              {item.machineType}
-            </Chip>
-            <Text style={styles.plate}>{item.licensePlate}</Text>
-          </View>
-          <Text style={styles.machineName}>{item.machineName}</Text>
-          {item.location ? <Text style={styles.location}>📍 {item.location}</Text> : null}
-        </Card.Content>
-      </Card>
-    </TouchableOpacity>
-  );
+  const renderItem = ({ item }: { item: any }) => {
+    const abbrev = TYPE_ABBREV[item.machine_type] || item.machine_type?.substring(0, 2).toUpperCase() || '??';
+    const color = TYPE_COLORS[abbrev] || BRAND_COLORS.grayDark;
+
+    return (
+      <TouchableOpacity onPress={() => handleSelect(item)} activeOpacity={0.7}>
+        <Card style={[styles.card, item.is_overdue && styles.cardOverdue]}>
+          <Card.Content style={styles.cardContent}>
+            {item.is_overdue && (
+              <Text style={styles.overdueLabel}>⏰ VENCIDA</Text>
+            )}
+            <View style={styles.cardRow}>
+              <Chip
+                style={[styles.typeBadge, { backgroundColor: color }]}
+                textStyle={styles.typeBadgeText}
+              >
+                {abbrev}
+              </Chip>
+              <Text style={styles.plate}>{item.license_plate}</Text>
+            </View>
+            <Text style={styles.machineName}>{item.machine_name}</Text>
+            {item.location ? <Text style={styles.location}>📍 {item.location}</Text> : null}
+          </Card.Content>
+        </Card>
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
@@ -100,7 +123,7 @@ export default function AutomisaHomeScreen() {
       ) : (
         <FlatList
           data={inspections}
-          keyExtractor={(item) => item.woId}
+          keyExtractor={(item) => item.wo_id}
           renderItem={renderItem}
           contentContainerStyle={styles.list}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[BRAND_COLORS.primaryBlue]} />}
@@ -132,6 +155,16 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     elevation: 3,
     borderRadius: 12,
+  },
+  cardOverdue: {
+    borderLeftWidth: 4,
+    borderLeftColor: '#F44336',
+  },
+  overdueLabel: {
+    fontSize: 11,
+    fontWeight: 'bold',
+    color: '#F44336',
+    marginBottom: 4,
   },
   cardContent: { padding: 4 },
   cardRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },

@@ -9,123 +9,171 @@ const MOCK_MODE = true;
 
 const MOCK_INSPECTIONS = [
   {
-    woId: 'WO-001',
-    machineType: 'AC',
-    machineName: 'Autocargante Liebherr LTM 1060',
-    licensePlate: 'AC-V3471',
-    location: 'Obra Paseo de la Castellana 45',
-    status: 'pending',
+    wo_id: 'WO-2026-0001',
+    machine_type: 'autocompactador',
+    machine_name: 'AC Mediterráneo Basura',
+    license_plate: 'AC-V3471',
+    location: 'Polígono Fuente del Jarro, Paterna',
+    scheduled_date: new Date().toISOString().split('T')[0],
+    status: 'assigned',
+    is_overdue: false,
   },
   {
-    woId: 'WO-002',
-    machineType: 'PV',
-    machineName: 'Plataforma Vertical JLG 1930ES',
-    licensePlate: 'PV-M2210',
-    location: 'Nave Industrial Getafe',
-    status: 'pending',
+    wo_id: 'WO-2026-0002',
+    machine_type: 'compactador-estatico',
+    machine_name: 'CE Valencia Centro',
+    license_plate: 'CE-V1102',
+    location: 'Centro Comercial Aqua, Valencia',
+    scheduled_date: new Date().toISOString().split('T')[0],
+    status: 'assigned',
+    is_overdue: false,
   },
   {
-    woId: 'WO-003',
-    machineType: 'CE',
-    machineName: 'Carretilla Elevadora Toyota 8FGU25',
-    licensePlate: 'CE-B1455',
-    location: 'Almacén Central Coslada',
-    status: 'pending',
+    wo_id: 'WO-2026-0003',
+    machine_type: 'prensa-vertical',
+    machine_name: 'PV Almacén Norte',
+    license_plate: 'PV-V5501',
+    location: 'Nave Industrial Riba-roja',
+    scheduled_date: new Date().toISOString().split('T')[0],
+    status: 'in_progress',
+    is_overdue: false,
+  },
+  {
+    wo_id: 'WO-2026-0004',
+    machine_type: 'autocompactador',
+    machine_name: 'AC Getafe Basura',
+    license_plate: 'AC-V8821',
+    location: 'Mercadona Getafe',
+    scheduled_date: '2026-02-20',
+    status: 'assigned',
+    is_overdue: true,
   },
 ];
 
-const MOCK_CHECKLIST_TEMPLATES: Record<string, { categories: { category: string; items: { id: string; text: string }[] }[] }> = {
-  AC: {
+// Real checklist templates matching the backend (same as machineChecklists.ts)
+const MOCK_CHECKLIST_TEMPLATES: Record<string, { machine_type: string; version: number; categories: { category: string; items: { id: string; text: string }[] }[] }> = {
+  autocompactador: {
+    machine_type: 'autocompactador',
+    version: 1,
     categories: [
       {
-        category: 'Estado General',
+        category: 'General',
         items: [
-          { id: 'ac-gen-1', text: 'Estado general de la carrocería' },
-          { id: 'ac-gen-2', text: 'Limpieza general del equipo' },
-          { id: 'ac-gen-3', text: 'Pegatinas de seguridad visibles' },
+          { id: 'auto_gen1', text: 'Estado gancho delantero' },
+          { id: 'auto_gen2', text: 'Estado gancho trasero' },
+          { id: 'auto_gen3', text: 'Estado suelo' },
+          { id: 'auto_gen4', text: 'Estado vigas' },
+          { id: 'auto_gen5', text: 'Estado rodillos traseros' },
+          { id: 'auto_gen6', text: 'Estado rodillos delanteros' },
+          { id: 'auto_gen7', text: 'Estado carraca cierre puerta descarga' },
+          { id: 'auto_gen8', text: 'Estado uñas cierre puerta descarga' },
+          { id: 'auto_gen9', text: 'Estado chapa y pintura (agujeros en chapa)' },
+          { id: 'auto_gen10', text: 'Estado toldo/tapa tolva' },
+          { id: 'auto_gen11', text: 'Pegatinas riesgo eléctrico' },
+          { id: 'auto_gen12', text: 'Pegatina inval' },
+          { id: 'auto_gen13', text: 'Pegatinas seguridad' },
+          { id: 'auto_gen14', text: 'Estado plato prensor' },
+          { id: 'auto_gen15', text: 'Estado protecciones botoneras' },
         ],
       },
       {
-        category: 'Sistema Hidráulico',
+        category: 'Electricidad',
         items: [
-          { id: 'ac-hid-1', text: 'Nivel de aceite hidráulico' },
-          { id: 'ac-hid-2', text: 'Fugas en mangueras y conexiones' },
-          { id: 'ac-hid-3', text: 'Estado de los cilindros' },
+          { id: 'auto_elec1', text: 'Estado botoneras (setas, pulsadores, etc)' },
+          { id: 'auto_elec2', text: '¿Funciona correctamente los paros de emergencia?' },
+          { id: 'auto_elec3', text: 'Estado conexión mando muelle' },
+          { id: 'auto_elec4', text: 'Estado clavija inversora' },
+          { id: 'auto_elec5', text: 'Estado seccionador candable' },
+          { id: 'auto_elec6', text: 'Funcionamiento correcto de la máquina' },
+          { id: 'auto_elec7', text: '¿La máquina para sola?' },
+          { id: 'auto_elec8', text: 'Estado fotocélulas' },
+          { id: 'auto_elec9', text: 'Funciona la luz de lleno' },
         ],
       },
       {
-        category: 'Motor y Transmisión',
+        category: 'Hidráulica',
         items: [
-          { id: 'ac-mot-1', text: 'Nivel de aceite motor' },
-          { id: 'ac-mot-2', text: 'Nivel de refrigerante' },
-          { id: 'ac-mot-3', text: 'Estado de correas' },
-          { id: 'ac-mot-4', text: 'Filtro de aire' },
-        ],
-      },
-      {
-        category: 'Seguridad',
-        items: [
-          { id: 'ac-seg-1', text: 'Extintor presente y en fecha' },
-          { id: 'ac-seg-2', text: 'Cinturón de seguridad' },
-          { id: 'ac-seg-3', text: 'Luces de trabajo funcionando' },
-          { id: 'ac-seg-4', text: 'Alarma de retroceso' },
+          { id: 'auto_hidr1', text: '¿Hay fugas de aceite?' },
+          { id: 'auto_hidr2', text: 'Estado cilindros' },
+          { id: 'auto_hidr3', text: 'Estado válvula inversora' },
+          { id: 'auto_hidr4', text: '¿Hace el cambio bien?' },
+          { id: 'auto_hidr5', text: '¿Las presiones son correctas?' },
         ],
       },
     ],
   },
-  PV: {
+  'compactador-estatico': {
+    machine_type: 'compactador-estatico',
+    version: 1,
     categories: [
       {
-        category: 'Estructura',
+        category: 'General',
         items: [
-          { id: 'pv-est-1', text: 'Estado de la plataforma' },
-          { id: 'pv-est-2', text: 'Barandillas y protecciones' },
-          { id: 'pv-est-3', text: 'Suelo antideslizante' },
+          { id: 'comp_gen1', text: 'Estado guías rodadura' },
+          { id: 'comp_gen2', text: 'Estado faldillas' },
+          { id: 'comp_gen3', text: 'Estado lona rascadora' },
+          { id: 'comp_gen4', text: 'Estado chapa y pintura' },
+          { id: 'comp_gen5', text: 'Estado tolva' },
+          { id: 'comp_gen6', text: 'Estado patas' },
+          { id: 'comp_gen7', text: 'Estado brazos tensores' },
+          { id: 'comp_gen8', text: 'Pegatinas seguridad' },
+          { id: 'comp_gen9', text: 'Estado plato prensor' },
+          { id: 'comp_gen10', text: 'Estado protecciones botoneras' },
         ],
       },
       {
-        category: 'Sistema Eléctrico',
+        category: 'Electricidad',
         items: [
-          { id: 'pv-ele-1', text: 'Nivel de carga de baterías' },
-          { id: 'pv-ele-2', text: 'Estado de cables y conexiones' },
-          { id: 'pv-ele-3', text: 'Panel de control funcional' },
+          { id: 'comp_elec1', text: 'Estado botoneras' },
+          { id: 'comp_elec2', text: '¿Funciona los paros de emergencia?' },
+          { id: 'comp_elec3', text: 'Estado seccionador candable' },
+          { id: 'comp_elec4', text: 'Funcionamiento correcto' },
+          { id: 'comp_elec5', text: 'Estado fotocélulas' },
+          { id: 'comp_elec6', text: 'Estado finales de carrera' },
         ],
       },
       {
-        category: 'Seguridad',
+        category: 'Hidráulica',
         items: [
-          { id: 'pv-seg-1', text: 'Parada de emergencia funcional' },
-          { id: 'pv-seg-2', text: 'Sensor de inclinación' },
-          { id: 'pv-seg-3', text: 'Puerta de acceso con cierre' },
+          { id: 'comp_hidr1', text: '¿Hay fugas de aceite?' },
+          { id: 'comp_hidr2', text: 'Estado cilindros' },
+          { id: 'comp_hidr3', text: '¿Las presiones son correctas?' },
         ],
       },
     ],
   },
-  CE: {
+  'prensa-vertical': {
+    machine_type: 'prensa-vertical',
+    version: 1,
     categories: [
       {
-        category: 'Estado General',
+        category: 'General',
         items: [
-          { id: 'ce-gen-1', text: 'Estado general del equipo' },
-          { id: 'ce-gen-2', text: 'Estado de horquillas' },
-          { id: 'ce-gen-3', text: 'Estado de neumáticos' },
+          { id: 'prensa_gen1', text: 'Estado plato prensor' },
+          { id: 'prensa_gen2', text: 'Estado guías' },
+          { id: 'prensa_gen3', text: 'Estado cierre puerta' },
+          { id: 'prensa_gen4', text: 'Estado soporte fleje' },
+          { id: 'prensa_gen5', text: 'Estado chapa y pintura' },
+          { id: 'prensa_gen6', text: 'Pegatinas seguridad' },
+          { id: 'prensa_gen7', text: 'Estado extractor de balas' },
         ],
       },
       {
-        category: 'Motor y Fluidos',
+        category: 'Electricidad',
         items: [
-          { id: 'ce-mot-1', text: 'Nivel de aceite motor' },
-          { id: 'ce-mot-2', text: 'Nivel de combustible/carga batería' },
-          { id: 'ce-mot-3', text: 'Nivel de aceite hidráulico' },
+          { id: 'prensa_elec1', text: 'Estado botoneras' },
+          { id: 'prensa_elec2', text: '¿Funciona los paros de emergencia?' },
+          { id: 'prensa_elec3', text: 'Funcionamiento correcto' },
+          { id: 'prensa_elec4', text: '¿Funciona la función a dos manos?' },
         ],
       },
       {
-        category: 'Seguridad',
+        category: 'Hidráulica',
         items: [
-          { id: 'ce-seg-1', text: 'Claxon funcional' },
-          { id: 'ce-seg-2', text: 'Luces de trabajo' },
-          { id: 'ce-seg-3', text: 'Freno de servicio' },
-          { id: 'ce-seg-4', text: 'Freno de estacionamiento' },
+          { id: 'prensa_hidr1', text: '¿Hay fugas de aceite?' },
+          { id: 'prensa_hidr2', text: 'Estado cilindros' },
+          { id: 'prensa_hidr3', text: '¿La máquina no se baja sola?' },
+          { id: 'prensa_hidr4', text: '¿Las presiones son correctas?' },
         ],
       },
     ],
@@ -134,14 +182,24 @@ const MOCK_CHECKLIST_TEMPLATES: Record<string, { categories: { category: string;
 
 // Default template for unknown machine types
 const DEFAULT_TEMPLATE = {
+  machine_type: 'otros',
+  version: 1,
   categories: [
     {
-      category: 'Inspección General',
+      category: 'Estado General',
       items: [
-        { id: 'def-1', text: 'Estado general del equipo' },
-        { id: 'def-2', text: 'Limpieza y orden' },
-        { id: 'def-3', text: 'Documentación presente' },
-        { id: 'def-4', text: 'Elementos de seguridad' },
+        { id: 'gen1', text: 'Aspecto general y limpieza' },
+        { id: 'gen2', text: 'Estructura y carcasa' },
+        { id: 'gen3', text: 'Pintura y acabados' },
+        { id: 'gen4', text: 'Etiquetas y placas de identificación' },
+      ],
+    },
+    {
+      category: 'Seguridad',
+      items: [
+        { id: 'seg1', text: 'Protecciones y guardas' },
+        { id: 'seg2', text: 'Sistemas de seguridad' },
+        { id: 'seg3', text: 'Señalización de riesgos' },
       ],
     },
   ],
@@ -171,10 +229,10 @@ export async function login(companyCode: string, password: string): Promise<{ su
   }
 
   try {
-    const res = await fetch(`${BASE_URL}/mobile/login`, {
+    const res = await fetch(`${BASE_URL}/mobile/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ companyCode, password }),
+      body: JSON.stringify({ company_code: companyCode, password }),
     });
 
     if (!res.ok) {
@@ -184,10 +242,11 @@ export async function login(companyCode: string, password: string): Promise<{ su
 
     const data = await res.json();
     await AsyncStorage.setItem(TOKEN_KEY, data.token);
-    if (data.companyName) {
-      await AsyncStorage.setItem(COMPANY_KEY, data.companyName);
+    const name = data.company_name || data.companyName || '';
+    if (name) {
+      await AsyncStorage.setItem(COMPANY_KEY, name);
     }
-    return { success: true, companyName: data.companyName };
+    return { success: true, companyName: name };
   } catch (e: any) {
     return { success: false, error: 'Error de conexión: ' + (e.message || 'sin red') };
   }
