@@ -280,10 +280,10 @@ export async function submitInspection(
   woId: string,
   results: Record<string, string>,
   comments: string,
-  photos?: Record<string, any[]>
+  photos?: Record<string, any[]>,
+  generalPhotos?: string[]
 ): Promise<{ success: boolean; error?: string }> {
   if (MOCK_MODE) {
-    // Simulate a small delay
     await new Promise(r => setTimeout(r, 1000));
     return { success: true };
   }
@@ -306,7 +306,12 @@ export async function submitInspection(
     const res = await fetch(`${BASE_URL}/mobile/inspections/${woId}/submit`, {
       method: 'POST',
       headers: await authHeaders(),
-      body: JSON.stringify({ results, comments, photos: flatPhotos.length > 0 ? flatPhotos : undefined }),
+      body: JSON.stringify({
+        results,
+        comments,
+        photos: flatPhotos.length > 0 ? flatPhotos : undefined,
+        general_photos: generalPhotos && generalPhotos.length > 0 ? generalPhotos : undefined,
+      }),
     });
 
     if (!res.ok) {

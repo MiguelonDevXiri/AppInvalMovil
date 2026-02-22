@@ -40,6 +40,10 @@ export default function AutomisaChecklistScreen() {
   const [commentPhotoIdx, setCommentPhotoIdx] = useState(0);
   const [commentText, setCommentText] = useState('');
 
+  // General photos of the machine/site
+  const [generalPhotos, setGeneralPhotos] = useState<string[]>([]);
+  const MAX_GENERAL_PHOTOS = 4;
+
   useEffect(() => {
     getChecklistTemplate(machineType || 'default')
       .then((data) => setCategories(data.categories))
@@ -89,9 +93,29 @@ export default function AutomisaChecklistScreen() {
     setPhotos((prev) => ({ ...prev, [itemId]: updated }));
   };
 
+  const handleAddGeneralPhoto = async () => {
+    if (generalPhotos.length >= MAX_GENERAL_PHOTOS) {
+      Alert.alert('Máximo alcanzado', `Solo puedes añadir ${MAX_GENERAL_PHOTOS} fotos generales`);
+      return;
+    }
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permisos', 'Se necesitan permisos de cámara');
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({ quality: 0.7 });
+    if (!result.canceled && result.assets?.[0]) {
+      setGeneralPhotos((prev) => [...prev, result.assets[0].uri]);
+    }
+  };
+
+  const handleRemoveGeneralPhoto = (idx: number) => {
+    setGeneralPhotos((prev) => prev.filter((_, i) => i !== idx));
+  };
+
   const handleSubmit = async () => {
     setSubmitting(true);
-    const result = await submitInspection(woId || '', results, generalComment, photos);
+    const result = await submitInspection(woId || '', results, generalComment, photos, generalPhotos);
     setSubmitting(false);
 
     if (result.success) {
@@ -141,6 +165,40 @@ export default function AutomisaChecklistScreen() {
               </View>
             )}
           </View>
+
+          {/* General photos */}
+          <Text style={styles.commentLabel}>📷 Fotos generales de la máquina ({generalPhotos.length}/{MAX_GENERAL_PHOTOS}):</Text>
+          <Text style={{ fontSize: 12, color: '#888', marginBottom: 8 }}>
+            Fotos del estado general de la máquina y su entorno
+          </Text>
+
+          {generalPhotos.length > 0 && (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+              {generalPhotos.map((uri, idx) => (
+                <View key={idx} style={{ width: 120, height: 120, marginRight: 10, borderRadius: 8, overflow: 'hidden', position: 'relative' }}>
+                  <Image source={{ uri }} style={{ width: 120, height: 120 }} />
+                  <TouchableOpacity
+                    onPress={() => handleRemoveGeneralPhoto(idx)}
+                    style={{ position: 'absolute', top: 4, right: 4, backgroundColor: 'rgba(244,67,54,0.8)', width: 28, height: 28, borderRadius: 14, justifyContent: 'center', alignItems: 'center' }}
+                  >
+                    <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 16 }}>×</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </ScrollView>
+          )}
+
+          {generalPhotos.length < MAX_GENERAL_PHOTOS && (
+            <Button
+              mode="outlined"
+              icon="camera"
+              onPress={handleAddGeneralPhoto}
+              style={{ marginBottom: 16, borderColor: BRAND_COLORS.primaryBlue }}
+              textColor={BRAND_COLORS.primaryBlue}
+            >
+              Hacer foto general ({generalPhotos.length}/{MAX_GENERAL_PHOTOS})
+            </Button>
+          )}
 
           <Text style={styles.commentLabel}>Comentarios generales:</Text>
           <TextInput
