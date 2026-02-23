@@ -281,7 +281,8 @@ export async function submitInspection(
   results: Record<string, string>,
   comments: string,
   photos?: Record<string, any[]>,
-  generalPhotos?: string[]
+  generalPhotos?: string[],
+  technicianName?: string
 ): Promise<{ success: boolean; error?: string }> {
   if (MOCK_MODE) {
     await new Promise(r => setTimeout(r, 1000));
@@ -311,6 +312,7 @@ export async function submitInspection(
         comments,
         photos: flatPhotos.length > 0 ? flatPhotos : undefined,
         general_photos: generalPhotos && generalPhotos.length > 0 ? generalPhotos : undefined,
+        technician_name: technicianName || undefined,
       }),
     });
 

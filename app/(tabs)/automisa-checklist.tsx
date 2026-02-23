@@ -42,6 +42,7 @@ export default function AutomisaChecklistScreen() {
 
   // General photos of the machine/site
   const [generalPhotos, setGeneralPhotos] = useState<string[]>([]);
+  const [technicianName, setTechnicianName] = useState('');
   const MAX_GENERAL_PHOTOS = 4;
 
   useEffect(() => {
@@ -115,7 +116,7 @@ export default function AutomisaChecklistScreen() {
 
   const handleSubmit = async () => {
     setSubmitting(true);
-    const result = await submitInspection(woId || '', results, generalComment, photos, generalPhotos);
+    const result = await submitInspection(woId || '', results, generalComment, photos, generalPhotos, technicianName || undefined);
     setSubmitting(false);
 
     if (result.success) {
@@ -165,6 +166,15 @@ export default function AutomisaChecklistScreen() {
               </View>
             )}
           </View>
+
+          {/* Technician name */}
+          <Text style={styles.commentLabel}>👷 Nombre del técnico:</Text>
+          <TextInput
+            style={[styles.generalComment, { minHeight: 44, marginBottom: 16 }]}
+            value={technicianName}
+            onChangeText={setTechnicianName}
+            placeholder="Nombre del técnico (opcional)"
+          />
 
           {/* General photos */}
           <Text style={styles.commentLabel}>📷 Fotos generales de la máquina ({generalPhotos.length}/{MAX_GENERAL_PHOTOS}):</Text>
