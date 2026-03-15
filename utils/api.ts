@@ -237,7 +237,7 @@ export async function login(companyCode: string, password: string): Promise<{ su
 
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      return { success: false, error: data.message || 'Error de autenticación' };
+      return { success: false, error: data.detail || data.message || 'Error de autenticación' };
     }
 
     const data = await res.json();
@@ -280,24 +280,45 @@ export async function submitInspection(
   woId: string,
   results: Record<string, string>,
   comments: string,
-  photos?: Record<string, any[]>
+  photos?: Record<string, any[]>,
+  generalPhotos?: string[],
+  technicianName?: string
 ): Promise<{ success: boolean; error?: string }> {
   if (MOCK_MODE) {
-    // Simulate a small delay
     await new Promise(r => setTimeout(r, 1000));
     return { success: true };
   }
 
   try {
+    // Flatten photos from Record<itemId, PhotoWithComment[]> to string[] (URIs)
+    const flatPhotos: string[] = [];
+    if (photos) {
+      for (const itemPhotos of Object.values(photos)) {
+        for (const p of itemPhotos) {
+          if (p && typeof p === 'object' && p.uri) {
+            flatPhotos.push(p.uri);
+          } else if (typeof p === 'string') {
+            flatPhotos.push(p);
+          }
+        }
+      }
+    }
+
     const res = await fetch(`${BASE_URL}/mobile/inspections/${woId}/submit`, {
       method: 'POST',
       headers: await authHeaders(),
-      body: JSON.stringify({ results, comments, photos }),
+      body: JSON.stringify({
+        results,
+        comments,
+        photos: flatPhotos.length > 0 ? flatPhotos : undefined,
+        general_photos: generalPhotos && generalPhotos.length > 0 ? generalPhotos : undefined,
+        technician_name: technicianName || undefined,
+      }),
     });
 
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      return { success: false, error: data.message || 'Error al enviar inspección' };
+      return { success: false, error: data.detail || data.message || 'Error al enviar inspección' };
     }
     return { success: true };
   } catch (e: any) {
