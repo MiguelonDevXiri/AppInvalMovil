@@ -41,7 +41,7 @@ export default function ExitInspectionScreen() {
   const [nameConfirmed, setNameConfirmed] = useState(false);
 
   // Machine comments
-  const [machineComments, setMachineComments] = useState<{ id: string; text: string }[]>([]);
+  const [machineComments, setMachineComments] = useState<{ id: string; text: string; photoUri?: string }[]>([]);
   const [entryPhotos, setEntryPhotos] = useState<Record<string, ChecklistPhoto>>({});
   const [userRole, setUserRole] = useState<string>('');
 
@@ -66,7 +66,7 @@ export default function ExitInspectionScreen() {
         // Load machine comments
         if (foundMachine.commentsWithPhotos && foundMachine.commentsWithPhotos.length > 0) {
           setMachineComments(
-            foundMachine.commentsWithPhotos.map((c, i) => ({ id: `comment_${i}`, text: c.text }))
+            foundMachine.commentsWithPhotos.map((c, i) => ({ id: `comment_${i}`, text: c.text, photoUri: (c as any).photoUri }))
           );
         }
 
@@ -465,6 +465,9 @@ export default function ExitInspectionScreen() {
                             <View style={styles.commentInfo}>
                               <Text style={styles.commentLabel}>Comentario #{index + 1}</Text>
                               <Text style={styles.commentText}>{comment.text}</Text>
+                              {comment.photoUri && (
+                                <Image source={{ uri: comment.photoUri }} style={styles.entryCommentPhoto} />
+                              )}
                             </View>
                             <TouchableOpacity onPress={() => toggleVerified(comment.id)} style={[styles.verifyButton, isVerified && styles.verifyButtonActive]}>
                               <MaterialCommunityIcons
@@ -1036,5 +1039,13 @@ const styles = StyleSheet.create({
     maxWidth: 80,
     textAlign: 'center',
     marginTop: 2,
+  },
+  entryCommentPhoto: {
+    width: 80,
+    height: 80,
+    borderRadius: BORDER_RADIUS.md,
+    borderWidth: 2,
+    borderColor: BRAND_COLORS.primaryOrange,
+    marginTop: SPACING.sm,
   },
 });

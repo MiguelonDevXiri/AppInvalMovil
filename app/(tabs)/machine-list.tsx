@@ -5,7 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Modal, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { Button, Card, Chip, Divider, IconButton, Menu, Searchbar, Text, TextInput } from 'react-native-paper';
+import { Button, Card, Chip, IconButton, Menu, Searchbar, Text, TextInput } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MachineCard from '../../components/MachineCard';
 import { BORDER_RADIUS, BRAND_COLORS, GRADIENTS, SHADOWS, SPACING, TYPOGRAPHY } from '../../constants/Colors';
@@ -201,41 +201,6 @@ export default function MachineListScreen() {
       pathname: '/checklist',
       params: { machineId: selectedMachine.id }
     });
-  };
-
-  const handleDeleteMachine = async () => {
-    try {
-      handleMenuClose();
-      if (!selectedMachine) return;
-
-      Alert.alert(
-        'Eliminar máquina',
-        `¿Estás seguro de que quieres eliminar "${selectedMachine.name}"?`,
-        [
-          { text: 'Cancelar', style: 'cancel' },
-          {
-            text: 'Eliminar',
-            style: 'destructive',
-            onPress: async () => {
-              try {
-                setLoading(true);
-                await deleteMachine(selectedMachine.id);
-                await loadMachines();
-                Alert.alert('Máquina eliminada', 'La máquina ha sido eliminada correctamente.');
-              } catch (error) {
-                console.error('Error al eliminar la máquina:', error);
-                Alert.alert('Error', 'No se pudo eliminar la máquina. Inténtalo de nuevo.');
-              } finally {
-                setLoading(false);
-              }
-            }
-          }
-        ]
-      );
-    } catch (error) {
-      console.error('Error al preparar eliminación de máquina:', error);
-      Alert.alert('Error', 'No se pudo eliminar la máquina. Inténtalo de nuevo.');
-    }
   };
 
   const handleFilterChange = (key: keyof Filters, value: string | null) => {
@@ -437,33 +402,12 @@ export default function MachineListScreen() {
             title="Ver informe"
             leadingIcon="file-document"
           />
-          <Menu.Item
-            onPress={() => {
-              handleMenuClose();
-              if (selectedMachine) {
-                router.push({ pathname: '/exit-inspection' as any, params: { machineId: selectedMachine.id } });
-              }
-            }}
-            title="Inspección de Salida"
-            leadingIcon="clipboard-check-outline"
-          />
           {userRole !== 'technician' && (
             <Menu.Item
               onPress={handleEditMachine}
               title="Editar inspección"
               leadingIcon="pencil"
             />
-          )}
-          {userRole === 'admin' && (
-            <>
-              <Divider />
-              <Menu.Item
-                onPress={handleDeleteMachine}
-                title="Eliminar"
-                leadingIcon="delete"
-                titleStyle={{ color: BRAND_COLORS.error }}
-              />
-            </>
           )}
         </Menu>
 

@@ -5,7 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Modal, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { Card, Chip, Searchbar, Text } from 'react-native-paper';
+import { Card, Chip, Divider, Menu, Searchbar, Text } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BORDER_RADIUS, BRAND_COLORS, SHADOWS, SPACING, TYPOGRAPHY } from '../../constants/Colors';
 import { deleteExitInspection, getMachines, Machine } from '../../utils/storage';
@@ -70,15 +70,42 @@ export default function ExitManagementScreen() {
     );
   }, [searchQuery, machines]);
 
+  const [menuVisible, setMenuVisible] = useState<string | null>(null);
+  const [menuAnchor, setMenuAnchor] = useState({ x: 0, y: 0 });
+
   const handleMachinePress = (machine: Machine) => {
     if (isSelectionMode) {
       toggleSelection(machine.id);
       return;
     }
     router.push({
-      pathname: '/exit-inspection' as any,
+      pathname: '/report' as any,
       params: { machineId: machine.id },
     });
+  };
+
+  const handleDeleteSingleExit = (machine: Machine) => {
+    Alert.alert(
+      'Eliminar inspección de salida',
+      `¿Eliminar la inspección de salida de "${machine.name}"? La máquina volverá al estado "Entrada".`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteExitInspection(machine.id);
+              await loadMachines();
+              Alert.alert('Eliminada', 'La inspección de salida ha sido eliminada correctamente.');
+            } catch (error) {
+              console.error('Error al eliminar inspección:', error);
+              Alert.alert('Error', 'No se pudo eliminar la inspección de salida.');
+            }
+          },
+        },
+      ],
+    );
   };
 
   const handleLongPress = (machine: Machine) => {
@@ -171,9 +198,57 @@ export default function ExitManagementScreen() {
             activeOpacity={0.85}
           >
             <Card.Content style={styles.cardContent}>
-              <Text style={styles.machineName} numberOfLines={2}>
-                {item.name}
-              </Text>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.machineName} numberOfLines={2}>
+                    {item.name}
+                  </Text>
+                </View>
+                <Menu
+                  visible={menuVisible === item.id}
+                  onDismiss={() => setMenuVisible(null)}
+                  anchor={
+                    <TouchableOpacity
+                      onPress={() => setMenuVisible(item.id)}
+                      style={{ padding: 4 }}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <MaterialCommunityIcons name="dots-vertical" size={22} color={BRAND_COLORS.grayText} />
+                    </TouchableOpacity>
+                  }
+                >
+                  <Menu.Item
+                    onPress={() => {
+                      setMenuVisible(null);
+                      router.push({ pathname: '/report' as any, params: { machineId: item.id } });
+                    }}
+                    title="Ver informe"
+                    leadingIcon="file-document"
+                  />
+                  <Menu.Item
+                    onPress={() => {
+                      setMenuVisible(null);
+                      router.push({ pathname: '/exit-inspection' as any, params: { machineId: item.id } });
+                    }}
+                    title="Editar inspección de salida"
+                    leadingIcon="pencil"
+                  />
+                  {userRole === 'admin' && (
+                    <>
+                      <Divider />
+                      <Menu.Item
+                        onPress={() => {
+                          setMenuVisible(null);
+                          handleDeleteSingleExit(item);
+                        }}
+                        title="Eliminar salida"
+                        leadingIcon="delete"
+                        titleStyle={{ color: BRAND_COLORS.error }}
+                      />
+                    </>
+                  )}
+                </Menu>
+              </View>
               {item.brand && (
                 <Text style={styles.detail}>Marca: {item.brand}</Text>
               )}
