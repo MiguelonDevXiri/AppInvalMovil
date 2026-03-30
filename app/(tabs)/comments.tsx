@@ -1,38 +1,33 @@
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, View } from 'react-native';
-import { Button, Card, Divider, Paragraph, TextInput, Title } from 'react-native-paper';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Button, Card, Divider, Text, TextInput } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import PhotoCapture from '../../components/PhotoCapture';
-import { BRAND_COLORS } from '../../constants/Colors';
-import {
-    CommentWithPhoto,
-    getMachineById,
-    Machine,
-    saveMachineComments,
-} from '../../utils/storage';
+import { BORDER_RADIUS, BRAND_COLORS, GRADIENTS, SHADOWS, SPACING, TYPOGRAPHY } from '../../constants/Colors';
+import { CommentWithPhoto, getMachineById, Machine, saveMachineComments } from '../../utils/storage';
 
 export default function CommentsScreen() {
   const { machineId } = useLocalSearchParams();
   const [machine, setMachine] = useState<Machine | null>(null);
   const [comments, setComments] = useState<CommentWithPhoto[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [savingText, setSavingText] = useState('Guardando comentarios...');
 
   useEffect(() => {
     const loadMachine = async () => {
       try {
         if (!machineId) return;
-        
         setLoading(true);
         const foundMachine = await getMachineById(machineId.toString());
         if (foundMachine) {
           setMachine(foundMachine);
-          
           if (foundMachine.commentsWithPhotos && foundMachine.commentsWithPhotos.length > 0) {
-            console.log('Cargando comentarios existentes:', foundMachine.commentsWithPhotos.length);
             setComments(foundMachine.commentsWithPhotos);
           } else {
-            console.log('No hay comentarios previos, iniciando vacío');
             setComments([]);
           }
         }
@@ -42,77 +37,52 @@ export default function CommentsScreen() {
         setLoading(false);
       }
     };
-
     loadMachine();
   }, [machineId]);
 
   const addNewComment = () => {
-    const newComment: CommentWithPhoto = {
-      id: Date.now().toString(),
-      text: '',
-      photoUri: null
-    };
+    const newComment: CommentWithPhoto = { id: Date.now().toString(), text: '', photoUri: null };
     setComments([...comments, newComment]);
   };
 
   const updateCommentText = (id: string, text: string) => {
-    const updatedComments = comments.map(comment => 
-      comment.id === id ? { ...comment, text } : comment
-    );
-    setComments(updatedComments);
+    setComments(comments.map(c => c.id === id ? { ...c, text } : c));
   };
 
   const updateCommentPhoto = (id: string, uri: string) => {
-    const updatedComments = comments.map(comment => 
-      comment.id === id ? { ...comment, photoUri: uri } : comment
-    );
-    setComments(updatedComments);
+    setComments(comments.map(c => c.id === id ? { ...c, photoUri: uri } : c));
   };
 
   const removeComment = (id: string) => {
-    Alert.alert(
-      'Eliminar comentario',
-      '¿Estás seguro de que quieres eliminar este comentario?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Eliminar',
-          style: 'destructive',
-          onPress: () => {
-            const updatedComments = comments.filter(comment => comment.id !== id);
-            setComments(updatedComments);
-          }
-        }
-      ]
-    );
+    Alert.alert('Eliminar comentario', '¿Estás seguro de que quieres eliminar este comentario?', [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Eliminar', style: 'destructive', onPress: () => setComments(comments.filter(c => c.id !== id)) },
+    ]);
   };
 
   const handleSaveComments = async () => {
     try {
       if (!machineId || !machine) return;
-      
+      setSavingText('Guardando comentarios...');
+      setIsSaving(true);
       let fullCommentsText = '=== COMENTARIOS ESPECÍFICOS ===\n\n';
-      
       if (comments.length > 0) {
         comments.forEach((comment, index) => {
           fullCommentsText += `#${index + 1}: ${comment.text}\n`;
-          if (comment.photoUri) {
-            fullCommentsText += `[Foto adjunta: ${comment.id}]\n`;
-          }
+          if (comment.photoUri) fullCommentsText += `[Foto adjunta: ${comment.id}]\n`;
           fullCommentsText += '\n';
         });
       } else {
         fullCommentsText += 'No se añadieron comentarios específicos.\n';
       }
-      
-      await saveMachineComments(machineId.toString(), fullCommentsText, comments);
-      
-      router.push({
-        pathname: '/photos',
-        params: { machineId: machineId.toString() }
-      });
+      const saved = await saveMachineComments(machineId.toString(), fullCommentsText, comments);
+      if (!saved) throw new Error('No se pudieron guardar los comentarios');
+      setSavingText('Abriendo fotos generales...');
+      setIsSaving(false);
+      router.push({ pathname: '/photos', params: { machineId: machineId.toString() } });
     } catch (error) {
       console.error('Error al guardar los comentarios:', error);
+      setIsSaving(false);
       Alert.alert('Error', 'Error al guardar los comentarios. Inténtalo de nuevo.');
     }
   };
@@ -120,7 +90,7 @@ export default function CommentsScreen() {
   if (loading || !machine) {
     return (
       <SafeAreaView style={styles.loadingContainer} edges={['top', 'bottom']}>
-        <Paragraph>Cargando datos...</Paragraph>
+        <Text style={styles.loadingText}>Cargando datos...</Text>
       </SafeAreaView>
     );
   }
@@ -128,106 +98,123 @@ export default function CommentsScreen() {
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-        <Card style={styles.headerCard}>
-          <Card.Content>
-            <Title style={styles.headerTitle}>Comentarios y Fotos Adicionales</Title>
-            <Paragraph style={styles.headerSubtitle}>
-              Añade comentarios específicos con fotos para documentar detalles importantes de la máquina
-            </Paragraph>
-          </Card.Content>
-        </Card>
-        
+        <LinearGradient
+          colors={GRADIENTS.primary as unknown as [string, string, ...string[]]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.headerGradient}
+        >
+          <TouchableOpacity onPress={() => router.back()} style={{position:'absolute',left:12,top:12,zIndex:10,width:36,height:36,borderRadius:18,backgroundColor:'rgba(255,255,255,0.2)',justifyContent:'center',alignItems:'center'}}>
+            <MaterialCommunityIcons name="arrow-left" size={22} color="white" />
+          </TouchableOpacity>
+          <MaterialCommunityIcons name="comment-text-outline" size={24} color="rgba(255,255,255,0.7)" />
+          <Text style={styles.headerTitle}>Comentarios y Fotos</Text>
+          <Text style={styles.headerSubtitle}>
+            Añade comentarios específicos con fotos para documentar detalles importantes
+          </Text>
+        </LinearGradient>
+
         <Card style={styles.infoCard}>
-          <Card.Content>
-            <Title>{machine.name}</Title>
-            <Paragraph>Cliente: {machine.clientName}</Paragraph>
-            {machine.brand && <Paragraph>Marca: {machine.brand}</Paragraph>}
-            {machine.model && <Paragraph>Modelo: {machine.model}</Paragraph>}
+          <Card.Content style={styles.infoContent}>
+            <MaterialCommunityIcons name="cog" size={20} color={BRAND_COLORS.primaryBlue} />
+            <View style={styles.infoTextContainer}>
+              <Text style={styles.infoName}>{machine.name}</Text>
+              <Text style={styles.infoDetail}>Cliente: {machine.clientName}</Text>
+              {machine.brand && <Text style={styles.infoDetail}>Marca: {machine.brand} {machine.model ? `- ${machine.model}` : ''}</Text>}
+            </View>
           </Card.Content>
         </Card>
-        
+
         {comments.length > 0 ? (
-          <Card style={styles.commentsCard}>
-            <Card.Content>
-              <Title style={styles.sectionTitle}>Comentarios Específicos</Title>
-              
-              {comments.map((comment, index) => (
-                <View key={comment.id} style={styles.commentItem}>
-                  <View style={styles.commentHeader}>
-                    <Title style={styles.commentTitle}>Comentario #{index + 1}</Title>
-                    <Button 
-                      icon="delete" 
-                      mode="text" 
-                      onPress={() => removeComment(comment.id)}
-                      color="#F44336"
-                    >
-                      Eliminar
-                    </Button>
-                  </View>
-                  
-                  <TextInput
-                    label="Texto del comentario"
-                    value={comment.text}
-                    onChangeText={(text) => updateCommentText(comment.id, text)}
-                    multiline
-                    style={styles.commentInput}
-                    mode="outlined"
-                  />
-                  
-                  <PhotoCapture
-                    title="Foto del comentario"
-                    description="Añade una foto relacionada con este comentario"
-                    photoUri={comment.photoUri}
-                    onPhotoTaken={(uri: string) => updateCommentPhoto(comment.id, uri)}
-                  />
-                  
-                  <Divider style={styles.divider} />
+          comments.map((comment, index) => (
+            <Card key={comment.id} style={styles.commentCard}>
+              <Card.Content>
+                <View style={styles.commentHeader}>
+                  <Text style={styles.commentTitle}>Comentario #{index + 1}</Text>
+                  <Button
+                    icon="delete"
+                    mode="text"
+                    onPress={() => removeComment(comment.id)}
+                    textColor={BRAND_COLORS.error}
+                    compact
+                  >
+                    Eliminar
+                  </Button>
                 </View>
-              ))}
-            </Card.Content>
-          </Card>
+                <TextInput
+                  label="Texto del comentario"
+                  value={comment.text}
+                  onChangeText={(text) => updateCommentText(comment.id, text)}
+                  multiline
+                  style={styles.commentInput}
+                  mode="outlined"
+                  outlineColor={BRAND_COLORS.grayMedium}
+                  activeOutlineColor={BRAND_COLORS.primaryBlue}
+                />
+                <PhotoCapture
+                  title="Foto del comentario"
+                  description="Añade una foto relacionada con este comentario"
+                  photoUri={comment.photoUri}
+                  onPhotoTaken={(uri: string) => updateCommentPhoto(comment.id, uri)}
+                />
+              </Card.Content>
+            </Card>
+          ))
         ) : (
           <Card style={styles.emptyCard}>
-            <Card.Content>
-              <Paragraph style={styles.emptyText}>
-                No hay comentarios específicos. Pulsa el botón "Añadir Comentario" para agregar uno.
-              </Paragraph>
+            <Card.Content style={styles.emptyContent}>
+              <MaterialCommunityIcons name="comment-plus-outline" size={40} color={BRAND_COLORS.grayMedium} />
+              <Text style={styles.emptyText}>No hay comentarios. Pulsa "Añadir" para agregar uno.</Text>
             </Card.Content>
           </Card>
         )}
-        
-        <Button 
-          mode="outlined" 
+
+        <Button
+          mode="outlined"
           onPress={addNewComment}
+          disabled={isSaving}
           style={styles.addButton}
           icon="plus"
+          textColor={BRAND_COLORS.primaryBlue}
         >
           Añadir Comentario
         </Button>
       </ScrollView>
-      
+
       <SafeAreaView style={styles.buttonSafeArea} edges={['bottom']}>
         <View style={styles.buttonContainer}>
-          <Button 
-            mode="outlined" 
+          <Button
+            mode="outlined"
             onPress={() => router.back()}
-            style={[styles.button, styles.backButton]}
+            disabled={isSaving}
+            style={styles.button}
             icon="arrow-left"
+            textColor={BRAND_COLORS.primaryBlue}
           >
             Volver
           </Button>
-          
-          <Button 
-            mode="contained" 
+          <Button
+            mode="contained"
             onPress={handleSaveComments}
-            style={[styles.button, styles.nextButton]}
+            disabled={isSaving}
+            style={styles.button}
             icon="check"
             contentStyle={{ flexDirection: 'row-reverse' }}
+            buttonColor={BRAND_COLORS.primaryBlue}
           >
             Guardar
           </Button>
         </View>
       </SafeAreaView>
+      {isSaving && (
+        <View style={styles.savingOverlay}>
+          <View style={styles.savingCard}>
+            <ActivityIndicator size="large" color={BRAND_COLORS.primaryBlue} />
+            <Text style={styles.savingTitle}>{savingText}</Text>
+            <Text style={styles.savingSubtitle}>Espera un momento, estamos preparando la siguiente pantalla.</Text>
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -235,77 +222,106 @@ export default function CommentsScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: BRAND_COLORS.primaryBlue,
   },
   scrollView: {
     flex: 1,
+    backgroundColor: BRAND_COLORS.surface,
   },
   scrollContent: {
-    padding: 16,
-    paddingBottom: 16,
+    paddingBottom: SPACING.md,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 16,
+    backgroundColor: BRAND_COLORS.surface,
   },
-  headerCard: {
-    marginBottom: 8,
-    backgroundColor: BRAND_COLORS.primaryBlue,
+  loadingText: {
+    color: BRAND_COLORS.grayText,
+  },
+  headerGradient: {
+    padding: SPACING.lg,
+    paddingTop: SPACING.md,
+    alignItems: 'center',
   },
   headerTitle: {
     color: 'white',
-    fontSize: 20,
-    marginBottom: 8,
+    fontSize: TYPOGRAPHY.sizes.xl,
+    fontWeight: TYPOGRAPHY.weights.bold as any,
+    marginTop: SPACING.sm,
   },
   headerSubtitle: {
-    color: 'white',
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: TYPOGRAPHY.sizes.sm,
+    textAlign: 'center',
+    marginTop: SPACING.xs,
   },
   infoCard: {
-    marginTop: 8,
-    marginBottom: 8,
+    margin: SPACING.md,
+    borderRadius: BORDER_RADIUS.lg,
+    ...SHADOWS.small,
   },
-  commentsCard: {
-    marginTop: 8,
-    marginBottom: 8,
+  infoContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  emptyCard: {
-    marginTop: 8,
-    marginBottom: 8,
-    backgroundColor: '#f9f9f9',
+  infoTextContainer: {
+    marginLeft: SPACING.sm,
+    flex: 1,
   },
-  emptyText: {
-    textAlign: 'center',
-    fontStyle: 'italic',
-    color: '#757575',
+  infoName: {
+    fontSize: TYPOGRAPHY.sizes.md,
+    fontWeight: TYPOGRAPHY.weights.bold as any,
+    color: '#1e293b',
   },
-  sectionTitle: {
-    fontSize: 18,
-    marginBottom: 12,
+  infoDetail: {
+    fontSize: TYPOGRAPHY.sizes.sm,
+    color: BRAND_COLORS.grayText,
   },
-  commentItem: {
-    marginBottom: 16,
+  commentCard: {
+    marginHorizontal: SPACING.md,
+    marginBottom: SPACING.sm,
+    borderRadius: BORDER_RADIUS.lg,
+    borderLeftWidth: 3,
+    borderLeftColor: BRAND_COLORS.primaryOrange,
+    ...SHADOWS.small,
   },
   commentHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: SPACING.sm,
   },
   commentTitle: {
-    fontSize: 16,
+    fontSize: TYPOGRAPHY.sizes.md,
+    fontWeight: TYPOGRAPHY.weights.semibold as any,
+    color: BRAND_COLORS.primaryBlue,
   },
   commentInput: {
     backgroundColor: 'white',
-    marginBottom: 12,
+    marginBottom: SPACING.sm,
   },
-  divider: {
-    marginTop: 8,
+  emptyCard: {
+    margin: SPACING.md,
+    borderRadius: BORDER_RADIUS.lg,
+    backgroundColor: BRAND_COLORS.grayLight,
+  },
+  emptyContent: {
+    alignItems: 'center',
+    paddingVertical: SPACING.lg,
+  },
+  emptyText: {
+    textAlign: 'center',
+    fontStyle: 'italic',
+    color: BRAND_COLORS.grayText,
+    marginTop: SPACING.sm,
   },
   addButton: {
-    marginTop: 0,
+    marginHorizontal: SPACING.md,
+    marginTop: SPACING.xs,
     borderColor: BRAND_COLORS.primaryBlue,
+    borderRadius: BORDER_RADIUS.md,
   },
   buttonSafeArea: {
     backgroundColor: 'white',
@@ -313,24 +329,46 @@ const styles = StyleSheet.create({
   buttonContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    padding: 16,
+    padding: SPACING.md,
     backgroundColor: 'white',
-    borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
-    elevation: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
+    ...SHADOWS.medium,
   },
   button: {
     flex: 1,
-    marginHorizontal: 8,
+    marginHorizontal: SPACING.sm,
+    borderRadius: BORDER_RADIUS.md,
   },
-  backButton: {
-    borderColor: BRAND_COLORS.primaryBlue,
+  savingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1100,
   },
-  nextButton: {
-    backgroundColor: BRAND_COLORS.primaryBlue,
+  savingCard: {
+    backgroundColor: 'white',
+    borderRadius: BORDER_RADIUS.xl,
+    padding: SPACING.xl,
+    alignItems: 'center',
+    width: '80%',
+    maxWidth: 320,
+    ...SHADOWS.large,
+  },
+  savingTitle: {
+    marginTop: SPACING.md,
+    fontSize: TYPOGRAPHY.sizes.lg,
+    fontWeight: TYPOGRAPHY.weights.bold as any,
+    color: BRAND_COLORS.primaryBlue,
+    textAlign: 'center',
+  },
+  savingSubtitle: {
+    marginTop: SPACING.sm,
+    fontSize: TYPOGRAPHY.sizes.sm,
+    color: BRAND_COLORS.grayText,
+    textAlign: 'center',
   },
 });

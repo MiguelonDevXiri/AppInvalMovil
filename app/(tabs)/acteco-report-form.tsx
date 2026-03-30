@@ -1,13 +1,15 @@
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Button, Card, Divider, Text, TextInput, Title } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { BRAND_COLORS } from '../../constants/Colors';
+import { BORDER_RADIUS, BRAND_COLORS, GRADIENTS, SHADOWS, SPACING, TYPOGRAPHY } from '../../constants/Colors';
 
 export default function ActecoReportFormScreen() {
   const params = useLocalSearchParams();
-  
+
   // Datos del cliente
   const [clientName, setClientName] = useState('');
   const [avisoDate, setAvisoDate] = useState(new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }));
@@ -90,27 +92,32 @@ export default function ActecoReportFormScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
-      <KeyboardAvoidingView 
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <KeyboardAvoidingView
         style={styles.keyboardView}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
-        <ScrollView 
+        <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
         >
-          <Card style={styles.headerCard}>
-            <Card.Content>
-              <Text style={styles.headerTitle}>
-                {isEditing ? 'Editar Inspección' : 'Nueva Inspección ACTECO'}
-              </Text>
-              <Text style={styles.headerSubtitle}>
-                {isEditing ? 'Modifica los datos necesarios' : 'Completa los datos del cliente y la máquina'}
-              </Text>
-            </Card.Content>
-          </Card>
+          <LinearGradient
+            colors={GRADIENTS.primary as unknown as [string, string, ...string[]]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.headerGradient}
+          >
+            <TouchableOpacity onPress={() => router.back()} style={{position:'absolute',left:12,top:12,zIndex:10,width:36,height:36,borderRadius:18,backgroundColor:'rgba(255,255,255,0.2)',justifyContent:'center',alignItems:'center'}}>
+              <MaterialCommunityIcons name="arrow-left" size={22} color="white" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>
+              {isEditing ? 'Editar Inspección' : 'Nueva Inspección ACTECO'}
+            </Text>
+            <Text style={styles.headerSubtitle}>
+              {isEditing ? 'Modifica los datos necesarios' : 'Completa los datos del cliente y la máquina'}
+            </Text>
+          </LinearGradient>
 
           <Card style={styles.clientCard}>
             <Card.Content>
@@ -123,7 +130,7 @@ export default function ActecoReportFormScreen() {
                 onChangeText={setClientName}
                 style={styles.input}
                 mode="outlined"
-                outlineColor={BRAND_COLORS.primaryBlue}
+                outlineColor={BRAND_COLORS.grayMedium}
                 activeOutlineColor={BRAND_COLORS.primaryBlue}
                 placeholder="Nombre completo del cliente"
               />
@@ -135,7 +142,7 @@ export default function ActecoReportFormScreen() {
                   onChangeText={setAvisoDate}
                   style={[styles.input, styles.halfInput]}
                   mode="outlined"
-                  outlineColor={BRAND_COLORS.primaryBlue}
+                  outlineColor={BRAND_COLORS.grayMedium}
                   activeOutlineColor={BRAND_COLORS.primaryBlue}
                   placeholder="DD/MM/AAAA"
                 />
@@ -146,7 +153,7 @@ export default function ActecoReportFormScreen() {
                   onChangeText={setAvisoTime}
                   style={[styles.input, styles.halfInput]}
                   mode="outlined"
-                  outlineColor={BRAND_COLORS.primaryBlue}
+                  outlineColor={BRAND_COLORS.grayMedium}
                   activeOutlineColor={BRAND_COLORS.primaryBlue}
                   placeholder="HH:MM"
                 />
@@ -158,7 +165,7 @@ export default function ActecoReportFormScreen() {
                 onChangeText={setLocation}
                 style={styles.input}
                 mode="outlined"
-                outlineColor={BRAND_COLORS.primaryBlue}
+                outlineColor={BRAND_COLORS.grayMedium}
                 activeOutlineColor={BRAND_COLORS.primaryBlue}
                 placeholder="Dirección o ubicación"
               />
@@ -169,7 +176,7 @@ export default function ActecoReportFormScreen() {
                 onChangeText={setRequestedBy}
                 style={styles.input}
                 mode="outlined"
-                outlineColor={BRAND_COLORS.primaryBlue}
+                outlineColor={BRAND_COLORS.grayMedium}
                 activeOutlineColor={BRAND_COLORS.primaryBlue}
                 placeholder="Persona que solicita"
               />
@@ -187,7 +194,7 @@ export default function ActecoReportFormScreen() {
                 onChangeText={setMachineType}
                 style={styles.input}
                 mode="outlined"
-                outlineColor={BRAND_COLORS.primaryOrange}
+                outlineColor={BRAND_COLORS.grayMedium}
                 activeOutlineColor={BRAND_COLORS.primaryOrange}
                 placeholder="Ej: Compactadora, Prensa, etc."
               />
@@ -198,7 +205,7 @@ export default function ActecoReportFormScreen() {
                 onChangeText={setBrand}
                 style={styles.input}
                 mode="outlined"
-                outlineColor={BRAND_COLORS.primaryOrange}
+                outlineColor={BRAND_COLORS.grayMedium}
                 activeOutlineColor={BRAND_COLORS.primaryOrange}
                 placeholder="Marca del fabricante"
               />
@@ -209,7 +216,7 @@ export default function ActecoReportFormScreen() {
                 onChangeText={setModel}
                 style={styles.input}
                 mode="outlined"
-                outlineColor={BRAND_COLORS.primaryOrange}
+                outlineColor={BRAND_COLORS.grayMedium}
                 activeOutlineColor={BRAND_COLORS.primaryOrange}
                 placeholder="Modelo de la máquina"
               />
@@ -220,7 +227,7 @@ export default function ActecoReportFormScreen() {
                 onChangeText={setSerialNumber}
                 style={styles.input}
                 mode="outlined"
-                outlineColor={BRAND_COLORS.primaryOrange}
+                outlineColor={BRAND_COLORS.grayMedium}
                 activeOutlineColor={BRAND_COLORS.primaryOrange}
                 placeholder="S/N o número de serie"
               />
@@ -231,7 +238,7 @@ export default function ActecoReportFormScreen() {
                 onChangeText={setLicensePlate}
                 style={styles.input}
                 mode="outlined"
-                outlineColor={BRAND_COLORS.primaryOrange}
+                outlineColor={BRAND_COLORS.grayMedium}
                 activeOutlineColor={BRAND_COLORS.primaryOrange}
                 placeholder="Matrícula (si aplica)"
               />
@@ -243,21 +250,21 @@ export default function ActecoReportFormScreen() {
 
         <SafeAreaView style={styles.buttonSafeArea} edges={['bottom']}>
           <View style={styles.buttonContainer}>
-            <Button 
-              mode="outlined" 
+            <Button
+              mode="outlined"
               onPress={() => router.back()}
               style={styles.button}
-              color={BRAND_COLORS.primaryBlue}
+              textColor={BRAND_COLORS.primaryBlue}
             >
               Cancelar
             </Button>
-            
-            <Button 
-              mode="contained" 
+
+            <Button
+              mode="contained"
               onPress={handleContinue}
               style={styles.button}
               icon="arrow-right"
-              color={BRAND_COLORS.primaryOrange}
+              buttonColor={BRAND_COLORS.primaryOrange}
             >
               Continuar
             </Button>
@@ -271,80 +278,82 @@ export default function ActecoReportFormScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: BRAND_COLORS.primaryBlue,
   },
   keyboardView: {
     flex: 1,
+    backgroundColor: BRAND_COLORS.surface,
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    padding: 16,
     paddingBottom: 100,
   },
-  headerCard: {
-    marginBottom: 16,
-    backgroundColor: BRAND_COLORS.primaryBlue,
+  headerGradient: {
+    padding: SPACING.lg,
+    alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    fontSize: TYPOGRAPHY.sizes.xl,
+    fontWeight: TYPOGRAPHY.weights.bold as any,
     color: 'white',
-    marginBottom: 4,
+    marginBottom: SPACING.xs,
   },
   headerSubtitle: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.9)',
+    fontSize: TYPOGRAPHY.sizes.sm,
+    color: 'rgba(255,255,255,0.8)',
   },
   clientCard: {
-    marginBottom: 16,
+    margin: SPACING.md,
+    borderRadius: BORDER_RADIUS.lg,
+    ...SHADOWS.small,
   },
   machineCard: {
-    marginBottom: 16,
+    marginHorizontal: SPACING.md,
+    marginBottom: SPACING.md,
+    borderRadius: BORDER_RADIUS.lg,
+    ...SHADOWS.small,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: TYPOGRAPHY.sizes.lg,
+    fontWeight: TYPOGRAPHY.weights.bold as any,
     color: BRAND_COLORS.primaryBlue,
-    marginBottom: 8,
+    marginBottom: SPACING.sm,
   },
   divider: {
-    marginBottom: 16,
+    marginBottom: SPACING.md,
   },
   input: {
-    marginBottom: 12,
+    marginBottom: SPACING.sm,
     backgroundColor: 'white',
   },
   row: {
     flexDirection: 'row',
-    gap: 12,
+    gap: SPACING.sm,
   },
   halfInput: {
     flex: 1,
   },
   helpText: {
-    fontSize: 12,
-    color: '#666',
+    fontSize: TYPOGRAPHY.sizes.xs,
+    color: BRAND_COLORS.grayText,
     fontStyle: 'italic',
-    marginTop: 8,
+    marginTop: SPACING.sm,
     textAlign: 'center',
   },
   buttonSafeArea: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
     backgroundColor: 'white',
     borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
+    borderTopColor: BRAND_COLORS.grayMedium,
   },
   buttonContainer: {
     flexDirection: 'row',
-    padding: 16,
-    gap: 12,
+    padding: SPACING.md,
+    gap: SPACING.sm,
   },
   button: {
     flex: 1,
+    borderRadius: BORDER_RADIUS.md,
   },
 });

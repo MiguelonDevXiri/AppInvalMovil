@@ -39,6 +39,7 @@ export const autocompactadorChecklist: ChecklistCategory[] = [
       { id: 'auto_gen21', text: '¿Los teflones están correctamente ajustados?' },
       { id: 'auto_gen22', text: 'Estado goma estanca' },
       { id: 'auto_gen23', text: 'Estado llave vierte líquidos' },
+      { id: 'auto_gen24', text: 'Estado pernos, puerta de descarga' },
     ]
   },
   {
@@ -64,6 +65,8 @@ export const autocompactadorChecklist: ChecklistCategory[] = [
       { id: 'auto_hidr3', text: 'Estado válvula inversora' },
       { id: 'auto_hidr4', text: '¿hace el cambio bien? (en caso de no hacer el cambio, problema inversora o cilindro, foto del causante)' },
       { id: 'auto_hidr5', text: '¿las presiones son correctas?' },
+      { id: 'auto_hidr6', text: 'Estado aceite hidráulico' },
+      { id: 'auto_hidr7', text: 'Estado filtro hidráulico' },
     ]
   }
 ];
@@ -113,6 +116,8 @@ export const compactadorEstaticoChecklist: ChecklistCategory[] = [
       { id: 'comp_hidr3', text: 'Estado válvula inversora' },
       { id: 'comp_hidr4', text: '¿hace el cambio bien? (en caso de no hacer el cambio, problema inversora o cilindro, foto del causante)' },
       { id: 'comp_hidr5', text: '¿las presiones son correctas?' },
+      { id: 'comp_hidr6', text: 'Estado aceite hidráulico' },
+      { id: 'comp_hidr7', text: 'Estado filtro hidráulico' },
     ]
   }
 ];

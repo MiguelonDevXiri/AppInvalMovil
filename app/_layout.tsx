@@ -1,7 +1,7 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { DefaultTheme, PaperProvider } from 'react-native-paper';
-import { BRAND_COLORS } from '../constants/Colors';
+import { BORDER_RADIUS, BRAND_COLORS } from '../constants/Colors';
 
 const theme = {
   ...DefaultTheme,
@@ -9,15 +9,13 @@ const theme = {
     ...DefaultTheme.colors,
     primary: BRAND_COLORS.primaryBlue,
     accent: BRAND_COLORS.primaryOrange,
-    background: '#f5f5f5',
-    surface: '#FFFFFF',
-    error: '#B00020',
-    text: '#000000',
-    onSurface: '#000000',
-    secondaryButton: BRAND_COLORS.primaryOrange,
-    cardBorder: BRAND_COLORS.primaryOrange,
+    background: BRAND_COLORS.surface,
+    surface: BRAND_COLORS.background,
+    error: BRAND_COLORS.error,
+    text: '#0f172a',
+    onSurface: '#0f172a',
   },
-  roundness: 0,
+  roundness: BORDER_RADIUS.md,
 };
 
 export default function RootLayout() {
@@ -26,9 +24,9 @@ export default function RootLayout() {
       <StatusBar style="light" backgroundColor={BRAND_COLORS.primaryBlue} />
       <Stack
         screenOptions={{
-          headerShown: false, // Elimina el header en todas las pantallas
+          headerShown: false,
           contentStyle: {
-            backgroundColor: '#f5f5f5',
+            backgroundColor: BRAND_COLORS.surface,
           },
         }}
       >

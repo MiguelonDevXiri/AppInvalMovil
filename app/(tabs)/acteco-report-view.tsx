@@ -1,9 +1,11 @@
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Alert, Image, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, Image, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { ActivityIndicator, Button, Card, Divider, Paragraph, Text, Title } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { BRAND_COLORS } from '../../constants/Colors';
+import { BORDER_RADIUS, BRAND_COLORS, GRADIENTS, SHADOWS, SPACING, TYPOGRAPHY } from '../../constants/Colors';
 import {
     getActecoInspectionById,
     paramsToInspection,
@@ -15,6 +17,8 @@ import { shareActecoPDFReport } from '../../utils/actecoReportGenerator';
 export default function ActecoReportViewScreen() {
   const params = useLocalSearchParams();
   const [isGenerating, setIsGenerating] = useState(false);
+  const [progressText, setProgressText] = useState('');
+  const [progressPercent, setProgressPercent] = useState(0);
   const [inspection, setInspection] = useState<ActecoInspection | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -61,11 +65,15 @@ export default function ActecoReportViewScreen() {
 
     try {
       setIsGenerating(true);
+      setProgressText('Guardando inspección...');
+      setProgressPercent(5);
+      await new Promise(r => setTimeout(r, 50));
 
       // Guardar la inspección antes de generar el PDF
       console.log('💾 Guardando inspección...');
       const savedInspection = await saveActecoInspection(inspection);
       console.log('✅ Inspección guardada con ID:', savedInspection.id);
+      setProgressPercent(10);
 
       // Preparar datos para el PDF
       const reportData = {
@@ -98,9 +106,14 @@ export default function ActecoReportViewScreen() {
       };
 
       console.log('📄 Generando PDF...');
-      const success = await shareActecoPDFReport(reportData);
+      const success = await shareActecoPDFReport(reportData, (percent, text) => {
+        setProgressPercent(percent);
+        setProgressText(text);
+      });
       
       if (success) {
+        setProgressPercent(100);
+        setProgressText('¡Listo!');
         console.log('✅ PDF generado correctamente');
       }
     } catch (error) {
@@ -108,6 +121,8 @@ export default function ActecoReportViewScreen() {
       Alert.alert('Error', 'No se pudo generar el informe');
     } finally {
       setIsGenerating(false);
+      setProgressPercent(0);
+      setProgressText('');
     }
   };
 
@@ -145,12 +160,18 @@ export default function ActecoReportViewScreen() {
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-        <Card style={styles.headerCard}>
-          <Card.Content>
-            <Text style={styles.headerTitle}>Resumen del Informe</Text>
-            <Text style={styles.headerSubtitle}>Revisa los datos antes de generar el PDF</Text>
-          </Card.Content>
-        </Card>
+        <LinearGradient
+          colors={GRADIENTS.primary as unknown as [string, string, ...string[]]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={{padding: SPACING.lg, paddingTop: SPACING.md, alignItems:'center', position:'relative'}}
+        >
+          <TouchableOpacity onPress={() => router.back()} style={{position:'absolute',left:16,top:16,zIndex:10,width:36,height:36,borderRadius:18,backgroundColor:'rgba(255,255,255,0.2)',justifyContent:'center',alignItems:'center'}}>
+            <MaterialCommunityIcons name="arrow-left" size={22} color="white" />
+          </TouchableOpacity>
+          <Text style={{color:'white',fontSize:TYPOGRAPHY.sizes.xl,fontWeight:TYPOGRAPHY.weights.bold as any}}>Resumen del Informe</Text>
+          <Text style={{color:'rgba(255,255,255,0.8)',fontSize:TYPOGRAPHY.sizes.sm,marginTop:SPACING.xs}}>Revisa los datos antes de generar el PDF</Text>
+        </LinearGradient>
 
         {/* Datos del Cliente */}
         <Card style={styles.clientCard}>
@@ -390,7 +411,7 @@ export default function ActecoReportViewScreen() {
             onPress={handleFinish}
             style={styles.button}
             icon="home"
-            color={BRAND_COLORS.primaryBlue}
+            textColor={BRAND_COLORS.primaryBlue}
             disabled={isGenerating}
           >
             Volver al Inicio
@@ -401,7 +422,7 @@ export default function ActecoReportViewScreen() {
             onPress={handleShareReport}
             style={styles.button}
             icon="file-pdf-box"
-            color={BRAND_COLORS.primaryOrange}
+            buttonColor={BRAND_COLORS.primaryOrange}
             disabled={isGenerating}
             loading={isGenerating}
           >
@@ -409,6 +430,19 @@ export default function ActecoReportViewScreen() {
           </Button>
         </View>
       </SafeAreaView>
+
+      {isGenerating && (
+        <View style={{position:'absolute',top:0,left:0,right:0,bottom:0,backgroundColor:'rgba(0,0,0,0.6)',justifyContent:'center',alignItems:'center',zIndex:9999}}>
+          <View style={{backgroundColor:'white',borderRadius:16,padding:32,alignItems:'center',width:'80%',maxWidth:300}}>
+            <ActivityIndicator size="large" color={BRAND_COLORS.primaryBlue} />
+            <Text style={{marginTop:16,fontSize:16,fontWeight:'bold',color:BRAND_COLORS.primaryBlue}}>{progressText}</Text>
+            <View style={{width:'100%',height:6,backgroundColor:'#e5e7eb',borderRadius:3,marginTop:12,overflow:'hidden'}}>
+              <View style={{width:`${progressPercent}%`,height:'100%',backgroundColor:BRAND_COLORS.primaryOrange,borderRadius:3}} />
+            </View>
+            <Text style={{marginTop:8,fontSize:12,color:BRAND_COLORS.grayText}}>{progressPercent}%</Text>
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -416,7 +450,7 @@ export default function ActecoReportViewScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: BRAND_COLORS.surface,
   },
   loadingContainer: {
     flex: 1,
@@ -425,173 +459,169 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     marginTop: 10,
-    fontSize: 16,
-    color: '#666',
+    fontSize: TYPOGRAPHY.sizes.md,
+    color: BRAND_COLORS.grayText,
   },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    padding: SPACING.lg,
   },
   errorText: {
-    fontSize: 16,
-    color: '#F44336',
-    marginBottom: 20,
+    fontSize: TYPOGRAPHY.sizes.md,
+    color: BRAND_COLORS.error,
+    marginBottom: SPACING.lg,
     textAlign: 'center',
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    padding: 16,
-    paddingBottom: 100,
-  },
-  headerCard: {
-    marginBottom: 16,
-    backgroundColor: BRAND_COLORS.primaryBlue,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: 'white',
-    marginBottom: 4,
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.9)',
+    paddingHorizontal: SPACING.md,
+    paddingBottom: 32,
   },
   clientCard: {
-    marginBottom: 16,
+    marginBottom: SPACING.md,
+    borderRadius: BORDER_RADIUS.lg,
+    ...SHADOWS.small,
   },
   machineCard: {
-    marginBottom: 16,
+    marginBottom: SPACING.md,
+    borderRadius: BORDER_RADIUS.lg,
+    ...SHADOWS.small,
   },
   photosCard: {
-    marginBottom: 16,
+    marginBottom: SPACING.md,
+    borderRadius: BORDER_RADIUS.lg,
+    ...SHADOWS.small,
   },
   averiaCard: {
-    marginBottom: 16,
+    marginBottom: SPACING.md,
+    borderRadius: BORDER_RADIUS.lg,
+    ...SHADOWS.small,
   },
   observationsCard: {
-    marginBottom: 16,
+    marginBottom: SPACING.md,
+    borderRadius: BORDER_RADIUS.lg,
+    ...SHADOWS.small,
   },
   materialsCard: {
-    marginBottom: 16,
+    marginBottom: SPACING.md,
+    borderRadius: BORDER_RADIUS.lg,
+    ...SHADOWS.small,
   },
   finalCard: {
-    marginBottom: 16,
+    marginBottom: SPACING.md,
+    borderRadius: BORDER_RADIUS.lg,
+    ...SHADOWS.small,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: TYPOGRAPHY.sizes.lg,
+    fontWeight: TYPOGRAPHY.weights.bold as any,
     color: BRAND_COLORS.primaryBlue,
-    marginBottom: 8,
+    marginBottom: SPACING.sm,
   },
   divider: {
-    marginBottom: 12,
+    marginBottom: SPACING.md,
   },
   infoRow: {
     flexDirection: 'row',
-    marginBottom: 8,
+    marginBottom: SPACING.sm,
   },
   infoLabel: {
-    fontWeight: 'bold',
+    fontWeight: TYPOGRAPHY.weights.bold as any,
     width: 120,
-    color: '#666',
+    color: BRAND_COLORS.grayText,
   },
   infoValue: {
     flex: 1,
-    color: '#333',
+    color: '#1e293b',
   },
   successText: {
-    color: '#4CAF50',
-    fontWeight: 'bold',
+    color: BRAND_COLORS.success,
+    fontWeight: TYPOGRAPHY.weights.bold as any,
   },
   textSection: {
-    marginBottom: 12,
+    marginBottom: SPACING.md,
   },
   textLabel: {
-    fontWeight: 'bold',
-    color: '#666',
-    marginBottom: 4,
+    fontWeight: TYPOGRAPHY.weights.bold as any,
+    color: BRAND_COLORS.grayText,
+    marginBottom: SPACING.xs,
   },
   photosGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: SPACING.sm,
   },
   photoThumbnail: {
     width: 150,
     height: 150,
-    borderRadius: 8,
-    backgroundColor: '#e0e0e0',
+    borderRadius: BORDER_RADIUS.md,
+    backgroundColor: BRAND_COLORS.grayMedium,
   },
   table: {
-    marginTop: 8,
+    marginTop: SPACING.sm,
   },
   tableHeader: {
     flexDirection: 'row',
     backgroundColor: BRAND_COLORS.primaryBlue,
-    padding: 12,
-    borderRadius: 4,
+    padding: SPACING.md,
+    borderRadius: BORDER_RADIUS.sm,
   },
   tableHeaderText: {
     color: 'white',
-    fontWeight: 'bold',
-    fontSize: 14,
+    fontWeight: TYPOGRAPHY.weights.bold as any,
+    fontSize: TYPOGRAPHY.sizes.sm,
   },
   tableRow: {
     flexDirection: 'row',
-    padding: 12,
+    padding: SPACING.md,
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    borderBottomColor: BRAND_COLORS.grayMedium,
   },
   tableRowEven: {
-    backgroundColor: '#f9f9f9',
+    backgroundColor: BRAND_COLORS.grayLight,
   },
   tableRowOdd: {
     backgroundColor: 'white',
   },
   tableCell: {
-    fontSize: 14,
-    color: '#333',
+    fontSize: TYPOGRAPHY.sizes.sm,
+    color: '#1e293b',
   },
   signatureSection: {
-    marginTop: 12,
-    marginBottom: 12,
-    padding: 12,
-    backgroundColor: '#f9f9f9',
-    borderRadius: 8,
+    marginTop: SPACING.md,
+    marginBottom: SPACING.md,
+    padding: SPACING.md,
+    backgroundColor: BRAND_COLORS.grayLight,
+    borderRadius: BORDER_RADIUS.md,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: BRAND_COLORS.grayMedium,
   },
   signatureLabel: {
-    fontWeight: 'bold',
-    color: '#666',
-    marginBottom: 8,
+    fontWeight: TYPOGRAPHY.weights.bold as any,
+    color: BRAND_COLORS.grayText,
+    marginBottom: SPACING.sm,
   },
   signatureImage: {
     width: '100%',
     height: 120,
     backgroundColor: 'white',
-    borderRadius: 4,
+    borderRadius: BORDER_RADIUS.sm,
     borderWidth: 1,
-    borderColor: '#ccc',
+    borderColor: BRAND_COLORS.grayMedium,
   },
   buttonSafeArea: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
     backgroundColor: 'white',
     borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
+    borderTopColor: BRAND_COLORS.grayMedium,
   },
   buttonContainer: {
     flexDirection: 'row',
-    padding: 16,
-    gap: 12,
+    padding: SPACING.md,
+    gap: SPACING.md,
   },
   button: {
     flex: 1,

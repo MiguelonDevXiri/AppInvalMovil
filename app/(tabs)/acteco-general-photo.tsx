@@ -1,33 +1,53 @@
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Alert, Image, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Button, Card, Text, Title } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { BRAND_COLORS } from '../../constants/Colors';
+import { BORDER_RADIUS, BRAND_COLORS, GRADIENTS, SHADOWS, SPACING, TYPOGRAPHY } from '../../constants/Colors';
 
 export default function ActecoGeneralPhotoScreen() {
   const params = useLocalSearchParams();
-  // ✅ CAMBIO: 4 fotos en lugar de 1
   const [photo1, setPhoto1] = useState<string | null>(null);
   const [photo2, setPhoto2] = useState<string | null>(null);
   const [photo3, setPhoto3] = useState<string | null>(null);
   const [photo4, setPhoto4] = useState<string | null>(null);
 
+  // Cargar fotos existentes en modo edición
+  useEffect(() => {
+    if (params.isEditing === 'true') {
+      console.log('✏️ Cargando fotos generales para editar');
+      if (params.photoGeneral1 && (params.photoGeneral1 as string).trim() !== '') {
+        setPhoto1(params.photoGeneral1 as string);
+      }
+      if (params.photoGeneral2 && (params.photoGeneral2 as string).trim() !== '') {
+        setPhoto2(params.photoGeneral2 as string);
+      }
+      if (params.photoGeneral3 && (params.photoGeneral3 as string).trim() !== '') {
+        setPhoto3(params.photoGeneral3 as string);
+      }
+      if (params.photoGeneral4 && (params.photoGeneral4 as string).trim() !== '') {
+        setPhoto4(params.photoGeneral4 as string);
+      }
+    }
+  }, []);
+
   const handleTakePhoto = async (photoNumber: 1 | 2 | 3 | 4) => {
     try {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
-      
+
       if (status !== 'granted') {
         Alert.alert('Permisos requeridos', 'Se necesitan permisos para usar la cámara');
         return;
       }
-      
+
       const result = await ImagePicker.launchCameraAsync({
         allowsEditing: false,
         quality: 0.8,
       });
-      
+
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const uri = result.assets[0].uri;
         switch(photoNumber) {
@@ -46,18 +66,18 @@ export default function ActecoGeneralPhotoScreen() {
   const handleChooseFromGallery = async (photoNumber: 1 | 2 | 3 | 4) => {
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      
+
       if (status !== 'granted') {
         Alert.alert('Permisos requeridos', 'Se necesitan permisos para acceder a la galería');
         return;
       }
-      
+
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: false,
         quality: 0.8,
       });
-      
+
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const uri = result.assets[0].uri;
         switch(photoNumber) {
@@ -75,14 +95,14 @@ export default function ActecoGeneralPhotoScreen() {
 
   const handleContinue = () => {
     const photoCount = [photo1, photo2, photo3, photo4].filter(p => p).length;
-    
+
     if (photoCount === 0) {
       Alert.alert(
         'Fotos requeridas',
         '¿Estás seguro de que quieres continuar sin fotos?',
         [
           { text: 'Cancelar', style: 'cancel' },
-          { 
+          {
             text: 'Continuar sin fotos',
             onPress: () => navigateNext()
           }
@@ -98,7 +118,6 @@ export default function ActecoGeneralPhotoScreen() {
       pathname: '/(tabs)/acteco-averia-form' as any,
       params: {
         ...params,
-        // ✅ CAMBIO: Pasar las 4 fotos con los nombres correctos
         photoGeneral1: photo1 || '',
         photoGeneral2: photo2 || '',
         photoGeneral3: photo3 || '',
@@ -107,13 +126,12 @@ export default function ActecoGeneralPhotoScreen() {
     });
   };
 
-  // ✅ Componente para cada foto
-  const PhotoSlot = ({ 
-    photoNumber, 
-    photo, 
-    onTakePhoto, 
-    onChooseGallery 
-  }: { 
+  const PhotoSlot = ({
+    photoNumber,
+    photo,
+    onTakePhoto,
+    onChooseGallery
+  }: {
     photoNumber: number;
     photo: string | null;
     onTakePhoto: () => void;
@@ -128,16 +146,16 @@ export default function ActecoGeneralPhotoScreen() {
         </TouchableOpacity>
       ) : (
         <View>
-          <TouchableOpacity 
-            style={styles.emptyPhotoThumb} 
+          <TouchableOpacity
+            style={styles.emptyPhotoThumb}
             onPress={onTakePhoto}
             activeOpacity={0.7}
           >
             <Text style={styles.emptyPhotoIcon}>📷</Text>
             <Text style={styles.emptyPhotoText}>Tomar foto</Text>
           </TouchableOpacity>
-          <Button 
-            mode="text" 
+          <Button
+            mode="text"
             onPress={onChooseGallery}
             style={styles.galleryButton}
             compact
@@ -155,37 +173,42 @@ export default function ActecoGeneralPhotoScreen() {
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-        <Card style={styles.headerCard}>
-          <Card.Content>
-            <Title style={styles.title}>Fotos Generales de la Máquina</Title>
-            <Text style={styles.subtitle}>
-              Captura hasta 4 fotos generales de la máquina
-            </Text>
-          </Card.Content>
-        </Card>
+        <LinearGradient
+          colors={GRADIENTS.primary as unknown as [string, string, ...string[]]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.headerGradient}
+        >
+          <TouchableOpacity onPress={() => router.back()} style={{position:'absolute',left:12,top:12,zIndex:10,width:36,height:36,borderRadius:18,backgroundColor:'rgba(255,255,255,0.2)',justifyContent:'center',alignItems:'center'}}>
+            <MaterialCommunityIcons name="arrow-left" size={22} color="white" />
+          </TouchableOpacity>
+          <MaterialCommunityIcons name="camera-outline" size={24} color="rgba(255,255,255,0.7)" />
+          <Text style={styles.headerTitle}>Fotos Generales de la Máquina</Text>
+          <Text style={styles.headerSubtitle}>Captura hasta 4 fotos generales de la máquina</Text>
+        </LinearGradient>
 
         <Card style={styles.photoCard}>
           <Card.Content>
             <View style={styles.photosGrid}>
-              <PhotoSlot 
+              <PhotoSlot
                 photoNumber={1}
                 photo={photo1}
                 onTakePhoto={() => handleTakePhoto(1)}
                 onChooseGallery={() => handleChooseFromGallery(1)}
               />
-              <PhotoSlot 
+              <PhotoSlot
                 photoNumber={2}
                 photo={photo2}
                 onTakePhoto={() => handleTakePhoto(2)}
                 onChooseGallery={() => handleChooseFromGallery(2)}
               />
-              <PhotoSlot 
+              <PhotoSlot
                 photoNumber={3}
                 photo={photo3}
                 onTakePhoto={() => handleTakePhoto(3)}
                 onChooseGallery={() => handleChooseFromGallery(3)}
               />
-              <PhotoSlot 
+              <PhotoSlot
                 photoNumber={4}
                 photo={photo4}
                 onTakePhoto={() => handleTakePhoto(4)}
@@ -198,38 +221,43 @@ export default function ActecoGeneralPhotoScreen() {
         <Card style={styles.statusCard}>
           <Card.Content>
             <View style={styles.statusRow}>
-              <Text style={styles.statusLabel}>Estado:</Text>
+              <MaterialCommunityIcons
+                name={photoCount > 0 ? 'check-circle' : 'information'}
+                size={20}
+                color={photoCount > 0 ? BRAND_COLORS.success : BRAND_COLORS.primaryBlue}
+              />
               <Text style={[
                 styles.statusValue,
                 photoCount > 0 ? styles.statusComplete : styles.statusIncomplete
               ]}>
-                {photoCount > 0 
-                  ? `✓ ${photoCount} foto${photoCount > 1 ? 's' : ''} capturada${photoCount > 1 ? 's' : ''}` 
-                  : '⚠ Sin fotos'}
+                {photoCount > 0
+                  ? `${photoCount} foto${photoCount > 1 ? 's' : ''} capturada${photoCount > 1 ? 's' : ''}`
+                  : 'Sin fotos'}
               </Text>
             </View>
           </Card.Content>
         </Card>
       </ScrollView>
-      
+
       <SafeAreaView style={styles.buttonSafeArea} edges={['bottom']}>
         <View style={styles.buttonContainer}>
-          <Button 
-            mode="outlined" 
+          <Button
+            mode="outlined"
             onPress={() => router.back()}
             style={styles.backButton}
             icon="arrow-left"
-            color={BRAND_COLORS.primaryBlue}
+            textColor={BRAND_COLORS.primaryBlue}
           >
             Volver
           </Button>
-          
-          <Button 
-            mode="contained" 
+
+          <Button
+            mode="contained"
             onPress={handleContinue}
             style={styles.continueButton}
             icon="arrow-right"
             contentStyle={{ flexDirection: 'row-reverse' }}
+            buttonColor={BRAND_COLORS.primaryOrange}
           >
             Continuar
           </Button>
@@ -242,110 +270,111 @@ export default function ActecoGeneralPhotoScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: BRAND_COLORS.primaryBlue,
   },
   scrollView: {
     flex: 1,
+    backgroundColor: BRAND_COLORS.surface,
   },
   scrollContent: {
-    padding: 16,
-    paddingBottom: 16,
+    paddingBottom: SPACING.xl,
   },
-  headerCard: {
-    marginBottom: 16,
-    backgroundColor: BRAND_COLORS.primaryBlue,
+  headerGradient: {
+    padding: SPACING.lg,
+    alignItems: 'center',
   },
-  title: {
+  headerTitle: {
     color: 'white',
-    fontWeight: 'bold',
-    fontSize: 18,
+    fontWeight: TYPOGRAPHY.weights.bold as any,
+    fontSize: TYPOGRAPHY.sizes.xl,
+    marginTop: SPACING.sm,
   },
-  subtitle: {
-    color: 'white',
-    marginTop: 4,
-    fontSize: 14,
+  headerSubtitle: {
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: TYPOGRAPHY.sizes.sm,
+    marginTop: SPACING.xs,
   },
   photoCard: {
-    marginBottom: 16,
+    margin: SPACING.md,
+    borderRadius: BORDER_RADIUS.lg,
     borderLeftWidth: 3,
     borderLeftColor: BRAND_COLORS.primaryOrange,
+    ...SHADOWS.small,
   },
   photosGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    gap: 12,
+    gap: SPACING.sm,
   },
   photoSlot: {
     width: '48%',
-    marginBottom: 12,
+    marginBottom: SPACING.sm,
   },
   photoSlotLabel: {
-    fontSize: 13,
-    fontWeight: 'bold',
+    fontSize: TYPOGRAPHY.sizes.sm,
+    fontWeight: TYPOGRAPHY.weights.bold as any,
     color: BRAND_COLORS.primaryBlue,
-    marginBottom: 6,
+    marginBottom: SPACING.xs,
     textAlign: 'center',
   },
   photoThumb: {
     width: '100%',
     height: 140,
-    borderRadius: 8,
+    borderRadius: BORDER_RADIUS.md,
     borderWidth: 2,
     borderColor: BRAND_COLORS.primaryOrange,
   },
   emptyPhotoThumb: {
     width: '100%',
     height: 140,
-    backgroundColor: '#e0e0e0',
-    borderRadius: 8,
+    backgroundColor: BRAND_COLORS.grayMedium,
+    borderRadius: BORDER_RADIUS.md,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#ccc',
+    borderColor: BRAND_COLORS.grayMedium,
     borderStyle: 'dashed',
   },
   emptyPhotoIcon: {
     fontSize: 36,
   },
   emptyPhotoText: {
-    fontSize: 11,
-    color: '#666',
-    marginTop: 4,
+    fontSize: TYPOGRAPHY.sizes.xs,
+    color: BRAND_COLORS.grayText,
+    marginTop: SPACING.xs,
   },
   changePhotoText: {
     textAlign: 'center',
-    marginTop: 4,
+    marginTop: SPACING.xs,
     color: BRAND_COLORS.primaryBlue,
-    fontSize: 10,
-    fontWeight: 'bold',
+    fontSize: TYPOGRAPHY.sizes.xs,
+    fontWeight: TYPOGRAPHY.weights.bold as any,
   },
   galleryButton: {
-    marginTop: 4,
+    marginTop: SPACING.xs,
   },
   statusCard: {
+    marginHorizontal: SPACING.md,
+    borderRadius: BORDER_RADIUS.lg,
     borderLeftWidth: 3,
     borderLeftColor: BRAND_COLORS.primaryBlue,
+    ...SHADOWS.small,
   },
   statusRow: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  statusLabel: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: BRAND_COLORS.primaryBlue,
-    marginRight: 8,
+    gap: SPACING.sm,
   },
   statusValue: {
-    fontSize: 14,
-    fontWeight: 'bold',
+    fontSize: TYPOGRAPHY.sizes.sm,
+    fontWeight: TYPOGRAPHY.weights.bold as any,
   },
   statusComplete: {
-    color: '#4CAF50',
+    color: BRAND_COLORS.success,
   },
   statusIncomplete: {
-    color: '#FF9800',
+    color: BRAND_COLORS.warning,
   },
   buttonSafeArea: {
     backgroundColor: 'white',
@@ -353,23 +382,20 @@ const styles = StyleSheet.create({
   buttonContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    padding: 16,
+    padding: SPACING.md,
     backgroundColor: 'white',
     borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
-    elevation: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
+    borderTopColor: BRAND_COLORS.grayMedium,
+    ...SHADOWS.medium,
   },
   backButton: {
     flex: 1,
-    marginRight: 8,
+    marginRight: SPACING.sm,
+    borderRadius: BORDER_RADIUS.md,
   },
   continueButton: {
     flex: 1,
-    marginLeft: 8,
-    backgroundColor: BRAND_COLORS.primaryOrange,
+    marginLeft: SPACING.sm,
+    borderRadius: BORDER_RADIUS.md,
   },
 });

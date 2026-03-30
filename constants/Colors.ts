@@ -40,12 +40,21 @@ export const BRAND_COLORS = {
   surface: '#f1f5f9',           // Superficie elevada
   surfaceDark: '#e2e8f0',       // Superficie oscura
   
-  // Gradientes
-  gradientPrimary: 'linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)',
-  gradientSecondary: 'linear-gradient(135deg, #ea580c 0%, #fb923c 100%)',
-  gradientSuccess: 'linear-gradient(135deg, #16a34a 0%, #22c55e 100%)',
-  gradientWarning: 'linear-gradient(135deg, #ca8a04 0%, #eab308 100%)',
-  gradientError: 'linear-gradient(135deg, #dc2626 0%, #ef4444 100%)',
+  // Colores terciarios (para fondos suaves)
+  tertiaryBlue: '#eff6ff',            // Azul muy claro para fondos
+  tertiaryOrange: '#fff7ed',          // Naranja muy claro para fondos
+};
+
+// Gradientes para LinearGradient (arrays de colores con puntos intermedios para suavidad)
+export const GRADIENTS = {
+  primary: ['#1e3a8a', '#2563eb', '#3b82f6'] as const,
+  primaryDark: ['#1e3a8a', '#1e40af', '#2563eb'] as const,
+  secondary: ['#ea580c', '#f97316', '#fb923c'] as const,
+  success: ['#15803d', '#16a34a', '#22c55e'] as const,
+  warning: ['#a16207', '#ca8a04', '#eab308'] as const,
+  error: ['#b91c1c', '#dc2626', '#ef4444'] as const,
+  surface: ['#f8fafc', '#f1f5f9'] as const,
+  hero: ['#172554', '#1e3a8a', '#2563eb', '#3b82f6'] as const,
 };
 
 // Paleta para temas claro y oscuro
@@ -81,35 +90,42 @@ export const Colors = {
   },
 };
 
-// Sombras y elevaciones
+// Sombras y elevaciones — modernas y sutiles
 export const SHADOWS = {
   small: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
+    shadowColor: '#64748b',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
     elevation: 2,
   },
   medium: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
+    shadowColor: '#475569',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 4,
   },
   large: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.2,
-    shadowRadius: 15,
+    shadowColor: '#334155',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
     elevation: 8,
   },
   card: {
     shadowColor: '#1e3a8a',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
     shadowRadius: 12,
-    elevation: 6,
+    elevation: 5,
+  },
+  soft: {
+    shadowColor: '#94a3b8',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 3,
   },
 };
 
@@ -158,11 +174,25 @@ export const BORDER_RADIUS = {
   full: 999,
 };
 
+// Estilos comunes reutilizables
+export const COMMON_STYLES = {
+  screenBackground: BRAND_COLORS.surface,
+  headerGradient: ['#1e3a8a', '#2563eb'] as readonly string[],
+  bottomBar: {
+    backgroundColor: 'white',
+    borderTopWidth: 1,
+    borderTopColor: BRAND_COLORS.grayMedium,
+    ...SHADOWS.medium,
+  },
+};
+
 export default {
   BRAND_COLORS,
+  GRADIENTS,
   Colors,
   SHADOWS,
   SPACING,
   TYPOGRAPHY,
   BORDER_RADIUS,
+  COMMON_STYLES,
 };

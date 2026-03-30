@@ -1,9 +1,11 @@
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
-import { Button, Card, Divider, HelperText, Text, TextInput } from 'react-native-paper';
+import { ActivityIndicator, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Button, Divider, HelperText, Text, TextInput } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { BRAND_COLORS } from '../../constants/Colors';
+import { BORDER_RADIUS, BRAND_COLORS, GRADIENTS, SHADOWS, SPACING, TYPOGRAPHY } from '../../constants/Colors';
 import { getMachineTypeById } from '../../data/machineTypes';
 import { saveMachine } from '../../utils/storage';
 
@@ -26,18 +28,17 @@ export default function NewMachineScreen() {
     date: new Date().toISOString().split('T')[0],
     notes: '',
   });
-  
+
   const [errors, setErrors] = useState({
     brand: false,
-    clientName: false
+    clientName: false,
+    licensePlate: false,
   });
-  
+
   useEffect(() => {
     if (!machineTypeId) {
-      console.log("No hay tipo de máquina seleccionado, redirigiendo a selección");
       router.replace('/machine-type-selection');
     } else {
-      console.log(`Tipo de máquina seleccionado: ${machineTypeId}`);
       setMachineType(getMachineTypeById(machineTypeId.toString()));
       setMachine(prev => ({
         ...prev,
@@ -49,8 +50,7 @@ export default function NewMachineScreen() {
 
   const handleChange = (field: string, value: string) => {
     setMachine({...machine, [field]: value});
-    
-    if (field === 'brand' || field === 'clientName') {
+    if (field === 'brand' || field === 'clientName' || field === 'licensePlate') {
       setErrors({...errors, [field]: false});
     }
   };
@@ -58,185 +58,206 @@ export default function NewMachineScreen() {
   const validateForm = () => {
     const newErrors = {
       brand: !machine.brand.trim(),
-      clientName: !machine.clientName.trim()
+      clientName: !machine.clientName.trim(),
+      licensePlate: !machine.licensePlate.trim(),
     };
-    
     setErrors(newErrors);
-    return !newErrors.brand && !newErrors.clientName;
+    return !newErrors.brand && !newErrors.clientName && !newErrors.licensePlate;
   };
+
+  const [isSaving, setIsSaving] = useState(false);
 
   const handleSave = async () => {
     try {
-      if (!validateForm()) {
-        return;
-      }
-      
-      console.log("Guardando máquina:", machine);
+      if (!validateForm()) return;
+      if (isSaving) return;
+      setIsSaving(true);
+
       const savedMachine = await saveMachine(machine);
-      console.log("Máquina guardada con ID:", savedMachine.id);
-      
+      const savedMachineId = savedMachine.id;
+
       if (machine.machineType === 'otros') {
-        console.log("Máquina tipo 'otros', navegando a comentarios");
-        router.push({
-          pathname: '/comments',
-          params: { machineId: machine.id }
-        });
+        router.push({ pathname: '/comments', params: { machineId: savedMachineId } });
       } else {
-        console.log("Navegando a checklist");
-        router.push({
-          pathname: '/checklist',
-          params: { machineId: machine.id }
-        });
+        router.push({ pathname: '/checklist', params: { machineId: savedMachineId } });
       }
     } catch (error) {
       console.error('Error al guardar la máquina:', error);
+      setIsSaving(false);
       alert('Error al guardar los datos. Inténtalo de nuevo.');
     }
   };
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <KeyboardAvoidingView 
+      <KeyboardAvoidingView
         style={styles.keyboardView}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <ScrollView 
+        <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.scrollViewContent}
           keyboardShouldPersistTaps="handled"
         >
-          <Card style={styles.headerCard}>
-            <Card.Content>
-              <Text style={styles.typeTitle}>
-                Tipo: {machineType.name}
-              </Text>
-            </Card.Content>
-          </Card>
-          
-          <Card style={styles.formCard}>
-            <Card.Content>
-              <Text style={styles.sectionTitle}>Datos de la Máquina</Text>
-              <Divider style={styles.divider} />
-              
-              <TextInput
-                label="Marca *"
-                value={machine.brand}
-                onChangeText={(text) => handleChange('brand', text)}
-                style={styles.input}
-                mode="outlined"
-                error={errors.brand}
-                outlineColor={BRAND_COLORS.primaryBlue}
-                activeOutlineColor={BRAND_COLORS.primaryBlue}
-              />
-              {errors.brand && (
-                <HelperText type="error">La marca es obligatoria</HelperText>
-              )}
-              
-              <TextInput
-                label="Modelo"
-                value={machine.model}
-                onChangeText={(text) => handleChange('model', text)}
-                style={styles.input}
-                mode="outlined"
-                outlineColor={BRAND_COLORS.primaryBlue}
-                activeOutlineColor={BRAND_COLORS.primaryBlue}
-              />
-              
-              <TextInput
-                label="Número de serie"
-                value={machine.serialNumber}
-                onChangeText={(text) => handleChange('serialNumber', text)}
-                style={styles.input}
-                mode="outlined"
-                outlineColor={BRAND_COLORS.primaryBlue}
-                activeOutlineColor={BRAND_COLORS.primaryBlue}
-              />
-              
-              <TextInput
-                label="Matrícula"
-                value={machine.licensePlate}
-                onChangeText={(text) => handleChange('licensePlate', text)}
-                style={styles.input}
-                mode="outlined"
-                outlineColor={BRAND_COLORS.primaryBlue}
-                activeOutlineColor={BRAND_COLORS.primaryBlue}
-              />
-              
-              <Text style={[styles.sectionTitle, styles.clientSection]}>Datos del Cliente</Text>
-              <Divider style={styles.divider} />
-              
-              <TextInput
-                label="Cliente *"
-                value={machine.clientName}
-                onChangeText={(text) => handleChange('clientName', text)}
-                style={styles.input}
-                mode="outlined"
-                error={errors.clientName}
-                outlineColor={BRAND_COLORS.primaryBlue}
-                activeOutlineColor={BRAND_COLORS.primaryBlue}
-              />
-              {errors.clientName && (
-                <HelperText type="error">El nombre del cliente es obligatorio</HelperText>
-              )}
-              
-              <TextInput
-                label="Tipo de Cliente"
-                value={machine.clientType}
-                onChangeText={(text) => handleChange('clientType', text)}
-                style={styles.input}
-                mode="outlined"
-                outlineColor={BRAND_COLORS.primaryBlue}
-                activeOutlineColor={BRAND_COLORS.primaryBlue}
-                placeholder="Empresa, Particular, etc."
-              />
-              
-              <TextInput
-                label="Ubicación"
-                value={machine.location}
-                onChangeText={(text) => handleChange('location', text)}
-                style={styles.input}
-                mode="outlined"
-                outlineColor={BRAND_COLORS.primaryBlue}
-                activeOutlineColor={BRAND_COLORS.primaryBlue}
-              />
-              
-              <TextInput
-                label="Revisión realizada por"
-                value={machine.reviewedBy}
-                onChangeText={(text) => handleChange('reviewedBy', text)}
-                style={styles.input}
-                mode="outlined"
-                outlineColor={BRAND_COLORS.primaryBlue}
-                activeOutlineColor={BRAND_COLORS.primaryBlue}
-              />
-            </Card.Content>
-          </Card>
+          <LinearGradient
+            colors={GRADIENTS.primary as unknown as [string, string, ...string[]]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.headerGradient}
+          >
+            <TouchableOpacity onPress={() => router.back()} style={{position:'absolute',left:12,top:12,zIndex:10,width:36,height:36,borderRadius:18,backgroundColor:'rgba(255,255,255,0.2)',justifyContent:'center',alignItems:'center'}}>
+              <MaterialCommunityIcons name="arrow-left" size={22} color="white" />
+            </TouchableOpacity>
+            <Text style={styles.typeTitle}>Tipo: {machineType.name}</Text>
+          </LinearGradient>
+
+          <View style={styles.formCard}>
+            <Text style={styles.sectionTitle}>Datos de la Máquina</Text>
+            <Divider style={styles.divider} />
+
+            <TextInput
+              label="Marca *"
+              value={machine.brand}
+              onChangeText={(text) => handleChange('brand', text)}
+              style={styles.input}
+              mode="outlined"
+              error={errors.brand}
+              outlineColor={BRAND_COLORS.grayMedium}
+              activeOutlineColor={BRAND_COLORS.primaryBlue}
+              outlineStyle={styles.inputOutline}
+            />
+            {errors.brand && (
+              <HelperText type="error">La marca es obligatoria</HelperText>
+            )}
+
+            <TextInput
+              label="Modelo"
+              value={machine.model}
+              onChangeText={(text) => handleChange('model', text)}
+              style={styles.input}
+              mode="outlined"
+              outlineColor={BRAND_COLORS.grayMedium}
+              activeOutlineColor={BRAND_COLORS.primaryBlue}
+              outlineStyle={styles.inputOutline}
+            />
+
+            <TextInput
+              label="Número de serie"
+              value={machine.serialNumber}
+              onChangeText={(text) => handleChange('serialNumber', text)}
+              style={styles.input}
+              mode="outlined"
+              outlineColor={BRAND_COLORS.grayMedium}
+              activeOutlineColor={BRAND_COLORS.primaryBlue}
+              outlineStyle={styles.inputOutline}
+            />
+
+            <TextInput
+              label="Matrícula *"
+              value={machine.licensePlate}
+              onChangeText={(text) => handleChange('licensePlate', text)}
+              style={styles.input}
+              mode="outlined"
+              error={errors.licensePlate}
+              outlineColor={BRAND_COLORS.grayMedium}
+              activeOutlineColor={BRAND_COLORS.primaryBlue}
+              outlineStyle={styles.inputOutline}
+            />
+            {errors.licensePlate && (
+              <HelperText type="error">La matrícula es obligatoria</HelperText>
+            )}
+
+            <Text style={[styles.sectionTitle, styles.clientSection]}>Datos del Cliente</Text>
+            <Divider style={styles.divider} />
+
+            <TextInput
+              label="Cliente *"
+              value={machine.clientName}
+              onChangeText={(text) => handleChange('clientName', text)}
+              style={styles.input}
+              mode="outlined"
+              error={errors.clientName}
+              outlineColor={BRAND_COLORS.grayMedium}
+              activeOutlineColor={BRAND_COLORS.primaryBlue}
+              outlineStyle={styles.inputOutline}
+            />
+            {errors.clientName && (
+              <HelperText type="error">El nombre del cliente es obligatorio</HelperText>
+            )}
+
+            <TextInput
+              label="Tipo de Cliente"
+              value={machine.clientType}
+              onChangeText={(text) => handleChange('clientType', text)}
+              style={styles.input}
+              mode="outlined"
+              outlineColor={BRAND_COLORS.grayMedium}
+              activeOutlineColor={BRAND_COLORS.primaryBlue}
+              placeholder="Empresa, Particular, etc."
+              outlineStyle={styles.inputOutline}
+            />
+
+            <TextInput
+              label="Ubicación"
+              value={machine.location}
+              onChangeText={(text) => handleChange('location', text)}
+              style={styles.input}
+              mode="outlined"
+              outlineColor={BRAND_COLORS.grayMedium}
+              activeOutlineColor={BRAND_COLORS.primaryBlue}
+              outlineStyle={styles.inputOutline}
+            />
+
+            <TextInput
+              label="Revisión realizada por"
+              value={machine.reviewedBy}
+              onChangeText={(text) => handleChange('reviewedBy', text)}
+              style={styles.input}
+              mode="outlined"
+              outlineColor={BRAND_COLORS.grayMedium}
+              activeOutlineColor={BRAND_COLORS.primaryBlue}
+              outlineStyle={styles.inputOutline}
+            />
+          </View>
         </ScrollView>
-        
+
         <SafeAreaView style={styles.buttonSafeArea} edges={['bottom']}>
           <View style={styles.buttonContainer}>
-            <Button 
-              mode="outlined" 
+            <Button
+              mode="outlined"
               style={styles.cancelButton}
               onPress={() => router.back()}
               icon="arrow-left"
+              textColor={BRAND_COLORS.primaryBlue}
             >
               Cancelar
             </Button>
-            
-            <Button 
-              mode="contained" 
+            <Button
+              mode="contained"
               style={styles.saveButton}
               onPress={handleSave}
+              disabled={isSaving}
               icon="arrow-right"
               contentStyle={{ flexDirection: 'row-reverse' }}
+              buttonColor={isSaving ? BRAND_COLORS.grayMedium : BRAND_COLORS.primaryOrange}
             >
-              Continuar
+              {isSaving ? 'Guardando...' : 'Continuar'}
             </Button>
           </View>
         </SafeAreaView>
       </KeyboardAvoidingView>
+
+      {isSaving && (
+        <Modal visible transparent animationType="fade">
+          <View style={{flex:1, backgroundColor:'rgba(0,0,0,0.5)', justifyContent:'center', alignItems:'center'}}>
+            <View style={{backgroundColor:'white', borderRadius:16, padding:32, alignItems:'center', shadowColor:'#000', shadowOffset:{width:0,height:4}, shadowOpacity:0.15, shadowRadius:12, elevation:8}}>
+              <ActivityIndicator size="large" color={BRAND_COLORS.primaryBlue} />
+              <Text style={{marginTop:16, fontSize:16, fontWeight:'600', color:BRAND_COLORS.primaryBlue}}>Guardando datos...</Text>
+              <Text style={{marginTop:8, fontSize:13, color:BRAND_COLORS.grayText}}>Preparando el checklist</Text>
+            </View>
+          </View>
+        </Modal>
+      )}
     </SafeAreaView>
   );
 }
@@ -244,51 +265,62 @@ export default function NewMachineScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: BRAND_COLORS.primaryBlue,
   },
   keyboardView: {
     flex: 1,
+    backgroundColor: BRAND_COLORS.surface,
   },
   scrollView: {
     flex: 1,
   },
   scrollViewContent: {
-    padding: 16,
-    paddingBottom: 16,
+    paddingBottom: 100,
   },
-  headerCard: {
-    marginBottom: 8,
-    backgroundColor: BRAND_COLORS.primaryBlue,
-  },
-  formCard: {
-    marginTop: 8,
-    marginBottom: 8,
-    borderLeftWidth: 3,
-    borderLeftColor: BRAND_COLORS.primaryOrange,
+  headerGradient: {
+    padding: SPACING.xl,
+    alignItems: 'center',
+    paddingTop: SPACING.lg,
   },
   typeTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: TYPOGRAPHY.sizes.lg,
+    fontWeight: TYPOGRAPHY.weights.bold as any,
     color: 'white',
-    textAlign: 'center',
+    letterSpacing: 0.3,
+  },
+  formCard: {
+    margin: SPACING.lg,
+    marginTop: -SPACING.sm,
+    padding: SPACING.lg,
+    backgroundColor: 'white',
+    borderRadius: BORDER_RADIUS.xl,
+    borderLeftWidth: 4,
+    borderLeftColor: BRAND_COLORS.primaryOrange,
+    ...SHADOWS.card,
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontSize: TYPOGRAPHY.sizes.lg,
+    fontWeight: TYPOGRAPHY.weights.bold as any,
     color: BRAND_COLORS.primaryBlue,
-    marginBottom: 8,
+    marginBottom: SPACING.sm,
+    letterSpacing: 0.2,
   },
   clientSection: {
-    marginTop: 16,
+    marginTop: SPACING.xl,
   },
   divider: {
-    backgroundColor: BRAND_COLORS.primaryOrange,
-    height: 1,
-    marginBottom: 16,
+    backgroundColor: BRAND_COLORS.lightOrange,
+    height: 2,
+    marginBottom: SPACING.lg,
+    borderRadius: BORDER_RADIUS.full,
+    opacity: 0.7,
   },
   input: {
-    marginBottom: 12,
+    marginBottom: SPACING.md,
     backgroundColor: 'white',
+  },
+  inputOutline: {
+    borderRadius: BORDER_RADIUS.lg,
   },
   buttonSafeArea: {
     backgroundColor: 'white',
@@ -296,24 +328,22 @@ const styles = StyleSheet.create({
   buttonContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    padding: 16,
+    padding: SPACING.md,
+    paddingTop: SPACING.md + 2,
     backgroundColor: 'white',
     borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
-    elevation: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
+    borderTopColor: BRAND_COLORS.grayLight,
+    ...SHADOWS.soft,
   },
   cancelButton: {
     flex: 1,
-    marginRight: 8,
+    marginRight: SPACING.sm,
     borderColor: BRAND_COLORS.primaryBlue,
+    borderRadius: BORDER_RADIUS.lg,
   },
   saveButton: {
     flex: 1,
-    marginLeft: 8,
-    backgroundColor: BRAND_COLORS.primaryOrange,
+    marginLeft: SPACING.sm,
+    borderRadius: BORDER_RADIUS.lg,
   },
 });

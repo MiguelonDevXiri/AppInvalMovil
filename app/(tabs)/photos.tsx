@@ -1,11 +1,14 @@
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Alert, Image, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { Button, Card, Paragraph, Text, Title } from 'react-native-paper';
+import { ActivityIndicator, Alert, Image, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Button, Card, Text } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { BRAND_COLORS } from '../../constants/Colors';
-import { getGeneralPhotosByMachineId, getMachineById, Machine, saveGeneralPhotos } from '../../utils/storage';
+import { BORDER_RADIUS, BRAND_COLORS, GRADIENTS, SHADOWS, SPACING, TYPOGRAPHY } from '../../constants/Colors';
+import { getChecklistByMachineId, getGeneralPhotosByMachineId, getMachineById, Machine, saveGeneralPhotos } from '../../utils/storage';
+import { generateAndUploadPDF } from '../../utils/reportGenerator';
 
 interface Photos {
   front: string | null;
@@ -17,68 +20,44 @@ interface Photos {
 export default function PhotoScreen() {
   const { machineId } = useLocalSearchParams();
   const [machine, setMachine] = useState<Machine | null>(null);
-  const [photos, setPhotos] = useState<Photos>({
-    front: null,
-    back: null,
-    left: null,
-    right: null
-  });
+  const [photos, setPhotos] = useState<Photos>({ front: null, back: null, left: null, right: null });
   const [loading, setLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [savingText, setSavingText] = useState('Guardando fotos generales...');
 
   useEffect(() => {
     const loadData = async () => {
       try {
         if (!machineId) return;
-        
         setLoading(true);
-        
         const foundMachine = await getMachineById(machineId.toString());
-        if (foundMachine) {
-          setMachine(foundMachine);
-        }
-        
+        if (foundMachine) setMachine(foundMachine);
+
         const existingPhotos = await getGeneralPhotosByMachineId(machineId.toString());
         if (existingPhotos && existingPhotos.photos) {
-          console.log('Cargando fotos generales existentes');
           setPhotos({
             front: existingPhotos.photos.front || null,
             back: existingPhotos.photos.back || null,
             left: existingPhotos.photos.left || null,
             right: existingPhotos.photos.right || null,
           });
-        } else {
-          console.log('No hay fotos generales previas');
         }
-        
         setLoading(false);
       } catch (error) {
         console.error('Error al cargar los datos:', error);
         setLoading(false);
       }
     };
-
     loadData();
   }, [machineId]);
 
   const handleTakePhoto = async (position: keyof Photos) => {
     try {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
-      
-      if (status !== 'granted') {
-        Alert.alert('Permisos requeridos', 'Se necesitan permisos para usar la cámara');
-        return;
-      }
-      
-      const result = await ImagePicker.launchCameraAsync({
-        allowsEditing: false,
-        quality: 0.7,
-      });
-      
+      if (status !== 'granted') { Alert.alert('Permisos requeridos', 'Se necesitan permisos para usar la cámara'); return; }
+      const result = await ImagePicker.launchCameraAsync({ allowsEditing: false, quality: 0.7 });
       if (!result.canceled && result.assets && result.assets.length > 0) {
-        setPhotos({
-          ...photos,
-          [position]: result.assets[0].uri
-        });
+        setPhotos({ ...photos, [position]: result.assets[0].uri });
       }
     } catch (error) {
       console.error('Error al tomar la foto:', error);
@@ -89,20 +68,11 @@ export default function PhotoScreen() {
   const handleSavePhotos = async () => {
     try {
       if (!machineId) return false;
-      
       const photosObject: Record<string, string> = {};
-      
       for (const [key, value] of Object.entries(photos)) {
         if (value) photosObject[key] = value;
       }
-      
-      const generalPhotosData = {
-        machineId: machineId.toString(),
-        photos: photosObject,
-        takenAt: new Date().toISOString()
-      };
-      
-      await saveGeneralPhotos(generalPhotosData);
+      await saveGeneralPhotos({ machineId: machineId.toString(), photos: photosObject, takenAt: new Date().toISOString() });
       return true;
     } catch (error) {
       console.error('Error al guardar las fotos:', error);
@@ -114,21 +84,13 @@ export default function PhotoScreen() {
   const handleFinish = async () => {
     try {
       if (!machineId) return;
-      
       const photosTaken = Object.values(photos).filter(uri => uri !== null).length;
-      
       if (photosTaken < 4) {
-        Alert.alert(
-          'Fotos incompletas',
-          'No has tomado todas las fotos de la máquina. ¿Estás seguro de que quieres continuar?',
-          [
-            { text: 'Cancelar', style: 'cancel' },
-            { text: 'Continuar', onPress: () => saveAndContinue() }
-          ]
-        );
-      } else {
-        saveAndContinue();
-      }
+        Alert.alert('Fotos incompletas', 'No has tomado todas las fotos. ¿Continuar?', [
+          { text: 'Cancelar', style: 'cancel' },
+          { text: 'Continuar', onPress: () => saveAndContinue() },
+        ]);
+      } else { saveAndContinue(); }
     } catch (error) {
       console.error('Error al finalizar las fotos:', error);
       Alert.alert('Error', 'Error al guardar los datos. Inténtalo de nuevo.');
@@ -137,15 +99,33 @@ export default function PhotoScreen() {
 
   const saveAndContinue = async () => {
     try {
+      setSavingText('Guardando fotos generales...');
+      setIsSaving(true);
       const saved = await handleSavePhotos();
       if (saved && machineId) {
-        router.push({
-          pathname: '/report',
-          params: { machineId: machineId.toString() }
-        });
+        // Generar y subir PDF automáticamente a Supabase
+        setSavingText('Generando PDF...');
+        try {
+          const currentMachine = await getMachineById(machineId.toString());
+          if (currentMachine) {
+            const checklistData = await getChecklistByMachineId(machineId.toString());
+            const photosData = await getGeneralPhotosByMachineId(machineId.toString());
+            await generateAndUploadPDF(currentMachine, checklistData, photosData, (_percent, text) => {
+              setSavingText(text);
+            });
+          }
+        } catch (pdfError) {
+          console.warn('No se pudo generar el PDF automático (no crítico):', pdfError);
+        }
+        setSavingText('Preparando informe...');
+        setIsSaving(false);
+        router.push({ pathname: '/report', params: { machineId: machineId.toString() } });
+        return;
       }
+      setIsSaving(false);
     } catch (error) {
-      console.error('Error al guardar las fotos:', error);
+      console.error('Error al continuar al informe:', error);
+      setIsSaving(false);
       Alert.alert('Error', 'Error al guardar los datos. Inténtalo de nuevo.');
     }
   };
@@ -153,7 +133,7 @@ export default function PhotoScreen() {
   if (loading) {
     return (
       <SafeAreaView style={styles.loadingContainer} edges={['top', 'bottom']}>
-        <Text>Cargando datos...</Text>
+        <Text style={{ color: BRAND_COLORS.grayText }}>Cargando datos...</Text>
       </SafeAreaView>
     );
   }
@@ -161,223 +141,204 @@ export default function PhotoScreen() {
   if (!machine) {
     return (
       <SafeAreaView style={styles.loadingContainer} edges={['top', 'bottom']}>
-        <Text>No se encontraron datos para esta máquina.</Text>
-        <Button 
-          mode="contained" 
-          onPress={() => router.push('/')}
-          style={{ marginTop: 16 }}
-          color={BRAND_COLORS.primaryBlue}
-        >
+        <Text style={{ color: BRAND_COLORS.grayText }}>No se encontraron datos para esta máquina.</Text>
+        <Button mode="contained" onPress={() => router.push('/')} style={{ marginTop: SPACING.md }} buttonColor={BRAND_COLORS.primaryBlue}>
           Volver al inicio
         </Button>
       </SafeAreaView>
     );
   }
 
+  const photoCount = Object.values(photos).filter(uri => uri !== null).length;
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-        <Card style={styles.headerCard}>
-          <Card.Content>
-            <Title style={styles.title}>Fotos Generales de la Máquina</Title>
-            <Paragraph style={styles.subtitle}>
-              Toma las 4 fotos generales de la máquina desde diferentes ángulos para documentar su estado general.
-            </Paragraph>
-            <Text style={styles.machineInfo}>
-              {machine.name} - {machine.brand} {machine.model ? `(${machine.model})` : ''}
-            </Text>
-          </Card.Content>
-        </Card>
+        <LinearGradient
+          colors={GRADIENTS.primary as unknown as [string, string, ...string[]]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.headerGradient}
+        >
+          <TouchableOpacity onPress={() => router.back()} style={{position:'absolute',left:12,top:12,zIndex:10,width:36,height:36,borderRadius:18,backgroundColor:'rgba(255,255,255,0.2)',justifyContent:'center',alignItems:'center'}}>
+            <MaterialCommunityIcons name="arrow-left" size={22} color="white" />
+          </TouchableOpacity>
+          <MaterialCommunityIcons name="camera-outline" size={24} color="rgba(255,255,255,0.7)" />
+          <Text style={styles.headerTitle}>Fotos Generales</Text>
+          <Text style={styles.headerSubtitle}>
+            {machine.name} - {machine.brand} {machine.model ? `(${machine.model})` : ''}
+          </Text>
+        </LinearGradient>
 
         <View style={styles.photosGrid}>
-          <View style={styles.photoRow}>
-            <PhotoCard 
-              title="Esquina 1" 
-              photoUri={photos.front}
-              onTakePhoto={() => handleTakePhoto('front')}
-              cardColor={BRAND_COLORS.primaryBlue}
-            />
-            <PhotoCard 
-              title="Esquina 2" 
-              photoUri={photos.back}
-              onTakePhoto={() => handleTakePhoto('back')}
-              cardColor={BRAND_COLORS.primaryOrange}
-            />
-          </View>
-          <View style={styles.photoRow}>
-            <PhotoCard 
-              title="Esquina 3" 
-              photoUri={photos.left}
-              onTakePhoto={() => handleTakePhoto('left')}
-              cardColor={BRAND_COLORS.primaryOrange}
-            />
-            <PhotoCard 
-              title="Esquina 4" 
-              photoUri={photos.right}
-              onTakePhoto={() => handleTakePhoto('right')}
-              cardColor={BRAND_COLORS.primaryBlue}
-            />
-          </View>
+          {([
+            { key: 'front' as keyof Photos, label: 'A1', color: BRAND_COLORS.primaryBlue },
+            { key: 'back' as keyof Photos, label: 'A2', color: BRAND_COLORS.primaryOrange },
+            { key: 'left' as keyof Photos, label: 'A3', color: BRAND_COLORS.primaryOrange },
+            { key: 'right' as keyof Photos, label: 'A4', color: BRAND_COLORS.primaryBlue },
+          ]).map(({ key, label, color }) => (
+            <TouchableOpacity key={key} onPress={() => handleTakePhoto(key)} style={styles.photoCardWrapper} activeOpacity={0.8}>
+              <Card style={styles.photoCard}>
+                <Card.Content style={styles.photoCardContent}>
+                  <Text style={[styles.photoTitle, { color }]}>{label}</Text>
+                  {photos[key] ? (
+                    <View style={styles.photoContainerInner}>
+                      <Image source={{ uri: photos[key]! }} style={styles.photo} />
+                      <Text style={[styles.photoHint, { color }]}>Tocar para cambiar</Text>
+                    </View>
+                  ) : (
+                    <View style={styles.photoPlaceholder}>
+                      <MaterialCommunityIcons name="camera-plus-outline" size={32} color={BRAND_COLORS.grayText} />
+                      <Text style={styles.photoPlaceholderText}>Tocar para foto</Text>
+                    </View>
+                  )}
+                  {photos[key] && (
+                    <View style={styles.checkIndicator}>
+                      <MaterialCommunityIcons name="check-circle" size={20} color={BRAND_COLORS.success} />
+                    </View>
+                  )}
+                </Card.Content>
+              </Card>
+            </TouchableOpacity>
+          ))}
         </View>
-        
-        <Text style={styles.progressText}>
-          Fotos completadas: {Object.values(photos).filter(uri => uri !== null).length} de 4
-        </Text>
+
+        <View style={styles.progressInfo}>
+          <MaterialCommunityIcons
+            name={photoCount === 4 ? 'check-circle' : 'information'}
+            size={20}
+            color={photoCount === 4 ? BRAND_COLORS.success : BRAND_COLORS.primaryBlue}
+          />
+          <Text style={[styles.progressText, photoCount === 4 && { color: BRAND_COLORS.success }]}>
+            Fotos completadas: {photoCount} de 4
+          </Text>
+        </View>
       </ScrollView>
-      
+
       <SafeAreaView style={styles.buttonSafeArea} edges={['bottom']}>
         <View style={styles.buttonContainer}>
-          <Button 
-            mode="outlined" 
-            onPress={() => router.back()}
-            style={styles.backButton}
-            icon="arrow-left"
-            color={BRAND_COLORS.primaryBlue}
-          >
+          <Button mode="outlined" onPress={() => router.back()} style={styles.backButton} disabled={isSaving} icon="arrow-left" textColor={BRAND_COLORS.primaryBlue}>
             Volver
           </Button>
-          
-          <Button 
-            mode="contained" 
-            onPress={handleFinish}
-            style={styles.finishButton}
-            icon="check"
-            contentStyle={{ flexDirection: 'row-reverse' }}
-            color={BRAND_COLORS.primaryOrange}
-          >
+          <Button mode="contained" onPress={handleFinish} style={styles.finishButton} disabled={isSaving} icon="check" contentStyle={{ flexDirection: 'row-reverse' }} buttonColor={BRAND_COLORS.primaryOrange}>
             Guardar
           </Button>
         </View>
       </SafeAreaView>
+      {isSaving && (
+        <View style={styles.savingOverlay}>
+          <View style={styles.savingCard}>
+            <ActivityIndicator size="large" color={BRAND_COLORS.primaryBlue} />
+            <Text style={styles.savingTitle}>{savingText}</Text>
+            <Text style={styles.savingSubtitle}>Espera un momento, estamos preparando el informe.</Text>
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
 
-interface PhotoCardProps {
-  title: string;
-  photoUri: string | null;
-  onTakePhoto: () => void;
-  cardColor: string;
-}
-
-const PhotoCard = ({ title, photoUri, onTakePhoto, cardColor }: PhotoCardProps) => (
-  <Card style={[styles.photoCard, { borderLeftColor: cardColor }, photoUri ? styles.photoCardTaken : styles.photoCardEmpty]}>
-    <Card.Content>
-      <Title style={[styles.photoTitle, { color: cardColor }]}>{title}</Title>
-      <TouchableOpacity onPress={onTakePhoto}>
-        {photoUri ? (
-          <View style={styles.photoContainer}>
-            <Image source={{ uri: photoUri }} style={styles.photo} />
-            <Text style={[styles.photoHint, { color: cardColor }]}>Tocar para cambiar</Text>
-          </View>
-        ) : (
-          <View style={styles.photoPlaceholder}>
-            <Text style={styles.photoPlaceholderText}>Tocar para tomar foto</Text>
-          </View>
-        )}
-      </TouchableOpacity>
-    </Card.Content>
-  </Card>
-);
-
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: BRAND_COLORS.primaryBlue,
   },
   scrollView: {
     flex: 1,
+    backgroundColor: BRAND_COLORS.surface,
   },
   scrollContent: {
-    padding: 16,
-    paddingBottom: 16,
+    paddingBottom: SPACING.md,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 16,
+    backgroundColor: BRAND_COLORS.surface,
   },
-  headerCard: {
-    marginBottom: 16,
-    backgroundColor: BRAND_COLORS.primaryBlue,
+  headerGradient: {
+    padding: SPACING.lg,
+    paddingTop: SPACING.md,
+    alignItems: 'center',
   },
-  title: {
+  headerTitle: {
     color: 'white',
-    fontWeight: 'bold',
-    fontSize: 18,
+    fontWeight: TYPOGRAPHY.weights.bold as any,
+    fontSize: TYPOGRAPHY.sizes.xl,
+    marginTop: SPACING.sm,
   },
-  subtitle: {
-    color: 'white',
-    marginTop: 8,
-    fontSize: 14,
-  },
-  machineInfo: {
-    color: 'white',
-    marginTop: 8,
-    fontWeight: 'bold',
-    fontSize: 14,
+  headerSubtitle: {
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: TYPOGRAPHY.sizes.sm,
+    marginTop: SPACING.xs,
   },
   photosGrid: {
-    marginBottom: 16,
-  },
-  photoRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    padding: SPACING.sm,
     justifyContent: 'space-between',
-    marginBottom: 16,
+  },
+  photoCardWrapper: {
+    width: '48%',
+    marginBottom: SPACING.sm,
   },
   photoCard: {
-    flex: 1,
-    margin: 4,
-    borderLeftWidth: 5,
-    elevation: 2,
+    borderRadius: BORDER_RADIUS.lg,
+    ...SHADOWS.small,
   },
-  photoCardEmpty: {
-    borderLeftWidth: 5,
-  },
-  photoCardTaken: {
-    borderLeftWidth: 5,
+  photoCardContent: {
+    position: 'relative',
   },
   photoTitle: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    marginBottom: 8,
+    fontSize: TYPOGRAPHY.sizes.sm,
+    fontWeight: TYPOGRAPHY.weights.bold as any,
+    marginBottom: SPACING.sm,
   },
-  photoContainer: {
+  photoContainerInner: {
     alignItems: 'center',
   },
   photo: {
     width: '100%',
-    height: 150,
-    borderRadius: 8,
-    marginVertical: 8,
+    height: 140,
+    borderRadius: BORDER_RADIUS.md,
   },
   photoHint: {
-    fontSize: 12,
-    fontWeight: '500',
+    fontSize: TYPOGRAPHY.sizes.xs,
+    fontWeight: TYPOGRAPHY.weights.medium as any,
+    marginTop: SPACING.xs,
   },
   photoPlaceholder: {
     width: '100%',
-    height: 150,
-    borderRadius: 8,
-    backgroundColor: '#e0e0e0',
+    height: 140,
+    borderRadius: BORDER_RADIUS.md,
+    backgroundColor: BRAND_COLORS.grayLight,
+    borderWidth: 2,
+    borderColor: BRAND_COLORS.grayMedium,
+    borderStyle: 'dashed',
     justifyContent: 'center',
     alignItems: 'center',
-    marginVertical: 8,
   },
   photoPlaceholderText: {
-    color: '#757575',
-    fontSize: 12,
-    textAlign: 'center',
-    paddingHorizontal: 8,
+    color: BRAND_COLORS.grayText,
+    fontSize: TYPOGRAPHY.sizes.xs,
+    marginTop: SPACING.xs,
+  },
+  checkIndicator: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+  },
+  progressInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: SPACING.md,
+    gap: SPACING.sm,
   },
   progressText: {
-    textAlign: 'center',
-    marginTop: 8,
-    marginBottom: 16,
-    fontSize: 16,
+    fontSize: TYPOGRAPHY.sizes.md,
     color: BRAND_COLORS.primaryBlue,
-    fontWeight: 'bold',
+    fontWeight: TYPOGRAPHY.weights.semibold as any,
   },
   buttonSafeArea: {
     backgroundColor: 'white',
@@ -385,23 +346,52 @@ const styles = StyleSheet.create({
   buttonContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    padding: 16,
+    padding: SPACING.md,
     backgroundColor: 'white',
-    borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
-    elevation: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
+    ...SHADOWS.medium,
   },
   backButton: {
     flex: 1,
-    marginRight: 8,
+    marginRight: SPACING.sm,
     borderColor: BRAND_COLORS.primaryBlue,
+    borderRadius: BORDER_RADIUS.md,
   },
   finishButton: {
     flex: 1,
-    marginLeft: 8,
+    marginLeft: SPACING.sm,
+    borderRadius: BORDER_RADIUS.md,
+  },
+  savingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1100,
+  },
+  savingCard: {
+    backgroundColor: 'white',
+    borderRadius: BORDER_RADIUS.xl,
+    padding: SPACING.xl,
+    alignItems: 'center',
+    width: '80%',
+    maxWidth: 320,
+    ...SHADOWS.large,
+  },
+  savingTitle: {
+    marginTop: SPACING.md,
+    fontSize: TYPOGRAPHY.sizes.lg,
+    fontWeight: TYPOGRAPHY.weights.bold as any,
+    color: BRAND_COLORS.primaryBlue,
+    textAlign: 'center',
+  },
+  savingSubtitle: {
+    marginTop: SPACING.sm,
+    fontSize: TYPOGRAPHY.sizes.sm,
+    color: BRAND_COLORS.grayText,
+    textAlign: 'center',
   },
 });

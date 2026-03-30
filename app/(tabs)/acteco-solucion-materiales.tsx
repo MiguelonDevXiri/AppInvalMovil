@@ -1,9 +1,11 @@
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
-import React, { useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Button, Card, Checkbox, Divider, IconButton, Text, TextInput } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { BRAND_COLORS } from '../../constants/Colors';
+import { BORDER_RADIUS, BRAND_COLORS, GRADIENTS, SHADOWS, SPACING, TYPOGRAPHY } from '../../constants/Colors';
 
 interface Material {
   id: string;
@@ -18,6 +20,31 @@ export default function ActecoSolucionMaterialesScreen() {
   const [materiales, setMateriales] = useState<Material[]>([
     { id: '1', name: '', quantity: '' }
   ]);
+
+  // Cargar datos existentes en modo edición
+  useEffect(() => {
+    if (params.isEditing === 'true') {
+      console.log('✏️ Cargando datos de solución/materiales para editar');
+      if (params.tieneSolucion === 'true') {
+        setTieneSolucion(true);
+      } else if (params.tieneSolucion === 'false') {
+        setTieneSolucion(false);
+      }
+      if (params.observaciones) {
+        setObservaciones(params.observaciones as string);
+      }
+      if (params.materiales) {
+        try {
+          const parsed = JSON.parse(params.materiales as string);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setMateriales(parsed);
+          }
+        } catch (e) {
+          console.error('Error al parsear materiales:', e);
+        }
+      }
+    }
+  }, []);
 
   const handleAddMaterial = () => {
     const newMaterial: Material = {
@@ -37,7 +64,7 @@ export default function ActecoSolucionMaterialesScreen() {
   };
 
   const handleMaterialChange = (id: string, field: 'name' | 'quantity', value: string) => {
-    setMateriales(materiales.map(m => 
+    setMateriales(materiales.map(m =>
       m.id === id ? { ...m, [field]: value } : m
     ));
   };
@@ -49,7 +76,7 @@ export default function ActecoSolucionMaterialesScreen() {
     }
 
     // Filtrar materiales que tengan al menos nombre o cantidad
-    const materialesValidos = materiales.filter(m => 
+    const materialesValidos = materiales.filter(m =>
       m.name.trim() !== '' || m.quantity.trim() !== ''
     );
 
@@ -67,23 +94,28 @@ export default function ActecoSolucionMaterialesScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
-      <KeyboardAvoidingView 
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <KeyboardAvoidingView
         style={styles.keyboardView}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
-        <ScrollView 
+        <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
         >
-          <Card style={styles.headerCard}>
-            <Card.Content>
-              <Text style={styles.headerTitle}>Solución y Materiales</Text>
-              <Text style={styles.headerSubtitle}>Indica si tiene solución y materiales necesarios</Text>
-            </Card.Content>
-          </Card>
+          <LinearGradient
+            colors={GRADIENTS.primary as unknown as [string, string, ...string[]]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.headerGradient}
+          >
+            <TouchableOpacity onPress={() => router.back()} style={{position:'absolute',left:12,top:12,zIndex:10,width:36,height:36,borderRadius:18,backgroundColor:'rgba(255,255,255,0.2)',justifyContent:'center',alignItems:'center'}}>
+              <MaterialCommunityIcons name="arrow-left" size={22} color="white" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Solución y Materiales</Text>
+            <Text style={styles.headerSubtitle}>Indica si tiene solución y materiales necesarios</Text>
+          </LinearGradient>
 
           {/* Tiene Solución */}
           <Card style={styles.solucionCard}>
@@ -127,7 +159,7 @@ export default function ActecoSolucionMaterialesScreen() {
                 mode="outlined"
                 multiline
                 numberOfLines={4}
-                outlineColor={BRAND_COLORS.primaryBlue}
+                outlineColor={BRAND_COLORS.grayMedium}
                 activeOutlineColor={BRAND_COLORS.primaryBlue}
                 placeholder="Describe las observaciones o detalles de la solución"
               />
@@ -145,7 +177,7 @@ export default function ActecoSolucionMaterialesScreen() {
                   icon="plus"
                   compact
                   style={styles.addButton}
-                  color={BRAND_COLORS.primaryBlue}
+                  buttonColor={BRAND_COLORS.primaryBlue}
                 >
                   Añadir
                 </Button>
@@ -160,7 +192,7 @@ export default function ActecoSolucionMaterialesScreen() {
               </View>
 
               {/* Filas de materiales */}
-              {materiales.map((material, index) => (
+              {materiales.map((material) => (
                 <View key={material.id} style={styles.tableRow}>
                   <TextInput
                     value={material.name}
@@ -189,7 +221,7 @@ export default function ActecoSolucionMaterialesScreen() {
                     size={20}
                     onPress={() => handleRemoveMaterial(material.id)}
                     style={styles.deleteButton}
-                    iconColor="#F44336"
+                    iconColor={BRAND_COLORS.error}
                   />
                 </View>
               ))}
@@ -203,21 +235,23 @@ export default function ActecoSolucionMaterialesScreen() {
 
         <SafeAreaView style={styles.buttonSafeArea} edges={['bottom']}>
           <View style={styles.buttonContainer}>
-            <Button 
-              mode="outlined" 
+            <Button
+              mode="outlined"
               style={styles.backButton}
               onPress={() => router.back()}
               icon="arrow-left"
+              textColor={BRAND_COLORS.primaryBlue}
             >
               Volver
             </Button>
 
-            <Button 
-              mode="contained" 
+            <Button
+              mode="contained"
               style={styles.continueButton}
               onPress={handleContinue}
               icon="arrow-right"
               contentStyle={{ flexDirection: 'row-reverse' }}
+              buttonColor={BRAND_COLORS.primaryOrange}
             >
               Continuar
             </Button>
@@ -229,35 +263,35 @@ export default function ActecoSolucionMaterialesScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#f5f5f5' },
-  keyboardView: { flex: 1 },
+  safeArea: { flex: 1, backgroundColor: BRAND_COLORS.primaryBlue },
+  keyboardView: { flex: 1, backgroundColor: BRAND_COLORS.surface },
   scrollView: { flex: 1 },
-  scrollContent: { padding: 16, paddingBottom: 16 },
-  headerCard: { marginBottom: 16, backgroundColor: BRAND_COLORS.primaryBlue },
-  headerTitle: { fontSize: 20, fontWeight: 'bold', color: 'white', textAlign: 'center' },
-  headerSubtitle: { fontSize: 14, color: 'white', textAlign: 'center', marginTop: 4 },
-  solucionCard: { marginBottom: 16, borderLeftWidth: 3, borderLeftColor: BRAND_COLORS.primaryOrange },
-  observacionesCard: { marginBottom: 16, borderLeftWidth: 3, borderLeftColor: BRAND_COLORS.primaryBlue },
-  materialesCard: { marginBottom: 16, borderLeftWidth: 3, borderLeftColor: '#4CAF50' },
-  sectionTitle: { fontSize: 16, fontWeight: 'bold', color: BRAND_COLORS.primaryBlue, marginBottom: 8 },
-  divider: { backgroundColor: BRAND_COLORS.primaryOrange, height: 1, marginBottom: 16 },
-  checkboxContainer: { flexDirection: 'row', justifyContent: 'space-around', marginVertical: 8 },
+  scrollContent: { paddingBottom: 100 },
+  headerGradient: { padding: SPACING.lg, alignItems: 'center' },
+  headerTitle: { fontSize: TYPOGRAPHY.sizes.xl, fontWeight: TYPOGRAPHY.weights.bold as any, color: 'white' },
+  headerSubtitle: { fontSize: TYPOGRAPHY.sizes.sm, color: 'rgba(255,255,255,0.8)', marginTop: SPACING.xs },
+  solucionCard: { margin: SPACING.md, marginBottom: SPACING.sm, borderRadius: BORDER_RADIUS.lg, borderLeftWidth: 3, borderLeftColor: BRAND_COLORS.primaryOrange, ...SHADOWS.small },
+  observacionesCard: { marginHorizontal: SPACING.md, marginBottom: SPACING.sm, borderRadius: BORDER_RADIUS.lg, borderLeftWidth: 3, borderLeftColor: BRAND_COLORS.primaryBlue, ...SHADOWS.small },
+  materialesCard: { marginHorizontal: SPACING.md, marginBottom: SPACING.sm, borderRadius: BORDER_RADIUS.lg, borderLeftWidth: 3, borderLeftColor: BRAND_COLORS.success, ...SHADOWS.small },
+  sectionTitle: { fontSize: TYPOGRAPHY.sizes.md, fontWeight: TYPOGRAPHY.weights.bold as any, color: BRAND_COLORS.primaryBlue, marginBottom: SPACING.sm },
+  divider: { backgroundColor: BRAND_COLORS.primaryOrange, height: 1, marginBottom: SPACING.md },
+  checkboxContainer: { flexDirection: 'row', justifyContent: 'space-around', marginVertical: SPACING.sm },
   checkboxRow: { flexDirection: 'row', alignItems: 'center' },
-  checkboxLabel: { fontSize: 16, marginLeft: 8 },
-  input: { marginBottom: 12, backgroundColor: 'white' },
-  materialesHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  addButton: { },
-  tableHeader: { flexDirection: 'row', marginBottom: 8, paddingHorizontal: 4 },
-  tableHeaderText: { fontWeight: 'bold', color: BRAND_COLORS.primaryBlue, fontSize: 14 },
-  tableRow: { flexDirection: 'row', marginBottom: 8, alignItems: 'center' },
-  tableInput: { backgroundColor: 'white', marginRight: 8 },
+  checkboxLabel: { fontSize: TYPOGRAPHY.sizes.md, marginLeft: SPACING.sm },
+  input: { marginBottom: SPACING.sm, backgroundColor: 'white' },
+  materialesHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: SPACING.sm },
+  addButton: { borderRadius: BORDER_RADIUS.md },
+  tableHeader: { flexDirection: 'row', marginBottom: SPACING.sm, paddingHorizontal: SPACING.xs },
+  tableHeaderText: { fontWeight: TYPOGRAPHY.weights.bold as any, color: BRAND_COLORS.primaryBlue, fontSize: TYPOGRAPHY.sizes.sm },
+  tableRow: { flexDirection: 'row', marginBottom: SPACING.sm, alignItems: 'center' },
+  tableInput: { backgroundColor: 'white', marginRight: SPACING.sm },
   materialColumn: { flex: 2 },
   quantityColumn: { flex: 1 },
   actionColumn: { width: 40 },
   deleteButton: { margin: 0 },
-  helpText: { fontSize: 12, color: '#666', fontStyle: 'italic', marginTop: 8 },
+  helpText: { fontSize: TYPOGRAPHY.sizes.xs, color: BRAND_COLORS.grayText, fontStyle: 'italic', marginTop: SPACING.sm },
   buttonSafeArea: { backgroundColor: 'white' },
-  buttonContainer: { flexDirection: 'row', justifyContent: 'space-between', padding: 16, backgroundColor: 'white', borderTopWidth: 1, borderTopColor: '#e0e0e0' },
-  backButton: { flex: 1, marginRight: 8, borderColor: BRAND_COLORS.primaryBlue },
-  continueButton: { flex: 1, marginLeft: 8, backgroundColor: BRAND_COLORS.primaryOrange },
+  buttonContainer: { flexDirection: 'row', justifyContent: 'space-between', padding: SPACING.md, backgroundColor: 'white', borderTopWidth: 1, borderTopColor: BRAND_COLORS.grayMedium, ...SHADOWS.medium },
+  backButton: { flex: 1, marginRight: SPACING.sm, borderRadius: BORDER_RADIUS.md },
+  continueButton: { flex: 1, marginLeft: SPACING.sm, borderRadius: BORDER_RADIUS.md },
 });

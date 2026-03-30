@@ -1,29 +1,46 @@
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Alert, Image, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Button, Card, Text } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { BRAND_COLORS } from '../../constants/Colors';
+import { BORDER_RADIUS, BRAND_COLORS, GRADIENTS, SHADOWS, SPACING, TYPOGRAPHY } from '../../constants/Colors';
 
 export default function ActecoAveriaPhotoScreen() {
   const params = useLocalSearchParams();
   const [photos, setPhotos] = useState<string[]>([]);
 
+  // Cargar fotos de avería existentes en modo edición
+  useEffect(() => {
+    if (params.averiaPhotos) {
+      try {
+        const parsed = JSON.parse(params.averiaPhotos as string);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          console.log('✏️ Cargando fotos de avería para editar:', parsed.length);
+          setPhotos(parsed);
+        }
+      } catch (e) {
+        console.error('Error al parsear averiaPhotos:', e);
+      }
+    }
+  }, []);
+
   const handleTakePhoto = async () => {
     try {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
-      
+
       if (status !== 'granted') {
         Alert.alert('Permisos requeridos', 'Se necesitan permisos para usar la cámara');
         return;
       }
-      
+
       const result = await ImagePicker.launchCameraAsync({
         allowsEditing: false,
         quality: 0.7,
       });
-      
+
       if (!result.canceled && result.assets && result.assets.length > 0) {
         setPhotos([...photos, result.assets[0].uri]);
       }
@@ -36,12 +53,12 @@ export default function ActecoAveriaPhotoScreen() {
   const handleChooseFromGallery = async () => {
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      
+
       if (status !== 'granted') {
         Alert.alert('Permisos requeridos', 'Se necesitan permisos para acceder a la galería');
         return;
       }
-      
+
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: false,
@@ -49,7 +66,7 @@ export default function ActecoAveriaPhotoScreen() {
         allowsMultipleSelection: true,
         selectionLimit: 10,
       });
-      
+
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const newPhotos = result.assets.map(asset => asset.uri);
         setPhotos([...photos, ...newPhotos]);
@@ -111,12 +128,19 @@ export default function ActecoAveriaPhotoScreen() {
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-        <Card style={styles.headerCard}>
-          <Card.Content>
-            <Text style={styles.headerTitle}>Fotos de la Avería</Text>
-            <Text style={styles.headerSubtitle}>Documenta la avería con fotografías</Text>
-          </Card.Content>
-        </Card>
+        <LinearGradient
+          colors={GRADIENTS.primary as unknown as [string, string, ...string[]]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.headerGradient}
+        >
+          <TouchableOpacity onPress={() => router.back()} style={{position:'absolute',left:12,top:12,zIndex:10,width:36,height:36,borderRadius:18,backgroundColor:'rgba(255,255,255,0.2)',justifyContent:'center',alignItems:'center'}}>
+            <MaterialCommunityIcons name="arrow-left" size={22} color="white" />
+          </TouchableOpacity>
+          <MaterialCommunityIcons name="camera-burst" size={24} color="rgba(255,255,255,0.7)" />
+          <Text style={styles.headerTitle}>Fotos de la Avería</Text>
+          <Text style={styles.headerSubtitle}>Documenta la avería con fotografías</Text>
+        </LinearGradient>
 
         <Card style={styles.instructionsCard}>
           <Card.Content>
@@ -133,7 +157,7 @@ export default function ActecoAveriaPhotoScreen() {
               icon="camera"
               onPress={handleTakePhoto}
               style={styles.actionButton}
-              color={BRAND_COLORS.primaryBlue}
+              buttonColor={BRAND_COLORS.primaryBlue}
             >
               Tomar Foto
             </Button>
@@ -143,7 +167,7 @@ export default function ActecoAveriaPhotoScreen() {
               icon="image-multiple"
               onPress={handleChooseFromGallery}
               style={styles.actionButton}
-              color={BRAND_COLORS.primaryBlue}
+              textColor={BRAND_COLORS.primaryBlue}
             >
               Seleccionar de Galería
             </Button>
@@ -192,6 +216,7 @@ export default function ActecoAveriaPhotoScreen() {
             style={styles.backButton}
             onPress={() => router.back()}
             icon="arrow-left"
+            textColor={BRAND_COLORS.primaryBlue}
           >
             Volver
           </Button>
@@ -202,6 +227,7 @@ export default function ActecoAveriaPhotoScreen() {
             onPress={handleContinue}
             icon="arrow-right"
             contentStyle={{ flexDirection: 'row-reverse' }}
+            buttonColor={BRAND_COLORS.primaryOrange}
           >
             Continuar
           </Button>
@@ -212,28 +238,28 @@ export default function ActecoAveriaPhotoScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#f5f5f5' },
-  scrollView: { flex: 1 },
-  scrollContent: { padding: 16, paddingBottom: 16 },
-  headerCard: { marginBottom: 16, backgroundColor: BRAND_COLORS.primaryBlue },
-  headerTitle: { fontSize: 20, fontWeight: 'bold', color: 'white', textAlign: 'center' },
-  headerSubtitle: { fontSize: 14, color: 'white', textAlign: 'center', marginTop: 4 },
-  instructionsCard: { marginBottom: 16, backgroundColor: '#E3F2FD', borderLeftWidth: 3, borderLeftColor: BRAND_COLORS.primaryBlue },
-  instructionsText: { fontSize: 14, lineHeight: 20 },
-  actionsCard: { marginBottom: 16 },
-  actionButton: { marginBottom: 12 },
-  photosCard: { marginBottom: 16, borderLeftWidth: 3, borderLeftColor: '#F44336' },
-  photosSectionTitle: { fontSize: 16, fontWeight: 'bold', color: '#F44336', marginBottom: 12 },
+  safeArea: { flex: 1, backgroundColor: BRAND_COLORS.primaryBlue },
+  scrollView: { flex: 1, backgroundColor: BRAND_COLORS.surface },
+  scrollContent: { paddingBottom: SPACING.md },
+  headerGradient: { padding: SPACING.lg, alignItems: 'center' },
+  headerTitle: { fontSize: TYPOGRAPHY.sizes.xl, fontWeight: TYPOGRAPHY.weights.bold as any, color: 'white', marginTop: SPACING.sm },
+  headerSubtitle: { fontSize: TYPOGRAPHY.sizes.sm, color: 'rgba(255,255,255,0.8)', marginTop: SPACING.xs },
+  instructionsCard: { margin: SPACING.md, marginBottom: SPACING.sm, backgroundColor: BRAND_COLORS.infoLight, borderLeftWidth: 3, borderLeftColor: BRAND_COLORS.primaryBlue, borderRadius: BORDER_RADIUS.lg },
+  instructionsText: { fontSize: TYPOGRAPHY.sizes.sm, lineHeight: 20 },
+  actionsCard: { marginHorizontal: SPACING.md, marginBottom: SPACING.sm, borderRadius: BORDER_RADIUS.lg, ...SHADOWS.small },
+  actionButton: { marginBottom: SPACING.sm, borderRadius: BORDER_RADIUS.md },
+  photosCard: { marginHorizontal: SPACING.md, marginBottom: SPACING.sm, borderLeftWidth: 3, borderLeftColor: BRAND_COLORS.error, borderRadius: BORDER_RADIUS.lg, ...SHADOWS.small },
+  photosSectionTitle: { fontSize: TYPOGRAPHY.sizes.md, fontWeight: TYPOGRAPHY.weights.bold as any, color: BRAND_COLORS.error, marginBottom: SPACING.sm },
   photosGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
-  photoContainer: { width: '48%', marginBottom: 12, position: 'relative' },
-  photo: { width: '100%', height: 120, borderRadius: 8, borderWidth: 2, borderColor: '#F44336' },
-  deleteButton: { position: 'absolute', top: 4, right: 4, backgroundColor: 'rgba(244, 67, 54, 0.9)', width: 28, height: 28, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
-  deleteButtonText: { color: 'white', fontSize: 18, fontWeight: 'bold', lineHeight: 20 },
-  photoLabel: { textAlign: 'center', marginTop: 4, fontSize: 12, color: '#666' },
-  emptyCard: { marginBottom: 16, backgroundColor: '#f9f9f9' },
-  emptyText: { textAlign: 'center', fontStyle: 'italic', color: '#666', padding: 20 },
+  photoContainer: { width: '48%', marginBottom: SPACING.sm, position: 'relative' },
+  photo: { width: '100%', height: 120, borderRadius: BORDER_RADIUS.md, borderWidth: 2, borderColor: BRAND_COLORS.error },
+  deleteButton: { position: 'absolute', top: 4, right: 4, backgroundColor: 'rgba(220, 38, 38, 0.9)', width: 28, height: 28, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
+  deleteButtonText: { color: 'white', fontSize: 18, fontWeight: TYPOGRAPHY.weights.bold as any, lineHeight: 20 },
+  photoLabel: { textAlign: 'center', marginTop: SPACING.xs, fontSize: TYPOGRAPHY.sizes.xs, color: BRAND_COLORS.grayText },
+  emptyCard: { marginHorizontal: SPACING.md, marginBottom: SPACING.sm, backgroundColor: BRAND_COLORS.grayLight, borderRadius: BORDER_RADIUS.lg },
+  emptyText: { textAlign: 'center', fontStyle: 'italic', color: BRAND_COLORS.grayText, padding: SPACING.lg },
   buttonSafeArea: { backgroundColor: 'white' },
-  buttonContainer: { flexDirection: 'row', justifyContent: 'space-between', padding: 16, backgroundColor: 'white', borderTopWidth: 1, borderTopColor: '#e0e0e0' },
-  backButton: { flex: 1, marginRight: 8, borderColor: BRAND_COLORS.primaryBlue },
-  continueButton: { flex: 1, marginLeft: 8, backgroundColor: BRAND_COLORS.primaryOrange },
+  buttonContainer: { flexDirection: 'row', justifyContent: 'space-between', padding: SPACING.md, backgroundColor: 'white', borderTopWidth: 1, borderTopColor: BRAND_COLORS.grayMedium, ...SHADOWS.medium },
+  backButton: { flex: 1, marginRight: SPACING.sm, borderRadius: BORDER_RADIUS.md },
+  continueButton: { flex: 1, marginLeft: SPACING.sm, borderRadius: BORDER_RADIUS.md },
 });

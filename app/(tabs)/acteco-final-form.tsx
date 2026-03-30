@@ -1,10 +1,12 @@
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
-import React, { useRef, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Button, Card, Divider, RadioButton, Text, TextInput } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
-import { BRAND_COLORS } from '../../constants/Colors';
+import { BORDER_RADIUS, BRAND_COLORS, GRADIENTS, SHADOWS, SPACING, TYPOGRAPHY } from '../../constants/Colors';
 
 export default function ActecoFinalFormScreen() {
   const params = useLocalSearchParams();
@@ -12,7 +14,7 @@ export default function ActecoFinalFormScreen() {
   const [technicianOption, setTechnicianOption] = useState<'nombre' | 'nombre-firma'>('nombre');
   const [technicianSignature, setTechnicianSignature] = useState<string | null>(null);
   const [showTechnicianSignature, setShowTechnicianSignature] = useState(false);
-  
+
   const [clientName, setClientName] = useState('');
   const [clientOption, setClientOption] = useState<'nombre' | 'nombre-firma'>('nombre');
   const [clientSignature, setClientSignature] = useState<string | null>(null);
@@ -21,22 +23,43 @@ export default function ActecoFinalFormScreen() {
   const technicianWebViewRef = useRef<WebView>(null);
   const clientWebViewRef = useRef<WebView>(null);
 
+  // Cargar datos existentes en modo edición
+  useEffect(() => {
+    if (params.isEditing === 'true') {
+      console.log('✏️ Cargando datos finales para editar');
+      if (params.technicianName) {
+        setTechnicianName(params.technicianName as string);
+      }
+      if (params.clientSignatureName) {
+        setClientName(params.clientSignatureName as string);
+      }
+      if (params.technicianSignature && (params.technicianSignature as string).trim() !== '') {
+        setTechnicianSignature(params.technicianSignature as string);
+        setTechnicianOption('nombre-firma');
+      }
+      if (params.clientSignature && (params.clientSignature as string).trim() !== '') {
+        setClientSignature(params.clientSignature as string);
+        setClientOption('nombre-firma');
+      }
+    }
+  }, []);
+
   const signatureHTML = `
     <!DOCTYPE html>
     <html>
     <head>
       <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
       <style>
-        * { 
-          margin: 0; 
-          padding: 0; 
+        * {
+          margin: 0;
+          padding: 0;
           box-sizing: border-box;
           -webkit-user-select: none;
           user-select: none;
         }
-        html, body { 
-          width: 100vw; 
-          height: 100vh; 
+        html, body {
+          width: 100vw;
+          height: 100vh;
           overflow: hidden;
           position: fixed;
           touch-action: none;
@@ -57,19 +80,19 @@ export default function ActecoFinalFormScreen() {
       <script>
         const canvas = document.getElementById('signature-pad');
         const ctx = canvas.getContext('2d');
-        
+
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
-        
+
         ctx.strokeStyle = '#000000';
         ctx.lineWidth = 3;
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
-        
+
         let drawing = false;
         let lastX = 0;
         let lastY = 0;
-        
+
         function getCoordinates(e) {
           const rect = canvas.getBoundingClientRect();
           const touch = e.touches ? e.touches[0] : e;
@@ -78,7 +101,7 @@ export default function ActecoFinalFormScreen() {
             y: touch.clientY - rect.top
           };
         }
-        
+
         function startDrawing(e) {
           e.preventDefault();
           e.stopPropagation();
@@ -87,42 +110,42 @@ export default function ActecoFinalFormScreen() {
           lastX = coords.x;
           lastY = coords.y;
         }
-        
+
         function draw(e) {
           if (!drawing) return;
           e.preventDefault();
           e.stopPropagation();
-          
+
           const coords = getCoordinates(e);
-          
+
           ctx.beginPath();
           ctx.moveTo(lastX, lastY);
           ctx.lineTo(coords.x, coords.y);
           ctx.stroke();
-          
+
           lastX = coords.x;
           lastY = coords.y;
         }
-        
+
         function stopDrawing(e) {
           if (!drawing) return;
           e.preventDefault();
           e.stopPropagation();
           drawing = false;
-          
+
           const dataUrl = canvas.toDataURL('image/png');
           window.ReactNativeWebView.postMessage(dataUrl);
         }
-        
+
         canvas.addEventListener('touchstart', startDrawing, { passive: false });
         canvas.addEventListener('touchmove', draw, { passive: false });
         canvas.addEventListener('touchend', stopDrawing, { passive: false });
         canvas.addEventListener('touchcancel', stopDrawing, { passive: false });
-        
+
         document.body.addEventListener('touchmove', function(e) {
           e.preventDefault();
         }, { passive: false });
-        
+
         window.clearSignature = function() {
           ctx.clearRect(0, 0, canvas.width, canvas.height);
         };
@@ -152,7 +175,7 @@ export default function ActecoFinalFormScreen() {
       Alert.alert('Campo requerido', 'El nombre del técnico es obligatorio');
       return;
     }
-    
+
     if (technicianOption === 'nombre-firma' && !technicianSignature) {
       Alert.alert('Firma requerida', 'Por favor firma antes de continuar');
       return;
@@ -162,7 +185,7 @@ export default function ActecoFinalFormScreen() {
       Alert.alert('Campo requerido', 'El nombre del cliente es obligatorio para la conformidad');
       return;
     }
-    
+
     if (clientOption === 'nombre-firma' && !clientSignature) {
       Alert.alert('Firma requerida', 'Por favor el cliente debe firmar antes de continuar');
       return;
@@ -183,24 +206,29 @@ export default function ActecoFinalFormScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
-      <KeyboardAvoidingView 
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <KeyboardAvoidingView
         style={styles.keyboardView}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
-        <ScrollView 
+        <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
           scrollEnabled={!showTechnicianSignature && !showClientSignature}
         >
-          <Card style={styles.headerCard}>
-            <Card.Content>
-              <Text style={styles.headerTitle}>Datos Finales</Text>
-              <Text style={styles.headerSubtitle}>Información del técnico y conformidad del cliente</Text>
-            </Card.Content>
-          </Card>
+          <LinearGradient
+            colors={GRADIENTS.primary as unknown as [string, string, ...string[]]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.headerGradient}
+          >
+            <TouchableOpacity onPress={() => router.back()} style={{position:'absolute',left:12,top:12,zIndex:10,width:36,height:36,borderRadius:18,backgroundColor:'rgba(255,255,255,0.2)',justifyContent:'center',alignItems:'center'}}>
+              <MaterialCommunityIcons name="arrow-left" size={22} color="white" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Datos Finales</Text>
+            <Text style={styles.headerSubtitle}>Información del técnico y conformidad del cliente</Text>
+          </LinearGradient>
 
           {!showTechnicianSignature && !showClientSignature && (
             <>
@@ -215,26 +243,26 @@ export default function ActecoFinalFormScreen() {
                     onChangeText={setTechnicianName}
                     style={styles.input}
                     mode="outlined"
-                    outlineColor={BRAND_COLORS.primaryBlue}
+                    outlineColor={BRAND_COLORS.grayMedium}
                     activeOutlineColor={BRAND_COLORS.primaryBlue}
                     placeholder="Nombre completo del técnico"
                   />
 
                   <Text style={styles.radioLabel}>¿Incluir firma?</Text>
-                  <RadioButton.Group 
-                    onValueChange={value => setTechnicianOption(value as 'nombre' | 'nombre-firma')} 
+                  <RadioButton.Group
+                    onValueChange={value => setTechnicianOption(value as 'nombre' | 'nombre-firma')}
                     value={technicianOption}
                   >
                     <View style={styles.radioRow}>
-                      <RadioButton.Item 
-                        label="Solo nombre" 
-                        value="nombre" 
+                      <RadioButton.Item
+                        label="Solo nombre"
+                        value="nombre"
                         color={BRAND_COLORS.primaryBlue}
                         style={styles.radioItem}
                       />
-                      <RadioButton.Item 
-                        label="Nombre + Firma" 
-                        value="nombre-firma" 
+                      <RadioButton.Item
+                        label="Nombre + Firma"
+                        value="nombre-firma"
                         color={BRAND_COLORS.primaryBlue}
                         style={styles.radioItem}
                       />
@@ -249,7 +277,7 @@ export default function ActecoFinalFormScreen() {
                           onPress={() => setShowTechnicianSignature(true)}
                           icon="draw"
                           style={styles.signatureButton}
-                          color={BRAND_COLORS.primaryBlue}
+                          textColor={BRAND_COLORS.primaryBlue}
                         >
                           Firmar
                         </Button>
@@ -261,7 +289,7 @@ export default function ActecoFinalFormScreen() {
                           <Button
                             mode="text"
                             onPress={() => setTechnicianSignature(null)}
-                            color="#F44336"
+                            textColor={BRAND_COLORS.error}
                           >
                             Borrar
                           </Button>
@@ -283,26 +311,26 @@ export default function ActecoFinalFormScreen() {
                     onChangeText={setClientName}
                     style={styles.input}
                     mode="outlined"
-                    outlineColor={BRAND_COLORS.primaryBlue}
+                    outlineColor={BRAND_COLORS.grayMedium}
                     activeOutlineColor={BRAND_COLORS.primaryBlue}
                     placeholder="Nombre completo del cliente que da conformidad"
                   />
 
                   <Text style={styles.radioLabel}>¿Incluir firma?</Text>
-                  <RadioButton.Group 
-                    onValueChange={value => setClientOption(value as 'nombre' | 'nombre-firma')} 
+                  <RadioButton.Group
+                    onValueChange={value => setClientOption(value as 'nombre' | 'nombre-firma')}
                     value={clientOption}
                   >
                     <View style={styles.radioRow}>
-                      <RadioButton.Item 
-                        label="Solo nombre" 
-                        value="nombre" 
+                      <RadioButton.Item
+                        label="Solo nombre"
+                        value="nombre"
                         color={BRAND_COLORS.primaryOrange}
                         style={styles.radioItem}
                       />
-                      <RadioButton.Item 
-                        label="Nombre + Firma" 
-                        value="nombre-firma" 
+                      <RadioButton.Item
+                        label="Nombre + Firma"
+                        value="nombre-firma"
                         color={BRAND_COLORS.primaryOrange}
                         style={styles.radioItem}
                       />
@@ -317,7 +345,7 @@ export default function ActecoFinalFormScreen() {
                           onPress={() => setShowClientSignature(true)}
                           icon="draw"
                           style={styles.signatureButton}
-                          color={BRAND_COLORS.primaryOrange}
+                          textColor={BRAND_COLORS.primaryOrange}
                         >
                           Firmar
                         </Button>
@@ -329,7 +357,7 @@ export default function ActecoFinalFormScreen() {
                           <Button
                             mode="text"
                             onPress={() => setClientSignature(null)}
-                            color="#F44336"
+                            textColor={BRAND_COLORS.error}
                           >
                             Borrar
                           </Button>
@@ -365,7 +393,7 @@ export default function ActecoFinalFormScreen() {
               <Button
                 mode="text"
                 onPress={() => setShowTechnicianSignature(false)}
-                color="#666"
+                textColor={BRAND_COLORS.grayText}
                 style={styles.footerButton}
               >
                 Cancelar
@@ -377,7 +405,7 @@ export default function ActecoFinalFormScreen() {
                     technicianWebViewRef.current.injectJavaScript('window.clearSignature();');
                   }
                 }}
-                color={BRAND_COLORS.primaryOrange}
+                textColor={BRAND_COLORS.primaryOrange}
                 style={styles.footerButton}
               >
                 Limpiar
@@ -408,7 +436,7 @@ export default function ActecoFinalFormScreen() {
               <Button
                 mode="text"
                 onPress={() => setShowClientSignature(false)}
-                color="#666"
+                textColor={BRAND_COLORS.grayText}
                 style={styles.footerButton}
               >
                 Cancelar
@@ -420,7 +448,7 @@ export default function ActecoFinalFormScreen() {
                     clientWebViewRef.current.injectJavaScript('window.clearSignature();');
                   }
                 }}
-                color={BRAND_COLORS.primaryOrange}
+                textColor={BRAND_COLORS.primaryOrange}
                 style={styles.footerButton}
               >
                 Limpiar
@@ -430,26 +458,30 @@ export default function ActecoFinalFormScreen() {
         )}
 
         {!showTechnicianSignature && !showClientSignature && (
-          <View style={styles.buttonContainer}>
-            <Button 
-              mode="outlined" 
-              style={styles.backButton}
-              onPress={() => router.back()}
-              icon="arrow-left"
-            >
-              Volver
-            </Button>
+          <SafeAreaView style={styles.buttonSafeArea} edges={['bottom']}>
+            <View style={styles.buttonContainer}>
+              <Button
+                mode="outlined"
+                style={styles.backButton}
+                onPress={() => router.back()}
+                icon="arrow-left"
+                textColor={BRAND_COLORS.primaryBlue}
+              >
+                Volver
+              </Button>
 
-            <Button 
-              mode="contained" 
-              style={styles.finishButton}
-              onPress={handleFinish}
-              icon="check"
-              contentStyle={{ flexDirection: 'row-reverse' }}
-            >
-              Finalizar
-            </Button>
-          </View>
+              <Button
+                mode="contained"
+                style={styles.finishButton}
+                onPress={handleFinish}
+                icon="check"
+                contentStyle={{ flexDirection: 'row-reverse' }}
+                buttonColor={BRAND_COLORS.success}
+              >
+                Finalizar
+              </Button>
+            </View>
+          </SafeAreaView>
         )}
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -457,34 +489,34 @@ export default function ActecoFinalFormScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#f5f5f5' },
-  keyboardView: { flex: 1 },
+  safeArea: { flex: 1, backgroundColor: BRAND_COLORS.primaryBlue },
+  keyboardView: { flex: 1, backgroundColor: BRAND_COLORS.surface },
   scrollView: { flex: 1 },
-  scrollContent: { padding: 16, paddingBottom: 20 },
-  headerCard: { marginBottom: 16, backgroundColor: BRAND_COLORS.primaryBlue },
-  headerTitle: { fontSize: 20, fontWeight: 'bold', color: 'white', textAlign: 'center' },
-  headerSubtitle: { fontSize: 14, color: 'white', textAlign: 'center', marginTop: 4 },
-  technicianCard: { marginBottom: 16, borderLeftWidth: 3, borderLeftColor: BRAND_COLORS.primaryBlue },
-  clientCard: { marginBottom: 16, borderLeftWidth: 3, borderLeftColor: BRAND_COLORS.primaryOrange },
-  sectionTitle: { fontSize: 16, fontWeight: 'bold', color: BRAND_COLORS.primaryBlue, marginBottom: 8 },
-  divider: { backgroundColor: BRAND_COLORS.primaryOrange, height: 1, marginBottom: 16 },
-  input: { marginBottom: 16, backgroundColor: 'white' },
-  radioLabel: { fontSize: 14, fontWeight: '600', marginBottom: 8, color: '#333' },
-  radioRow: { marginBottom: 12 },
-  radioItem: { paddingVertical: 4 },
-  signatureButton: { marginBottom: 12, marginTop: 8 },
-  signaturePreview: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    alignItems: 'center', 
-    padding: 12, 
-    backgroundColor: '#E8F5E9', 
-    borderRadius: 4, 
-    marginTop: 8,
-    marginBottom: 12 
+  scrollContent: { paddingBottom: 100 },
+  headerGradient: { padding: SPACING.lg, alignItems: 'center' },
+  headerTitle: { fontSize: TYPOGRAPHY.sizes.xl, fontWeight: TYPOGRAPHY.weights.bold as any, color: 'white' },
+  headerSubtitle: { fontSize: TYPOGRAPHY.sizes.sm, color: 'rgba(255,255,255,0.8)', marginTop: SPACING.xs },
+  technicianCard: { margin: SPACING.md, marginBottom: SPACING.sm, borderRadius: BORDER_RADIUS.lg, borderLeftWidth: 3, borderLeftColor: BRAND_COLORS.primaryBlue, ...SHADOWS.small },
+  clientCard: { marginHorizontal: SPACING.md, marginBottom: SPACING.sm, borderRadius: BORDER_RADIUS.lg, borderLeftWidth: 3, borderLeftColor: BRAND_COLORS.primaryOrange, ...SHADOWS.small },
+  sectionTitle: { fontSize: TYPOGRAPHY.sizes.md, fontWeight: TYPOGRAPHY.weights.bold as any, color: BRAND_COLORS.primaryBlue, marginBottom: SPACING.sm },
+  divider: { backgroundColor: BRAND_COLORS.primaryOrange, height: 1, marginBottom: SPACING.md },
+  input: { marginBottom: SPACING.md, backgroundColor: 'white' },
+  radioLabel: { fontSize: TYPOGRAPHY.sizes.sm, fontWeight: TYPOGRAPHY.weights.semibold as any, marginBottom: SPACING.sm, color: '#1e293b' },
+  radioRow: { marginBottom: SPACING.sm },
+  radioItem: { paddingVertical: SPACING.xs },
+  signatureButton: { marginBottom: SPACING.sm, marginTop: SPACING.sm, borderRadius: BORDER_RADIUS.md },
+  signaturePreview: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: SPACING.sm,
+    backgroundColor: BRAND_COLORS.successLight,
+    borderRadius: BORDER_RADIUS.sm,
+    marginTop: SPACING.sm,
+    marginBottom: SPACING.sm
   },
-  signatureText: { color: '#4CAF50', fontWeight: 'bold' },
-  
+  signatureText: { color: BRAND_COLORS.success, fontWeight: TYPOGRAPHY.weights.bold as any },
+
   signatureFullscreen: {
     position: 'absolute',
     top: 0,
@@ -495,48 +527,50 @@ const styles = StyleSheet.create({
     zIndex: 1000,
   },
   signatureHeader: {
-    padding: 16,
+    padding: SPACING.md,
     backgroundColor: BRAND_COLORS.primaryBlue,
     alignItems: 'center',
   },
   signatureHeaderText: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: TYPOGRAPHY.sizes.lg,
+    fontWeight: TYPOGRAPHY.weights.bold as any,
     color: 'white',
   },
   signatureHint: {
-    fontSize: 12,
+    fontSize: TYPOGRAPHY.sizes.xs,
     color: 'white',
-    marginTop: 4,
+    marginTop: SPACING.xs,
   },
   signatureCanvasContainer: {
     flex: 1,
     backgroundColor: 'white',
   },
-  webview: { 
+  webview: {
     flex: 1,
     backgroundColor: 'white',
   },
   signatureFooter: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    padding: 16,
-    backgroundColor: '#f5f5f5',
+    padding: SPACING.md,
+    backgroundColor: BRAND_COLORS.surface,
     borderTopWidth: 1,
-    borderTopColor: '#ddd',
+    borderTopColor: BRAND_COLORS.grayMedium,
   },
   footerButton: {
     minWidth: 120,
   },
-  
-  buttonContainer: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    padding: 16, 
-    backgroundColor: 'white', 
-    borderTopWidth: 1, 
-    borderTopColor: '#e0e0e0' 
+
+  buttonSafeArea: { backgroundColor: 'white' },
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    padding: SPACING.md,
+    backgroundColor: 'white',
+    borderTopWidth: 1,
+    borderTopColor: BRAND_COLORS.grayMedium,
+    ...SHADOWS.medium,
   },
-  backButton: { flex: 1, marginRight: 8, borderColor: BRAND_COLORS.primaryBlue },
-  finishButton: { flex: 1, marginLeft: 8, backgroundColor: '#4CAF50' },
+  backButton: { flex: 1, marginRight: SPACING.sm, borderRadius: BORDER_RADIUS.md },
+  finishButton: { flex: 1, marginLeft: SPACING.sm, borderRadius: BORDER_RADIUS.md },
 });

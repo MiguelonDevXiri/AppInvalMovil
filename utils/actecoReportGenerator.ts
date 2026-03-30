@@ -3,6 +3,8 @@ import * as ImageManipulator from 'expo-image-manipulator';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { Alert, Platform } from 'react-native';
+import { decode } from 'base64-arraybuffer';
+import { supabase } from './supabase';
 
 // Tipo para el reporte ACTECO
 interface ActecoReportData {
@@ -73,7 +75,18 @@ const generateFileName = (report: ActecoReportData): string => {
   }
 };
 
-const getImageBase64 = async (uri: string, maxWidth: number = 400): Promise<string> => {
+const isRemoteUri = (uri: string): boolean => uri.startsWith('http://') || uri.startsWith('https://');
+
+const ensureLocalImageUri = async (uri: string): Promise<string> => {
+  if (!uri) return uri;
+  if (!isRemoteUri(uri)) return uri;
+
+  const targetPath = `${FileSystem.cacheDirectory || FileSystem.documentDirectory}acteco_report_img_${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`;
+  const downloadResult = await FileSystem.downloadAsync(uri, targetPath);
+  return downloadResult.uri;
+};
+
+const getImageBase64 = async (uri: string, maxWidth: number = 250): Promise<string> => {
   try {
     if (!uri) {
       console.log('❌ URI vacía');
@@ -85,10 +98,12 @@ const getImageBase64 = async (uri: string, maxWidth: number = 400): Promise<stri
       console.log('✅ Ya es base64, devolviendo directamente');
       return uri;
     }
+
+    const localUri = await ensureLocalImageUri(uri);
     
     console.log(`📸 Procesando imagen desde file: ${uri.substring(0, 80)}...`);
     
-    const fileInfo = await FileSystem.getInfoAsync(uri);
+    const fileInfo = await FileSystem.getInfoAsync(localUri);
     if (!fileInfo.exists) {
       console.warn('⚠️ La imagen no existe:', uri);
       return '';
@@ -97,9 +112,9 @@ const getImageBase64 = async (uri: string, maxWidth: number = 400): Promise<stri
     console.log(`✅ Imagen existe, redimensionando a ${maxWidth}px...`);
 
     const resizedImage = await ImageManipulator.manipulateAsync(
-      uri,
+      localUri,
       [{ resize: { width: maxWidth } }],
-      { compress: 0.6, format: ImageManipulator.SaveFormat.JPEG }
+      { compress: 0.4, format: ImageManipulator.SaveFormat.JPEG }
     );
 
     const base64 = await FileSystem.readAsStringAsync(resizedImage.uri, {
@@ -126,35 +141,25 @@ export const generateActecoHTML = async (report: ActecoReportData): Promise<stri
     
     const logoBase64 = getLogoBase64();
     
-    // ✅ PROCESAR FOTOS GENERALES
-    const photosGeneral: string[] = [];
-    if (report.photoGeneral1) {
-      const img = await getImageBase64(report.photoGeneral1, 400);
-      if (img) photosGeneral.push(img);
-    }
-    if (report.photoGeneral2) {
-      const img = await getImageBase64(report.photoGeneral2, 400);
-      if (img) photosGeneral.push(img);
-    }
-    if (report.photoGeneral3) {
-      const img = await getImageBase64(report.photoGeneral3, 400);
-      if (img) photosGeneral.push(img);
-    }
-    if (report.photoGeneral4) {
-      const img = await getImageBase64(report.photoGeneral4, 400);
-      if (img) photosGeneral.push(img);
-    }
+    // ✅ PROCESAR FOTOS GENERALES EN PARALELO
+    const generalSources = [report.photoGeneral1, report.photoGeneral2, report.photoGeneral3, report.photoGeneral4].filter(Boolean) as string[];
+    const generalPromises = generalSources.map(src => getImageBase64(src).catch(() => ''));
     
+    // ✅ PROCESAR FOTOS DE AVERÍA EN PARALELO
+    const averiaPromises = (report.averiaPhotos && Array.isArray(report.averiaPhotos))
+      ? report.averiaPhotos.map(photo => getImageBase64(photo).catch(() => ''))
+      : [];
+    
+    // Resolver todas en paralelo
+    const [generalResults, averiaResults] = await Promise.all([
+      Promise.all(generalPromises),
+      Promise.all(averiaPromises),
+    ]);
+    
+    const photosGeneral = generalResults.filter(img => img !== '');
     console.log(`📸 Fotos generales: ${photosGeneral.length}`);
     
-    // ✅ PROCESAR FOTOS DE AVERÍA
-    const photosAveria: string[] = [];
-    if (report.averiaPhotos && Array.isArray(report.averiaPhotos)) {
-      for (const photo of report.averiaPhotos) {
-        const base64 = await getImageBase64(photo, 400);
-        if (base64) photosAveria.push(base64);
-      }
-    }
+    const photosAveria = averiaResults.filter(img => img !== '');
     
     console.log(`📸 Fotos de avería: ${photosAveria.length}`);
     
@@ -276,12 +281,15 @@ export const generateActecoHTML = async (report: ActecoReportData): Promise<stri
           }
           
           body {
-            font-family: 'Arial', sans-serif;
+            font-family: Arial, Helvetica, sans-serif;
             padding: 15mm;
+            line-height: 1.5;
             font-size: 11px;
-            color: #333;
+            color: #1f2937;
             background-color: white;
             position: relative;
+            print-color-adjust: exact;
+            -webkit-print-color-adjust: exact;
           }
           
           body::before {
@@ -296,21 +304,21 @@ export const generateActecoHTML = async (report: ActecoReportData): Promise<stri
             background-size: contain;
             width: 500px;
             height: 500px;
-            opacity: 0.03;
+            opacity: 0.04;
             z-index: -1;
             pointer-events: none;
           }
           
           .header {
-            background: linear-gradient(135deg, #0056b3 0%, #FF7043 100%);
+            background: linear-gradient(135deg, #0a1f3d 0%, #0f2f57 30%, #173f73 70%, #1a4a85 100%);
             color: white;
             padding: 20px;
-            border-radius: 10px;
+            border-radius: 12px;
             margin-bottom: 20px;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 12px rgba(15, 47, 87, 0.25);
           }
           
           .header-left {
@@ -320,10 +328,10 @@ export const generateActecoHTML = async (report: ActecoReportData): Promise<stri
           }
           
           .logo-container {
-            width: 90px;
-            height: 90px;
+            width: 78px;
+            height: 78px;
             background: white;
-            border-radius: 10px;
+            border-radius: 50%;
             padding: 8px;
             display: flex;
             align-items: center;
@@ -335,30 +343,33 @@ export const generateActecoHTML = async (report: ActecoReportData): Promise<stri
             max-width: 100%;
             max-height: 100%;
             object-fit: contain;
+            display: block;
           }
           
           .header-text h1 {
             font-size: 22px;
             font-weight: bold;
             margin-bottom: 5px;
-            letter-spacing: 1px;
+            letter-spacing: 0.5px;
           }
           
           .header-text p {
-            font-size: 12px;
-            opacity: 0.95;
+            font-size: 11px;
+            color: #c5d8ef;
           }
           
           .header-right {
             text-align: right;
-            font-size: 10px;
+            font-size: 9px;
             line-height: 1.6;
+            color: #c5d8ef;
           }
           
           .header-right .company-name {
-            font-size: 13px;
+            font-size: 12px;
             font-weight: bold;
             margin-bottom: 4px;
+            color: #ffffff;
           }
           
           .info-container {
@@ -369,23 +380,28 @@ export const generateActecoHTML = async (report: ActecoReportData): Promise<stri
           }
           
           .info-column {
-            background: white;
-            border-radius: 8px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
             overflow: hidden;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
           }
           
           .column-header {
-            background: linear-gradient(135deg, #0056b3 0%, #0066cc 100%);
+            background: linear-gradient(135deg, #0f2f57 0%, #173f73 100%);
             color: white;
-            padding: 10px 15px;
+            padding: 8px 13px;
             font-weight: bold;
-            font-size: 12px;
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
             text-align: center;
+            border-bottom: 3px solid #e87a20;
           }
-          
+
           .column-header.orange {
-            background: linear-gradient(135deg, #FF7043 0%, #FF5722 100%);
+            background: linear-gradient(135deg, #e87a20 0%, #c2410c 100%);
+            border-bottom: 3px solid #0f2f57;
           }
           
           .info-table {
@@ -394,57 +410,73 @@ export const generateActecoHTML = async (report: ActecoReportData): Promise<stri
           }
           
           .info-table td {
-            padding: 10px 12px;
-            border-bottom: 1px solid #e0e0e0;
+            padding: 8px 10px;
+            border-bottom: 0.5px solid #e2e8f0;
           }
           
           .info-table tr:last-child td {
             border-bottom: none;
           }
-          
-          .info-table td.label {
-            font-weight: bold;
-            color: #0056b3;
-            width: 40%;
-            font-size: 10px;
-            background: #f8f9fa;
+
+          .info-table tr:nth-child(even) td {
+            background: #f1f5f9;
           }
           
+          .info-table td.label {
+            font-size: 9px;
+            color: #4b5563;
+            text-transform: uppercase;
+            letter-spacing: 0.7px;
+            width: 35%;
+          }
+
           .info-table td.value {
-            color: #333;
-            width: 60%;
+            font-size: 12px;
+            font-weight: bold;
+            color: #111827;
+            width: 65%;
+          }
+
+          .info-table tr:nth-child(even) td.label {
+            background: #f1f5f9;
           }
           
           .section {
-            margin: 20px 0;
+            margin: 12px 0;
             page-break-inside: avoid;
-            background: white;
-            border-radius: 8px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
             overflow: hidden;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+            box-shadow: 0 1px 4px rgba(0,0,0,0.05);
           }
-          
+
           .section-header {
-            background: linear-gradient(135deg, #0056b3 0%, #0066cc 100%);
+            background: linear-gradient(135deg, #0f2f57 0%, #173f73 100%);
             color: white;
-            padding: 12px 15px;
+            padding: 8px 13px;
             font-weight: bold;
-            font-size: 13px;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            border-left: 4px solid #e87a20;
           }
-          
+
           .section-header.orange {
-            background: linear-gradient(135deg, #FF7043 0%, #FF5722 100%);
+            background: linear-gradient(135deg, #e87a20 0%, #c2410c 100%);
+            border-left: 4px solid #0f2f57;
           }
           
           .section-content {
-            padding: 15px;
-            min-height: 50px;
-            line-height: 1.6;
-            color: #444;
+            padding: 12px 14px;
+            min-height: 40px;
+            line-height: 1.5;
+            color: #374151;
+            font-size: 11px;
           }
           
           .section-content.empty {
-            color: #999;
+            color: #9ca3af;
             font-style: italic;
           }
           
@@ -460,29 +492,29 @@ export const generateActecoHTML = async (report: ActecoReportData): Promise<stri
           }
           
           .photo-section {
-            background: #f8f9fa;
-            border-radius: 8px;
+            background: #f8fafc;
+            border-radius: 12px;
             padding: 12px;
-            border: 2px solid #e0e0e0;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.05);
           }
-          
+
           .photo-title {
             font-weight: bold;
-            font-size: 11px;
-            color: #0056b3;
+            font-size: 9px;
+            color: #0f2f57;
             margin-bottom: 8px;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.7px;
             text-align: center;
           }
-          
+
           .photo-container {
             background: white;
-            border: 2px solid #FF7043;
-            border-radius: 6px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
             padding: 8px;
             text-align: center;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
           }
           
           .photo {
@@ -492,8 +524,9 @@ export const generateActecoHTML = async (report: ActecoReportData): Promise<stri
             max-height: 180px;
             display: block;
             margin: 0 auto;
-            border-radius: 4px;
+            border-radius: 8px;
             object-fit: contain;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
           }
           
           .solution-container {
@@ -513,10 +546,10 @@ export const generateActecoHTML = async (report: ActecoReportData): Promise<stri
           }
           
           .checkbox {
-            width: 24px;
-            height: 24px;
-            border: 3px solid #0056b3;
-            border-radius: 4px;
+            width: 22px;
+            height: 22px;
+            border: 2px solid #0f2f57;
+            border-radius: 6px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -524,8 +557,8 @@ export const generateActecoHTML = async (report: ActecoReportData): Promise<stri
           }
           
           .checkbox.checked {
-            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
-            border-color: #4CAF50;
+            background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+            border-color: #16a34a;
           }
           
           .checkbox.checked::before {
@@ -535,35 +568,38 @@ export const generateActecoHTML = async (report: ActecoReportData): Promise<stri
             font-weight: bold;
           }
           
-          .solution-yes { color: #4CAF50; }
-          .solution-no { color: #F44336; }
+          .solution-yes { color: #16a34a; }
+          .solution-no { color: #dc2626; }
           
           .materials-table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 10px;
+            margin-top: 0;
           }
           
           .materials-table thead {
-            background: linear-gradient(135deg, #0056b3 0%, #FF7043 100%);
+            background: linear-gradient(90deg, #0f2f57 0%, #173f73 60%, #e87a20 100%);
             color: white;
           }
           
           .materials-table th {
-            padding: 12px;
+            padding: 10px 12px;
             text-align: left;
             font-weight: bold;
-            font-size: 12px;
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
           }
           
           .materials-table td {
             padding: 10px 12px;
-            border: 1px solid #e0e0e0;
+            border-bottom: 0.5px solid #e2e8f0;
             background: white;
+            font-size: 11px;
           }
           
           .materials-table tbody tr:nth-child(even) td {
-            background: #f8f9fa;
+            background: #f8fafc;
           }
           
           .signatures-section {
@@ -577,17 +613,17 @@ export const generateActecoHTML = async (report: ActecoReportData): Promise<stri
           .signature-box {
             text-align: center;
             padding: 20px;
-            border: 3px solid #0056b3;
-            border-radius: 10px;
-            background: white;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            background: #f8fafc;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.05);
           }
           
           .signature-label {
             font-weight: bold;
-            color: #0056b3;
+            color: #0f2f57;
             margin-bottom: 15px;
-            font-size: 13px;
+            font-size: 11px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
           }
@@ -598,8 +634,8 @@ export const generateActecoHTML = async (report: ActecoReportData): Promise<stri
             display: flex;
             align-items: center;
             justify-content: center;
-            background: #fafafa;
-            border: 2px solid #e0e0e0;
+            background: #ffffff;
+            border: 1.5px solid #e2e8f0;
             border-radius: 8px;
             margin-bottom: 15px;
             padding: 10px;
@@ -616,57 +652,65 @@ export const generateActecoHTML = async (report: ActecoReportData): Promise<stri
           }
           
           .signature-placeholder {
-            color: #ccc;
+            color: #d1d5db;
             font-style: italic;
-            font-size: 12px;
+            font-size: 11px;
             font-weight: normal;
           }
           
           .signature-line {
-            border-top: 2px solid #333;
+            border-top: 2px solid #1f2937;
             margin: 10px 20px 15px 20px;
           }
           
           .signature-name {
-            font-size: 12px;
-            color: #333;
+            font-size: 11px;
+            color: #1f2937;
             font-weight: bold;
             margin-top: 5px;
           }
           
           .footer {
-            margin-top: 40px;
-            padding-top: 20px;
-            border-top: 3px solid #FF7043;
+            margin-top: 28px;
             text-align: center;
+            font-size: 8px;
+            color: #6b7280;
+            padding-top: 0;
             page-break-inside: avoid;
           }
-          
+
+          .footer-separator {
+            height: 2px;
+            background: linear-gradient(90deg, transparent 0%, #e87a20 20%, #0f2f57 80%, transparent 100%);
+            border-radius: 2px;
+            margin-bottom: 14px;
+          }
+
           .footer-logo-container {
-            margin-bottom: 15px;
+            margin-bottom: 8px;
           }
-          
+
           .footer-logo {
-            width: 70px;
-            height: 70px;
-            opacity: 0.6;
+            max-width: 110px;
+            max-height: 40px;
+            object-fit: contain;
+            opacity: 0.85;
           }
-          
+
           .footer-address {
-            text-align: center;
-            margin-bottom: 10px;
-            font-size: 9px;
-            color: #333;
-            font-weight: bold;
-            line-height: 1.6;
-          }
-          
-          .footer-text {
             font-size: 8px;
-            color: #666;
-            line-height: 1.8;
+            color: #374151;
+            font-weight: bold;
+            line-height: 1.5;
+            margin-bottom: 10px;
+          }
+
+          .footer-text {
+            font-size: 6.5px;
+            color: #9ca3af;
+            line-height: 1.4;
             text-align: justify;
-            padding: 0 20px;
+            padding: 0 15px;
           }
           
           @page {
@@ -692,7 +736,7 @@ export const generateActecoHTML = async (report: ActecoReportData): Promise<stri
         <div class="header">
           <div class="header-left">
             <div class="logo-container">
-              ${logoBase64 ? `<img src="${logoBase64}" class="logo" alt="Logo INVAL" />` : '<div style="color: #0056b3; font-weight: bold; font-size: 16px;">INVAL</div>'}
+              ${logoBase64 ? `<img src="${logoBase64}" class="logo" alt="Logo INVAL" />` : '<div style="color: #0f2f57; font-weight: bold; font-size: 16px;">INVAL</div>'}
             </div>
             <div class="header-text">
               <h1>INFORME INSPECCIÓN</h1>
@@ -850,6 +894,7 @@ export const generateActecoHTML = async (report: ActecoReportData): Promise<stri
         </div>
         
         <div class="footer">
+          <div class="footer-separator"></div>
           ${logoBase64 ? `
             <div class="footer-logo-container">
               <img src="${logoBase64}" class="footer-logo" alt="Logo INVAL" />
@@ -874,11 +919,13 @@ export const generateActecoHTML = async (report: ActecoReportData): Promise<stri
   }
 };
 
-export const shareActecoPDFReport = async (report: ActecoReportData): Promise<boolean> => {
+export const shareActecoPDFReport = async (report: ActecoReportData, onProgress?: (percent: number, text: string) => void): Promise<boolean> => {
   try {
     console.log('🚀 Generando PDF del informe...');
     
+    onProgress?.(15, 'Procesando fotos...');
     const reportHTML = await generateActecoHTML(report);
+    onProgress?.(50, 'Generando PDF...');
     
     // ✨ GENERAR NOMBRE PERSONALIZADO DEL ARCHIVO
     const customFileName = generateFileName(report);
@@ -922,6 +969,22 @@ export const shareActecoPDFReport = async (report: ActecoReportData): Promise<bo
         return false;
       }
       
+      // Subir PDF a Supabase Storage
+      onProgress?.(88, 'Subiendo PDF a la nube...');
+      try {
+        const pdfBase64ForUpload = await FileSystem.readAsStringAsync(finalUri, { encoding: FileSystem.EncodingType.Base64 });
+        const sanitize = (s: string) => s.replace(/[^a-zA-Z0-9_-]/g, '_').substring(0, 50);
+        const pdfStoragePath = `urgencias/${sanitize(report.location)}_${sanitize(report.avisoDate)}/informe_${customFileName}`;
+        await supabase.storage.from('inspection-photos').upload(pdfStoragePath, decode(pdfBase64ForUpload), {
+          contentType: 'application/pdf',
+          upsert: true,
+        });
+        console.log('PDF ACTECO subido a Supabase Storage');
+      } catch (uploadErr) {
+        console.warn('No se pudo subir el PDF ACTECO a Supabase (no crítico):', uploadErr);
+      }
+
+      onProgress?.(90, 'Abriendo compartir...');
       await Sharing.shareAsync(finalUri, {
         mimeType: 'application/pdf',
         dialogTitle: `Inspección URGENCIAS - ${report.clientName}`,

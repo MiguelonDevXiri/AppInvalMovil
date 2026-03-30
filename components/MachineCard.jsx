@@ -1,18 +1,19 @@
 import React from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { Card, Title, Paragraph, Text, Chip, IconButton } from 'react-native-paper';
-import { BRAND_COLORS } from '../constants/Colors';
+import { BRAND_COLORS, BORDER_RADIUS, SHADOWS, SPACING, TYPOGRAPHY } from '../constants/Colors';
 
 const MachineCard = ({ 
   machine, 
   onPress, 
   onMenuPress,
+  onLongPress,
   compact = false
 }) => {
   return (
     <Card style={styles.card}>
-      <TouchableOpacity onPress={() => onPress(machine)} activeOpacity={0.7}>
-        <Card.Content>
+      <TouchableOpacity onPress={() => onPress(machine)} onLongPress={onLongPress ? () => onLongPress(machine) : undefined} delayLongPress={500} activeOpacity={0.85}>
+        <Card.Content style={styles.cardContent}>
           <View style={styles.cardHeader}>
             <Title 
               style={[styles.machineTitle, compact && styles.compactTitle]} 
@@ -31,28 +32,39 @@ const MachineCard = ({
             )}
           </View>
           
-          <Paragraph numberOfLines={compact ? 1 : undefined}>
+          <Paragraph style={styles.paragraph} numberOfLines={compact ? 1 : undefined}>
             Cliente: {machine.clientName}
           </Paragraph>
           
           {!compact && machine.model && (
-            <Paragraph>Modelo: {machine.model}</Paragraph>
+            <Paragraph style={styles.paragraph}>Modelo: {machine.model}</Paragraph>
           )}
           
           {!compact && machine.serialNumber && (
-            <Paragraph>N° Serie: {machine.serialNumber}</Paragraph>
+            <Paragraph style={styles.paragraph}>N° Serie: {machine.serialNumber}</Paragraph>
           )}
           
           <View style={styles.cardFooter}>
             <Text style={styles.date}>
               {new Date(machine.date).toLocaleDateString()}
             </Text>
-            
-            {machine.clientType && (
-              <Chip style={styles.chip} textStyle={compact ? styles.compactChipText : {}}>
-                {machine.clientType}
-              </Chip>
-            )}
+
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              {machine.inspectionStatus === 'revisada' ? (
+                <Chip style={[styles.chip, { backgroundColor: '#dcfce7' }]} textStyle={[styles.chipText, { color: '#16a34a' }, compact && styles.compactChipText]}>
+                  {'\uD83D\uDFE2'} Revisada
+                </Chip>
+              ) : (
+                <Chip style={[styles.chip, { backgroundColor: '#fff7ed' }]} textStyle={[styles.chipText, { color: '#ea580c' }, compact && styles.compactChipText]}>
+                  {'\uD83D\uDFE0'} Entrada
+                </Chip>
+              )}
+              {machine.clientType && (
+                <Chip style={styles.chip} textStyle={[styles.chipText, compact && styles.compactChipText]}>
+                  {machine.clientType}
+                </Chip>
+              )}
+            </View>
           </View>
         </Card.Content>
       </TouchableOpacity>
@@ -62,10 +74,15 @@ const MachineCard = ({
 
 const styles = StyleSheet.create({
   card: {
-    marginBottom: 12,
-    elevation: 2,
+    marginBottom: SPACING.sm + 2,
     borderLeftWidth: 3,
     borderLeftColor: BRAND_COLORS.primaryBlue,
+    borderRadius: BORDER_RADIUS.xl,
+    backgroundColor: 'white',
+    ...SHADOWS.card,
+  },
+  cardContent: {
+    paddingVertical: SPACING.md,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -73,27 +90,42 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   machineTitle: {
-    fontSize: 18,
+    fontSize: TYPOGRAPHY.sizes.lg,
     flex: 1,
+    color: BRAND_COLORS.primaryBlue,
+    fontWeight: TYPOGRAPHY.weights.bold,
   },
   compactTitle: {
-    fontSize: 16,
+    fontSize: TYPOGRAPHY.sizes.md,
   },
   menuButton: {
     margin: 0,
+  },
+  paragraph: {
+    color: BRAND_COLORS.grayDark,
+    fontSize: TYPOGRAPHY.sizes.sm,
+    lineHeight: 20,
   },
   cardFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 8,
+    marginTop: SPACING.sm,
+    paddingTop: SPACING.sm,
+    borderTopWidth: 1,
+    borderTopColor: BRAND_COLORS.grayLight,
   },
   date: {
-    fontSize: 12,
-    color: '#757575',
+    fontSize: TYPOGRAPHY.sizes.xs,
+    color: BRAND_COLORS.grayText,
   },
   chip: {
-    backgroundColor: '#e3f2fd',
+    backgroundColor: BRAND_COLORS.tertiaryBlue,
+    borderRadius: BORDER_RADIUS.full,
+  },
+  chipText: {
+    fontSize: TYPOGRAPHY.sizes.xs,
+    color: BRAND_COLORS.primaryBlue,
   },
   compactChipText: {
     fontSize: 10,
