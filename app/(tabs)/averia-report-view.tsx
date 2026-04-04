@@ -5,7 +5,7 @@ import React, { useEffect, useState } from 'react';
 import { Alert, Image, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { ActivityIndicator, Button, Card, Divider, Paragraph, Text, Title } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { BORDER_RADIUS, BRAND_COLORS, GRADIENTS, SHADOWS, SPACING, TYPOGRAPHY } from '../../constants/Colors';
+import { BORDER_RADIUS, BRAND_COLORS, SHADOWS, SPACING, TYPOGRAPHY } from '../../constants/Colors';
 import {
   getAveriaInspectionById,
   paramsToInspection,
@@ -22,25 +22,19 @@ export default function AveriaReportViewScreen() {
   const [inspection, setInspection] = useState<AveriaInspection | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadInspection();
-  }, []);
+  useEffect(() => { loadInspection(); }, []);
 
   const loadInspection = async () => {
     try {
       setLoading(true);
       if (params.inspectionId && typeof params.inspectionId === 'string') {
         const loaded = await getAveriaInspectionById(params.inspectionId);
-        if (loaded) {
-          setInspection(loaded);
-        } else {
-          setInspection(paramsToInspection(params));
-        }
+        setInspection(loaded || paramsToInspection(params));
       } else {
         setInspection(paramsToInspection(params));
       }
     } catch (error) {
-      console.error('❌ Error al cargar inspección:', error);
+      console.error('❌ Error al cargar avería:', error);
       Alert.alert('Error', 'No se pudo cargar la inspección');
     } finally {
       setLoading(false);
@@ -48,19 +42,16 @@ export default function AveriaReportViewScreen() {
   };
 
   const handleShareReport = async () => {
-    if (!inspection) {
-      Alert.alert('Error', 'No hay datos de inspección');
-      return;
-    }
+    if (!inspection) { Alert.alert('Error', 'No hay datos'); return; }
     try {
       setIsGenerating(true);
       setProgressText('Guardando inspección...');
       setProgressPercent(5);
 
-      const savedInspection = await saveAveriaInspection(inspection);
+      const saved = await saveAveriaInspection(inspection);
       setProgressPercent(10);
 
-      const success = await shareAveriasPDFReport(savedInspection, (percent, text) => {
+      const success = await shareAveriasPDFReport(saved, (percent, text) => {
         setProgressPercent(percent);
         setProgressText(text);
       });
@@ -79,15 +70,13 @@ export default function AveriaReportViewScreen() {
     }
   };
 
-  const handleFinish = () => {
-    router.push('/(tabs)');
-  };
+  const handleFinish = () => { router.push('/(tabs)'); };
 
   if (loading) {
     return (
       <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={BRAND_COLORS.primaryBlue} />
+          <ActivityIndicator size="large" color="#7c3aed" />
           <Text style={styles.loadingText}>Cargando inspección...</Text>
         </View>
       </SafeAreaView>
@@ -105,35 +94,30 @@ export default function AveriaReportViewScreen() {
     );
   }
 
-  const defects = inspection.defects || [];
-  const materials = inspection.materiales || [];
-  const solucionPhotos = inspection.solucionPhotos || [];
-
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         <LinearGradient
-          colors={GRADIENTS.primary as unknown as [string, string, ...string[]]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={styles.headerGradient}
+          colors={['#7c3aed', '#a78bfa', '#c4b5fd'] as any}
+          start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+          style={{ padding: SPACING.lg, paddingTop: SPACING.md, alignItems: 'center', position: 'relative' }}
         >
-          <TouchableOpacity onPress={() => router.back()} style={styles.backArrow}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
             <MaterialCommunityIcons name="arrow-left" size={22} color="white" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Resumen del Informe</Text>
-          <Text style={styles.headerSubtitle}>Revisa los datos antes de generar el PDF</Text>
+          <Text style={{ color: 'white', fontSize: TYPOGRAPHY.sizes.xl, fontWeight: TYPOGRAPHY.weights.bold as any }}>Resumen del Informe</Text>
+          <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: TYPOGRAPHY.sizes.sm, marginTop: SPACING.xs }}>Revisa los datos antes de generar el PDF</Text>
         </LinearGradient>
 
         {/* Datos del Cliente */}
         <Card style={styles.card}>
           <Card.Content>
             <Title style={styles.sectionTitle}>📋 Datos del Cliente</Title>
-            <Divider style={styles.divider} />
-            <InfoRow label="Cliente:" value={inspection.clientName} />
-            <InfoRow label="Fecha:" value={`${inspection.avisoDate} ${inspection.avisoTime}`} />
-            <InfoRow label="Ubicación:" value={inspection.location} />
-            {inspection.requestedBy ? <InfoRow label="Pedido por:" value={inspection.requestedBy} /> : null}
+            <Divider style={styles.dividerLine} />
+            <InfoRow label="Cliente" value={inspection.clientName} />
+            <InfoRow label="Fecha" value={`${inspection.avisoDate} ${inspection.avisoTime}`} />
+            <InfoRow label="Ubicación" value={inspection.location} />
+            {inspection.requestedBy ? <InfoRow label="Pedido por" value={inspection.requestedBy} /> : null}
           </Card.Content>
         </Card>
 
@@ -141,74 +125,74 @@ export default function AveriaReportViewScreen() {
         <Card style={styles.card}>
           <Card.Content>
             <Title style={styles.sectionTitle}>⚙️ Datos de la Máquina</Title>
-            <Divider style={styles.divider} />
-            <InfoRow label="Tipo:" value={inspection.machineType} />
-            {inspection.machineBrand ? <InfoRow label="Marca:" value={inspection.machineBrand} /> : null}
-            {inspection.machineModel ? <InfoRow label="Modelo:" value={inspection.machineModel} /> : null}
-            {inspection.serialNumber ? <InfoRow label="Nº Serie:" value={inspection.serialNumber} /> : null}
-            {inspection.licensePlate ? <InfoRow label="Matrícula:" value={inspection.licensePlate} /> : null}
+            <Divider style={styles.dividerLine} />
+            <InfoRow label="Tipo" value={inspection.machineType} />
+            {inspection.machineBrand ? <InfoRow label="Marca" value={inspection.machineBrand} /> : null}
+            {inspection.machineModel ? <InfoRow label="Modelo" value={inspection.machineModel} /> : null}
+            {inspection.serialNumber ? <InfoRow label="Nº Serie" value={inspection.serialNumber} /> : null}
+            {inspection.licensePlate ? <InfoRow label="Matrícula" value={inspection.licensePlate} /> : null}
           </Card.Content>
         </Card>
 
         {/* Averías detectadas */}
-        {defects.length > 0 && (
-          <Card style={[styles.card, { borderLeftWidth: 3, borderLeftColor: '#7c3aed' }]}>
+        {inspection.defects && inspection.defects.length > 0 && (
+          <Card style={styles.card}>
             <Card.Content>
-              <Title style={styles.sectionTitle}>🔧 Averías Detectadas ({defects.length})</Title>
-              <Divider style={styles.divider} />
-              {defects.map((defect, index) => (
-                <View key={defect.id || index} style={styles.defectSection}>
-                  <Text style={styles.defectLabel}>Avería #{index + 1}</Text>
-                  <Paragraph>{defect.description || 'Sin descripción'}</Paragraph>
+              <Title style={styles.sectionTitle}>🔧 Averías Detectadas ({inspection.defects.length})</Title>
+              <Divider style={styles.dividerLine} />
+              {inspection.defects.map((defect, idx) => (
+                <View key={defect.id || idx} style={styles.defectSection}>
+                  <Text style={styles.defectLabel}>Avería {idx + 1}</Text>
+                  <Paragraph>{defect.description}</Paragraph>
                   {defect.photos && defect.photos.length > 0 && (
-                    <View style={styles.photosGrid}>
-                      {defect.photos.map((photo, pi) => (
-                        <Image key={pi} source={{ uri: photo }} style={styles.photoThumbnail} />
+                    <View style={styles.photosRow}>
+                      {defect.photos.map((uri, pIdx) => (
+                        <Image key={pIdx} source={{ uri }} style={styles.photoThumb} />
                       ))}
                     </View>
                   )}
-                  {index < defects.length - 1 && <Divider style={{ marginVertical: SPACING.sm }} />}
+                  {idx < inspection.defects.length - 1 && <Divider style={{ marginVertical: SPACING.sm }} />}
                 </View>
               ))}
             </Card.Content>
           </Card>
         )}
 
-        {/* Intervención / Solución */}
-        {(inspection.solucionDescription || solucionPhotos.length > 0) && (
+        {/* Intervención */}
+        {inspection.solucionDescription ? (
           <Card style={styles.card}>
             <Card.Content>
-              <Title style={styles.sectionTitle}>💡 Intervención / Solución</Title>
-              <Divider style={styles.divider} />
-              {inspection.solucionDescription ? <Paragraph>{inspection.solucionDescription}</Paragraph> : null}
-              {solucionPhotos.length > 0 && (
-                <View style={[styles.photosGrid, { marginTop: SPACING.sm }]}>
-                  {solucionPhotos.map((photo, index) => (
-                    <Image key={index} source={{ uri: photo }} style={styles.photoThumbnail} />
+              <Title style={styles.sectionTitle}>🛠️ Intervención / Solución</Title>
+              <Divider style={styles.dividerLine} />
+              <Paragraph>{inspection.solucionDescription}</Paragraph>
+              {inspection.solucionPhotos && inspection.solucionPhotos.length > 0 && (
+                <View style={styles.photosRow}>
+                  {inspection.solucionPhotos.map((uri, idx) => (
+                    <Image key={idx} source={{ uri }} style={styles.photoThumb} />
                   ))}
                 </View>
               )}
             </Card.Content>
           </Card>
-        )}
+        ) : null}
 
         {/* Materiales */}
-        {materials.length > 0 && (
+        {inspection.materiales && inspection.materiales.length > 0 && (
           <Card style={styles.card}>
             <Card.Content>
-              <Title style={styles.sectionTitle}>🛠️ Materiales Utilizados</Title>
-              <Divider style={styles.divider} />
+              <Title style={styles.sectionTitle}>🧰 Materiales Utilizados</Title>
+              <Divider style={styles.dividerLine} />
               <View style={styles.table}>
                 <View style={styles.tableHeader}>
                   <Text style={[styles.tableHeaderText, { flex: 2 }]}>Material</Text>
-                  <Text style={[styles.tableHeaderText, { flex: 0.8 }]}>Cant.</Text>
-                  <Text style={[styles.tableHeaderText, { flex: 1.2 }]}>Referencia</Text>
+                  <Text style={[styles.tableHeaderText, { flex: 1 }]}>Cant.</Text>
+                  <Text style={[styles.tableHeaderText, { flex: 1.5 }]}>Ref.</Text>
                 </View>
-                {materials.map((material, index) => (
-                  <View key={material.id || index} style={[styles.tableRow, index % 2 === 0 ? styles.tableRowEven : styles.tableRowOdd]}>
-                    <Text style={[styles.tableCell, { flex: 2 }]}>{material.name}</Text>
-                    <Text style={[styles.tableCell, { flex: 0.8 }]}>{material.quantity}</Text>
-                    <Text style={[styles.tableCell, { flex: 1.2 }]}>{material.reference}</Text>
+                {inspection.materiales.map((m, idx) => (
+                  <View key={m.id || idx} style={[styles.tableRow, idx % 2 === 0 ? styles.tableRowEven : styles.tableRowOdd]}>
+                    <Text style={[styles.tableCell, { flex: 2 }]}>{m.name}</Text>
+                    <Text style={[styles.tableCell, { flex: 1 }]}>{m.quantity}</Text>
+                    <Text style={[styles.tableCell, { flex: 1.5 }]}>{m.reference}</Text>
                   </View>
                 ))}
               </View>
@@ -216,17 +200,16 @@ export default function AveriaReportViewScreen() {
           </Card>
         )}
 
-        {/* Fotos Generales */}
+        {/* Fotos generales */}
         {(inspection.photoGeneral1 || inspection.photoGeneral2 || inspection.photoGeneral3 || inspection.photoGeneral4) && (
           <Card style={styles.card}>
             <Card.Content>
               <Title style={styles.sectionTitle}>📸 Fotos Generales</Title>
-              <Divider style={styles.divider} />
-              <View style={styles.photosGrid}>
-                {inspection.photoGeneral1 ? <Image source={{ uri: inspection.photoGeneral1 }} style={styles.photoThumbnail} /> : null}
-                {inspection.photoGeneral2 ? <Image source={{ uri: inspection.photoGeneral2 }} style={styles.photoThumbnail} /> : null}
-                {inspection.photoGeneral3 ? <Image source={{ uri: inspection.photoGeneral3 }} style={styles.photoThumbnail} /> : null}
-                {inspection.photoGeneral4 ? <Image source={{ uri: inspection.photoGeneral4 }} style={styles.photoThumbnail} /> : null}
+              <Divider style={styles.dividerLine} />
+              <View style={styles.photosRow}>
+                {[inspection.photoGeneral1, inspection.photoGeneral2, inspection.photoGeneral3, inspection.photoGeneral4].filter(Boolean).map((uri, idx) => (
+                  <Image key={idx} source={{ uri: uri! }} style={styles.photoThumb} />
+                ))}
               </View>
             </Card.Content>
           </Card>
@@ -236,15 +219,15 @@ export default function AveriaReportViewScreen() {
         <Card style={styles.card}>
           <Card.Content>
             <Title style={styles.sectionTitle}>✍️ Firmas</Title>
-            <Divider style={styles.divider} />
-            <InfoRow label="Técnico:" value={inspection.technicianName} />
+            <Divider style={styles.dividerLine} />
+            <InfoRow label="Técnico" value={inspection.technicianName} />
             {inspection.technicianSignature ? (
               <View style={styles.signatureSection}>
                 <Text style={styles.signatureLabel}>Firma del técnico:</Text>
                 <Image source={{ uri: inspection.technicianSignature }} style={styles.signatureImage} resizeMode="contain" />
               </View>
             ) : null}
-            <InfoRow label="Cliente:" value={inspection.clientSignatureName} />
+            <InfoRow label="Cliente" value={inspection.clientSignatureName} />
             {inspection.clientSignature ? (
               <View style={styles.signatureSection}>
                 <Text style={styles.signatureLabel}>Firma del cliente:</Text>
@@ -257,10 +240,8 @@ export default function AveriaReportViewScreen() {
 
       <SafeAreaView style={styles.buttonSafeArea} edges={['bottom']}>
         <View style={styles.buttonContainer}>
-          <Button mode="outlined" onPress={handleFinish} style={styles.button} icon="home" textColor={BRAND_COLORS.primaryBlue} disabled={isGenerating}>
-            Volver al Inicio
-          </Button>
-          <Button mode="contained" onPress={handleShareReport} style={styles.button} icon="file-pdf-box" buttonColor={BRAND_COLORS.primaryOrange} disabled={isGenerating} loading={isGenerating}>
+          <Button mode="outlined" onPress={handleFinish} style={styles.button} icon="home" textColor="#7c3aed" disabled={isGenerating}>Volver al Inicio</Button>
+          <Button mode="contained" onPress={handleShareReport} style={styles.button} icon="file-pdf-box" buttonColor="#7c3aed" disabled={isGenerating} loading={isGenerating}>
             {isGenerating ? 'Generando...' : 'Generar PDF'}
           </Button>
         </View>
@@ -268,13 +249,13 @@ export default function AveriaReportViewScreen() {
 
       {isGenerating && (
         <View style={styles.overlay}>
-          <View style={styles.overlayContent}>
-            <ActivityIndicator size="large" color={BRAND_COLORS.primaryBlue} />
-            <Text style={styles.overlayTitle}>{progressText}</Text>
+          <View style={styles.overlayBox}>
+            <ActivityIndicator size="large" color="#7c3aed" />
+            <Text style={styles.overlayText}>{progressText}</Text>
             <View style={styles.progressBar}>
               <View style={[styles.progressFill, { width: `${progressPercent}%` }]} />
             </View>
-            <Text style={styles.overlayPercent}>{progressPercent}%</Text>
+            <Text style={styles.progressPercent}>{progressPercent}%</Text>
           </View>
         </View>
       )}
@@ -282,12 +263,14 @@ export default function AveriaReportViewScreen() {
   );
 }
 
-const InfoRow = ({ label, value }: { label: string; value: string }) => (
-  <View style={styles.infoRow}>
-    <Text style={styles.infoLabel}>{label}</Text>
-    <Text style={styles.infoValue}>{value}</Text>
-  </View>
-);
+function InfoRow({ label, value }: { label: string; value: string | null | undefined }) {
+  return (
+    <View style={{ flexDirection: 'row', marginBottom: SPACING.sm }}>
+      <Text style={{ fontWeight: TYPOGRAPHY.weights.bold as any, width: 120, color: BRAND_COLORS.grayText }}>{label}:</Text>
+      <Text style={{ flex: 1, color: '#1e293b' }}>{value || '—'}</Text>
+    </View>
+  );
+}
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: BRAND_COLORS.surface },
@@ -297,22 +280,16 @@ const styles = StyleSheet.create({
   errorText: { fontSize: TYPOGRAPHY.sizes.md, color: BRAND_COLORS.error, marginBottom: SPACING.lg, textAlign: 'center' },
   scrollView: { flex: 1 },
   scrollContent: { paddingHorizontal: SPACING.md, paddingBottom: 32 },
-  headerGradient: { padding: SPACING.lg, paddingTop: SPACING.md, alignItems: 'center', position: 'relative', marginHorizontal: -SPACING.md },
-  backArrow: { position: 'absolute', left: 16, top: 16, zIndex: 10, width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
-  headerTitle: { color: 'white', fontSize: TYPOGRAPHY.sizes.xl, fontWeight: TYPOGRAPHY.weights.bold as any },
-  headerSubtitle: { color: 'rgba(255,255,255,0.8)', fontSize: TYPOGRAPHY.sizes.sm, marginTop: SPACING.xs },
+  backBtn: { position: 'absolute', left: 16, top: 16, zIndex: 10, width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
   card: { marginBottom: SPACING.md, borderRadius: BORDER_RADIUS.lg, ...SHADOWS.small },
-  sectionTitle: { fontSize: TYPOGRAPHY.sizes.lg, fontWeight: TYPOGRAPHY.weights.bold as any, color: BRAND_COLORS.primaryBlue, marginBottom: SPACING.sm },
-  divider: { marginBottom: SPACING.md },
-  infoRow: { flexDirection: 'row', marginBottom: SPACING.sm },
-  infoLabel: { fontWeight: TYPOGRAPHY.weights.bold as any, width: 120, color: BRAND_COLORS.grayText },
-  infoValue: { flex: 1, color: '#1e293b' },
+  sectionTitle: { fontSize: TYPOGRAPHY.sizes.lg, fontWeight: TYPOGRAPHY.weights.bold as any, color: '#7c3aed', marginBottom: SPACING.sm },
+  dividerLine: { marginBottom: SPACING.md },
   defectSection: { marginBottom: SPACING.sm },
   defectLabel: { fontWeight: TYPOGRAPHY.weights.bold as any, color: '#7c3aed', marginBottom: SPACING.xs },
-  photosGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.sm },
-  photoThumbnail: { width: 150, height: 150, borderRadius: BORDER_RADIUS.md, backgroundColor: BRAND_COLORS.grayMedium },
+  photosRow: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.sm, marginTop: SPACING.sm },
+  photoThumb: { width: 100, height: 100, borderRadius: BORDER_RADIUS.md, backgroundColor: BRAND_COLORS.grayMedium },
   table: { marginTop: SPACING.sm },
-  tableHeader: { flexDirection: 'row', backgroundColor: BRAND_COLORS.primaryBlue, padding: SPACING.md, borderRadius: BORDER_RADIUS.sm },
+  tableHeader: { flexDirection: 'row', backgroundColor: '#7c3aed', padding: SPACING.md, borderRadius: BORDER_RADIUS.sm },
   tableHeaderText: { color: 'white', fontWeight: TYPOGRAPHY.weights.bold as any, fontSize: TYPOGRAPHY.sizes.sm },
   tableRow: { flexDirection: 'row', padding: SPACING.md, borderBottomWidth: 1, borderBottomColor: BRAND_COLORS.grayMedium },
   tableRowEven: { backgroundColor: BRAND_COLORS.grayLight },
@@ -325,9 +302,9 @@ const styles = StyleSheet.create({
   buttonContainer: { flexDirection: 'row', padding: SPACING.md, gap: SPACING.md },
   button: { flex: 1 },
   overlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', zIndex: 9999 },
-  overlayContent: { backgroundColor: 'white', borderRadius: 16, padding: 32, alignItems: 'center', width: '80%', maxWidth: 300 },
-  overlayTitle: { marginTop: 16, fontSize: 16, fontWeight: 'bold', color: BRAND_COLORS.primaryBlue },
+  overlayBox: { backgroundColor: 'white', borderRadius: 16, padding: 32, alignItems: 'center', width: '80%', maxWidth: 300 },
+  overlayText: { marginTop: 16, fontSize: 16, fontWeight: 'bold', color: '#7c3aed' },
   progressBar: { width: '100%', height: 6, backgroundColor: '#e5e7eb', borderRadius: 3, marginTop: 12, overflow: 'hidden' },
-  progressFill: { height: '100%', backgroundColor: BRAND_COLORS.primaryOrange, borderRadius: 3 },
-  overlayPercent: { marginTop: 8, fontSize: 12, color: BRAND_COLORS.grayText },
+  progressFill: { height: '100%', backgroundColor: '#7c3aed', borderRadius: 3 },
+  progressPercent: { marginTop: 8, fontSize: 12, color: BRAND_COLORS.grayText },
 });

@@ -5,7 +5,7 @@ import React, { useEffect, useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Button, Card, Divider, IconButton, Text, TextInput } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { BORDER_RADIUS, BRAND_COLORS, GRADIENTS, SHADOWS, SPACING, TYPOGRAPHY } from '../../constants/Colors';
+import { BORDER_RADIUS, BRAND_COLORS, SHADOWS, SPACING, TYPOGRAPHY } from '../../constants/Colors';
 
 interface Material {
   id: string;
@@ -21,15 +21,13 @@ export default function AveriaMaterialesFormScreen() {
   ]);
 
   useEffect(() => {
-    if (params.isEditing === 'true' && params.materiales) {
+    if (params.materiales) {
       try {
         const parsed = JSON.parse(params.materiales as string);
         if (Array.isArray(parsed) && parsed.length > 0) {
           setMateriales(parsed);
         }
-      } catch (e) {
-        console.error('Error al parsear materiales:', e);
-      }
+      } catch (e) {}
     }
   }, []);
 
@@ -45,148 +43,99 @@ export default function AveriaMaterialesFormScreen() {
     setMateriales(materiales.filter(m => m.id !== id));
   };
 
-  const handleMaterialChange = (id: string, field: keyof Omit<Material, 'id'>, value: string) => {
-    setMateriales(materiales.map(m =>
-      m.id === id ? { ...m, [field]: value } : m
-    ));
+  const handleChange = (id: string, field: keyof Material, value: string) => {
+    setMateriales(materiales.map(m => m.id === id ? { ...m, [field]: value } : m));
   };
 
   const handleContinue = () => {
-    const materialesValidos = materiales.filter(m =>
-      m.name.trim() !== '' || m.quantity.trim() !== '' || m.reference.trim() !== ''
-    );
-
-    const nextParams = {
-      ...params,
-      materiales: JSON.stringify(materialesValidos),
-    };
+    const validMateriales = materiales.filter(m => m.name.trim() !== '' || m.quantity.trim() !== '');
 
     router.push({
       pathname: '/(tabs)/averia-final-form' as any,
-      params: nextParams,
+      params: {
+        ...params,
+        materiales: JSON.stringify(validMateriales),
+      },
     });
   };
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <KeyboardAvoidingView
-        style={styles.keyboardView}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-        >
+      <KeyboardAvoidingView style={styles.keyboardView} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
           <LinearGradient
-            colors={GRADIENTS.primary as unknown as [string, string, ...string[]]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
+            colors={['#7c3aed', '#a78bfa', '#c4b5fd'] as any}
+            start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
             style={styles.headerGradient}
           >
-            <TouchableOpacity onPress={() => router.back()} style={styles.backArrow}>
+            <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
               <MaterialCommunityIcons name="arrow-left" size={22} color="white" />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Materiales Utilizados</Text>
-            <Text style={styles.headerSubtitle}>Registra los materiales empleados</Text>
+            <Text style={styles.headerSubtitle}>Registra los materiales gastados</Text>
           </LinearGradient>
 
           <Card style={styles.materialesCard}>
             <Card.Content>
               <View style={styles.materialesHeader}>
-                <Text style={styles.sectionTitle}>Materiales</Text>
-                <Button
-                  mode="contained"
-                  onPress={handleAddMaterial}
-                  icon="plus"
-                  compact
-                  style={styles.addButton}
-                  buttonColor={BRAND_COLORS.primaryBlue}
-                >
-                  Añadir
-                </Button>
+                <Text style={styles.sectionTitle}>🧰 Materiales</Text>
+                <Button mode="contained" onPress={handleAddMaterial} icon="plus" compact style={styles.addButton} buttonColor="#7c3aed">Añadir</Button>
               </View>
               <Divider style={styles.divider} />
 
-              {/* Encabezado de tabla */}
+              {/* Encabezado tabla */}
               <View style={styles.tableHeader}>
-                <Text style={[styles.tableHeaderText, styles.nameColumn]}>Material</Text>
-                <Text style={[styles.tableHeaderText, styles.qtyColumn]}>Cant.</Text>
-                <Text style={[styles.tableHeaderText, styles.refColumn]}>Referencia</Text>
-                <View style={styles.actionColumn} />
+                <Text style={[styles.tableHeaderText, { flex: 2 }]}>Material</Text>
+                <Text style={[styles.tableHeaderText, { flex: 1 }]}>Cant.</Text>
+                <Text style={[styles.tableHeaderText, { flex: 1.5 }]}>Ref./Obs.</Text>
+                <View style={{ width: 40 }} />
               </View>
 
-              {/* Filas */}
               {materiales.map((material) => (
                 <View key={material.id} style={styles.tableRow}>
                   <TextInput
                     value={material.name}
-                    onChangeText={(text) => handleMaterialChange(material.id, 'name', text)}
-                    style={[styles.tableInput, styles.nameColumn]}
+                    onChangeText={(t) => handleChange(material.id, 'name', t)}
+                    style={[styles.tableInput, { flex: 2 }]}
                     mode="outlined"
                     dense
-                    placeholder="Nombre"
+                    placeholder="Material"
                     outlineColor={BRAND_COLORS.grayMedium}
-                    activeOutlineColor={BRAND_COLORS.primaryBlue}
+                    activeOutlineColor="#7c3aed"
                   />
                   <TextInput
                     value={material.quantity}
-                    onChangeText={(text) => handleMaterialChange(material.id, 'quantity', text)}
-                    style={[styles.tableInput, styles.qtyColumn]}
+                    onChangeText={(t) => handleChange(material.id, 'quantity', t)}
+                    style={[styles.tableInput, { flex: 1 }]}
                     mode="outlined"
                     dense
                     placeholder="Cant."
                     outlineColor={BRAND_COLORS.grayMedium}
-                    activeOutlineColor={BRAND_COLORS.primaryBlue}
+                    activeOutlineColor="#7c3aed"
                   />
                   <TextInput
                     value={material.reference}
-                    onChangeText={(text) => handleMaterialChange(material.id, 'reference', text)}
-                    style={[styles.tableInput, styles.refColumn]}
+                    onChangeText={(t) => handleChange(material.id, 'reference', t)}
+                    style={[styles.tableInput, { flex: 1.5 }]}
                     mode="outlined"
                     dense
-                    placeholder="Ref."
+                    placeholder="Referencia"
                     outlineColor={BRAND_COLORS.grayMedium}
-                    activeOutlineColor={BRAND_COLORS.primaryBlue}
+                    activeOutlineColor="#7c3aed"
                   />
-                  <IconButton
-                    icon="delete"
-                    size={20}
-                    onPress={() => handleRemoveMaterial(material.id)}
-                    style={styles.deleteButton}
-                    iconColor={BRAND_COLORS.error}
-                  />
+                  <IconButton icon="delete" size={20} onPress={() => handleRemoveMaterial(material.id)} iconColor={BRAND_COLORS.error} style={{ margin: 0 }} />
                 </View>
               ))}
 
-              <Text style={styles.helpText}>
-                Añade los materiales necesarios para la reparación
-              </Text>
+              <Text style={styles.helpText}>Añade los materiales utilizados en la reparación</Text>
             </Card.Content>
           </Card>
         </ScrollView>
 
         <SafeAreaView style={styles.buttonSafeArea} edges={['bottom']}>
           <View style={styles.buttonContainer}>
-            <Button
-              mode="outlined"
-              style={styles.navButton}
-              onPress={() => router.back()}
-              icon="arrow-left"
-              textColor={BRAND_COLORS.primaryBlue}
-            >
-              Volver
-            </Button>
-            <Button
-              mode="contained"
-              style={styles.navButton}
-              onPress={handleContinue}
-              icon="arrow-right"
-              contentStyle={{ flexDirection: 'row-reverse' }}
-              buttonColor={BRAND_COLORS.primaryOrange}
-            >
-              Continuar
-            </Button>
+            <Button mode="outlined" style={styles.navBtn} onPress={() => router.back()} icon="arrow-left" textColor="#7c3aed">Volver</Button>
+            <Button mode="contained" style={styles.navBtn} onPress={handleContinue} icon="arrow-right" contentStyle={{ flexDirection: 'row-reverse' }} buttonColor="#7c3aed">Continuar</Button>
           </View>
         </SafeAreaView>
       </KeyboardAvoidingView>
@@ -195,30 +144,25 @@ export default function AveriaMaterialesFormScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: BRAND_COLORS.primaryBlue },
+  safeArea: { flex: 1, backgroundColor: '#7c3aed' },
   keyboardView: { flex: 1, backgroundColor: BRAND_COLORS.surface },
   scrollView: { flex: 1 },
   scrollContent: { paddingBottom: 100 },
   headerGradient: { padding: SPACING.lg, alignItems: 'center' },
-  backArrow: { position: 'absolute', left: 12, top: 12, zIndex: 10, width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
+  backBtn: { position: 'absolute', left: 12, top: 12, zIndex: 10, width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
   headerTitle: { fontSize: TYPOGRAPHY.sizes.xl, fontWeight: TYPOGRAPHY.weights.bold as any, color: 'white' },
   headerSubtitle: { fontSize: TYPOGRAPHY.sizes.sm, color: 'rgba(255,255,255,0.8)', marginTop: SPACING.xs },
   materialesCard: { margin: SPACING.md, borderRadius: BORDER_RADIUS.lg, borderLeftWidth: 3, borderLeftColor: BRAND_COLORS.success, ...SHADOWS.small },
   materialesHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: SPACING.sm },
-  sectionTitle: { fontSize: TYPOGRAPHY.sizes.md, fontWeight: TYPOGRAPHY.weights.bold as any, color: BRAND_COLORS.primaryBlue, marginBottom: SPACING.sm },
+  sectionTitle: { fontSize: TYPOGRAPHY.sizes.md, fontWeight: TYPOGRAPHY.weights.bold as any, color: '#7c3aed' },
   addButton: { borderRadius: BORDER_RADIUS.md },
-  divider: { backgroundColor: BRAND_COLORS.primaryOrange, height: 1, marginBottom: SPACING.md },
+  divider: { backgroundColor: '#c4b5fd', height: 1, marginBottom: SPACING.md },
   tableHeader: { flexDirection: 'row', marginBottom: SPACING.sm, paddingHorizontal: SPACING.xs },
-  tableHeaderText: { fontWeight: TYPOGRAPHY.weights.bold as any, color: BRAND_COLORS.primaryBlue, fontSize: TYPOGRAPHY.sizes.sm },
+  tableHeaderText: { fontWeight: TYPOGRAPHY.weights.bold as any, color: '#7c3aed', fontSize: TYPOGRAPHY.sizes.sm },
   tableRow: { flexDirection: 'row', marginBottom: SPACING.sm, alignItems: 'center' },
   tableInput: { backgroundColor: 'white', marginRight: SPACING.xs },
-  nameColumn: { flex: 2 },
-  qtyColumn: { flex: 0.8 },
-  refColumn: { flex: 1.2 },
-  actionColumn: { width: 40 },
-  deleteButton: { margin: 0 },
   helpText: { fontSize: TYPOGRAPHY.sizes.xs, color: BRAND_COLORS.grayText, fontStyle: 'italic', marginTop: SPACING.sm },
   buttonSafeArea: { backgroundColor: 'white' },
   buttonContainer: { flexDirection: 'row', justifyContent: 'space-between', padding: SPACING.md, backgroundColor: 'white', borderTopWidth: 1, borderTopColor: BRAND_COLORS.grayMedium, ...SHADOWS.medium },
-  navButton: { flex: 1, marginHorizontal: SPACING.xs, borderRadius: BORDER_RADIUS.md },
+  navBtn: { flex: 1, marginHorizontal: SPACING.xs, borderRadius: BORDER_RADIUS.md },
 });

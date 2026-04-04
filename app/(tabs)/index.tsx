@@ -95,6 +95,8 @@ export default function HomeScreen() {
     router.push('/acteco-inspections-list');
   }, []);
 
+
+
   const handleNavAveriasForm = useCallback(() => {
     router.push('/averia-machine-form');
   }, []);
