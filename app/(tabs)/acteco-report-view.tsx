@@ -17,10 +17,12 @@ import { shareActecoPDFReport } from '../../utils/actecoReportGenerator';
 export default function ActecoReportViewScreen() {
   const params = useLocalSearchParams();
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
   const [progressText, setProgressText] = useState('');
   const [progressPercent, setProgressPercent] = useState(0);
   const [inspection, setInspection] = useState<ActecoInspection | null>(null);
   const [loading, setLoading] = useState(true);
+  const [pdfGenerated, setPdfGenerated] = useState(false);
 
   useEffect(() => {
     loadInspection();
@@ -57,70 +59,87 @@ export default function ActecoReportViewScreen() {
     }
   };
 
-  const handleShareReport = async () => {
-    if (!inspection) {
-      Alert.alert('Error', 'No hay datos de inspección');
-      return;
+  // Auto-generar PDF al cargar
+  useEffect(() => {
+    if (!loading && inspection && !pdfGenerated) {
+      autoGeneratePDF(inspection);
     }
+  }, [loading, inspection]);
 
+  const autoGeneratePDF = async (insp: ActecoInspection) => {
     try {
       setIsGenerating(true);
       setProgressText('Guardando inspección...');
       setProgressPercent(5);
-      await new Promise(r => setTimeout(r, 50));
 
-      // Guardar la inspección antes de generar el PDF
-      console.log('💾 Guardando inspección...');
-      const savedInspection = await saveActecoInspection(inspection);
-      console.log('✅ Inspección guardada con ID:', savedInspection.id);
+      const savedInspection = await saveActecoInspection(insp);
+      setInspection(savedInspection);
       setProgressPercent(10);
 
-      // Preparar datos para el PDF
-      const reportData = {
-        clientName: inspection.clientName,
-        avisoDate: inspection.avisoDate,
-        avisoTime: inspection.avisoTime,
-        location: inspection.location,
-        requestedBy: inspection.requestedBy,
-        machineType: inspection.machineType,
-        brand: inspection.machineBrand,
-        model: inspection.machineModel,
-        serialNumber: inspection.serialNumber,
-        licensePlate: inspection.licensePlate || '',
-        photoGeneral1: inspection.photoGeneral1,
-        photoGeneral2: inspection.photoGeneral2,
-        photoGeneral3: inspection.photoGeneral3,
-        photoGeneral4: inspection.photoGeneral4,
-        hasAveria: inspection.hasAveria ? 'true' : 'false',
-        avisoAveria: inspection.avisoAveria,
-        averiaDetectada: inspection.averiaDetectada,
-        causaAveria: inspection.causaAveria,
-        averiaPhotos: inspection.averiaPhotos,
-        tieneSolucion: inspection.tieneSolucion ? 'true' : 'false',
-        observaciones: inspection.observaciones,
-        materiales: JSON.stringify(inspection.materiales),
-        technicianName: inspection.technicianName,
-        technicianSignature: inspection.technicianSignature,
-        clientSignatureName: inspection.clientSignatureName,
-        clientSignature: inspection.clientSignature,
-      };
-
-      console.log('📄 Generando PDF...');
+      const reportData = buildReportData(savedInspection);
       const success = await shareActecoPDFReport(reportData, (percent, text) => {
         setProgressPercent(percent);
         setProgressText(text);
-      });
-      
+      }, true); // autoUploadOnly
+
       if (success) {
         setProgressPercent(100);
-        setProgressText('¡Listo!');
-        console.log('✅ PDF generado correctamente');
+        setProgressText('¡PDF generado!');
+        setPdfGenerated(true);
       }
     } catch (error) {
-      console.error('❌ Error al compartir informe:', error);
-      Alert.alert('Error', 'No se pudo generar el informe');
+      console.error('❌ Error al auto-generar PDF:', error);
     } finally {
       setIsGenerating(false);
+      setProgressPercent(0);
+      setProgressText('');
+    }
+  };
+
+  const buildReportData = (insp: ActecoInspection) => ({
+    clientName: insp.clientName,
+    avisoDate: insp.avisoDate,
+    avisoTime: insp.avisoTime,
+    location: insp.location,
+    requestedBy: insp.requestedBy,
+    machineType: insp.machineType,
+    brand: insp.machineBrand,
+    model: insp.machineModel,
+    serialNumber: insp.serialNumber,
+    licensePlate: insp.licensePlate || '',
+    photoGeneral1: insp.photoGeneral1,
+    photoGeneral2: insp.photoGeneral2,
+    photoGeneral3: insp.photoGeneral3,
+    photoGeneral4: insp.photoGeneral4,
+    hasAveria: insp.hasAveria ? 'true' : 'false',
+    avisoAveria: insp.avisoAveria,
+    averiaDetectada: insp.averiaDetectada,
+    causaAveria: insp.causaAveria,
+    averiaPhotos: insp.averiaPhotos,
+    tieneSolucion: insp.tieneSolucion ? 'true' : 'false',
+    observaciones: insp.observaciones,
+    materiales: JSON.stringify(insp.materiales),
+    technicianName: insp.technicianName,
+    technicianSignature: insp.technicianSignature,
+    clientSignatureName: insp.clientSignatureName,
+    clientSignature: insp.clientSignature,
+  });
+
+  const handleShareReport = async () => {
+    if (!inspection) { Alert.alert('Error', 'No hay datos'); return; }
+    try {
+      setIsSharing(true);
+      setProgressText('Compartiendo...');
+      setProgressPercent(50);
+      const reportData = buildReportData(inspection);
+      await shareActecoPDFReport(reportData, (percent, text) => {
+        setProgressPercent(percent);
+        setProgressText(text);
+      }, false); // compartir
+    } catch (error) {
+      Alert.alert('Error', 'No se pudo compartir el PDF');
+    } finally {
+      setIsSharing(false);
       setProgressPercent(0);
       setProgressText('');
     }
@@ -412,7 +431,7 @@ export default function ActecoReportViewScreen() {
             style={styles.button}
             icon="home"
             textColor={BRAND_COLORS.primaryBlue}
-            disabled={isGenerating}
+            disabled={isGenerating || isSharing}
           >
             Volver al Inicio
           </Button>
@@ -421,17 +440,17 @@ export default function ActecoReportViewScreen() {
             mode="contained" 
             onPress={handleShareReport}
             style={styles.button}
-            icon="file-pdf-box"
+            icon="share-variant"
             buttonColor={BRAND_COLORS.primaryOrange}
-            disabled={isGenerating}
-            loading={isGenerating}
+            disabled={isGenerating || isSharing}
+            loading={isSharing}
           >
-            {isGenerating ? 'Generando...' : 'Generar PDF'}
+            {isSharing ? 'Compartiendo...' : 'Compartir PDF'}
           </Button>
         </View>
       </SafeAreaView>
 
-      {isGenerating && (
+      {(isGenerating || isSharing) && (
         <View style={{position:'absolute',top:0,left:0,right:0,bottom:0,backgroundColor:'rgba(0,0,0,0.6)',justifyContent:'center',alignItems:'center',zIndex:9999}}>
           <View style={{backgroundColor:'white',borderRadius:16,padding:32,alignItems:'center',width:'80%',maxWidth:300}}>
             <ActivityIndicator size="large" color={BRAND_COLORS.primaryBlue} />

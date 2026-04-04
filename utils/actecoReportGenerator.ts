@@ -919,7 +919,7 @@ export const generateActecoHTML = async (report: ActecoReportData): Promise<stri
   }
 };
 
-export const shareActecoPDFReport = async (report: ActecoReportData, onProgress?: (percent: number, text: string) => void): Promise<boolean> => {
+export const shareActecoPDFReport = async (report: ActecoReportData, onProgress?: (percent: number, text: string) => void, autoUploadOnly: boolean = false): Promise<boolean> => {
   try {
     console.log('🚀 Generando PDF del informe...');
     
@@ -984,18 +984,17 @@ export const shareActecoPDFReport = async (report: ActecoReportData, onProgress?
         console.warn('No se pudo subir el PDF ACTECO a Supabase (no crítico):', uploadErr);
       }
 
+      if (autoUploadOnly) {
+        onProgress?.(100, '¡PDF subido!');
+        return true;
+      }
+
       onProgress?.(90, 'Abriendo compartir...');
       await Sharing.shareAsync(finalUri, {
         mimeType: 'application/pdf',
         dialogTitle: `Inspección URGENCIAS - ${report.clientName}`,
         UTI: 'com.adobe.pdf'
       });
-      
-      Alert.alert(
-        'Informe generado',
-        `PDF generado: ${customFileName}`,
-        [{ text: 'OK' }]
-      );
       
       return true;
     } else {

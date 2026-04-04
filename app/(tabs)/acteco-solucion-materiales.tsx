@@ -11,6 +11,7 @@ interface Material {
   id: string;
   name: string;
   quantity: string;
+  reference: string;
 }
 
 export default function ActecoSolucionMaterialesScreen() {
@@ -18,7 +19,7 @@ export default function ActecoSolucionMaterialesScreen() {
   const [tieneSolucion, setTieneSolucion] = useState<boolean | null>(null);
   const [observaciones, setObservaciones] = useState('');
   const [materiales, setMateriales] = useState<Material[]>([
-    { id: '1', name: '', quantity: '' }
+    { id: '1', name: '', quantity: '', reference: '' }
   ]);
 
   // Cargar datos existentes en modo edición
@@ -50,7 +51,8 @@ export default function ActecoSolucionMaterialesScreen() {
     const newMaterial: Material = {
       id: Date.now().toString(),
       name: '',
-      quantity: ''
+      quantity: '',
+      reference: ''
     };
     setMateriales([...materiales, newMaterial]);
   };
@@ -63,7 +65,7 @@ export default function ActecoSolucionMaterialesScreen() {
     setMateriales(materiales.filter(m => m.id !== id));
   };
 
-  const handleMaterialChange = (id: string, field: 'name' | 'quantity', value: string) => {
+  const handleMaterialChange = (id: string, field: 'name' | 'quantity' | 'reference', value: string) => {
     setMateriales(materiales.map(m =>
       m.id === id ? { ...m, [field]: value } : m
     ));
@@ -186,8 +188,9 @@ export default function ActecoSolucionMaterialesScreen() {
 
               {/* Encabezado de tabla */}
               <View style={styles.tableHeader}>
-                <Text style={[styles.tableHeaderText, styles.materialColumn]}>Material</Text>
-                <Text style={[styles.tableHeaderText, styles.quantityColumn]}>Cantidad</Text>
+                <Text style={[styles.tableHeaderText, { flex: 2 }]}>Material</Text>
+                <Text style={[styles.tableHeaderText, { flex: 1 }]}>Cant.</Text>
+                <Text style={[styles.tableHeaderText, { flex: 1.5 }]}>Ref.</Text>
                 <View style={styles.actionColumn} />
               </View>
 
@@ -197,10 +200,10 @@ export default function ActecoSolucionMaterialesScreen() {
                   <TextInput
                     value={material.name}
                     onChangeText={(text) => handleMaterialChange(material.id, 'name', text)}
-                    style={[styles.tableInput, styles.materialColumn]}
+                    style={[styles.tableInput, { flex: 2 }]}
                     mode="outlined"
                     dense
-                    placeholder="Nombre del material"
+                    placeholder="Material"
                     outlineColor={BRAND_COLORS.grayMedium}
                     activeOutlineColor={BRAND_COLORS.primaryBlue}
                   />
@@ -208,10 +211,21 @@ export default function ActecoSolucionMaterialesScreen() {
                   <TextInput
                     value={material.quantity}
                     onChangeText={(text) => handleMaterialChange(material.id, 'quantity', text)}
-                    style={[styles.tableInput, styles.quantityColumn]}
+                    style={[styles.tableInput, { flex: 1 }]}
                     mode="outlined"
                     dense
                     placeholder="Cant."
+                    outlineColor={BRAND_COLORS.grayMedium}
+                    activeOutlineColor={BRAND_COLORS.primaryBlue}
+                  />
+
+                  <TextInput
+                    value={material.reference || ''}
+                    onChangeText={(text) => handleMaterialChange(material.id, 'reference', text)}
+                    style={[styles.tableInput, { flex: 1.5 }]}
+                    mode="outlined"
+                    dense
+                    placeholder="Referencia"
                     outlineColor={BRAND_COLORS.grayMedium}
                     activeOutlineColor={BRAND_COLORS.primaryBlue}
                   />
