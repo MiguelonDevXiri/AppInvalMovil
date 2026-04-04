@@ -95,6 +95,14 @@ export default function HomeScreen() {
     router.push('/acteco-inspections-list');
   }, []);
 
+  const handleNavAveriasForm = useCallback(() => {
+    router.push('/averia-machine-form');
+  }, []);
+
+  const handleNavAveriasList = useCallback(() => {
+    router.push('/averia-inspections-list');
+  }, []);
+
   const handleLogout = async () => {
     Alert.alert(
       'Cerrar Sesión',
@@ -202,6 +210,28 @@ export default function HomeScreen() {
           icon="file-document-multiple-outline"
           colors={['#0891b2', '#22d3ee']}
           onPress={handleNavActecoList}
+        />
+
+        <View style={styles.sectionHeader}>
+          <View style={styles.sectionLine} />
+          <Text style={styles.sectionLabel}>Inspecciones AVERÍAS</Text>
+          <View style={styles.sectionLine} />
+        </View>
+
+        <ActionCard
+          title="Inspección Averías"
+          subtitle="Informes de averías detectadas"
+          icon="wrench-outline"
+          colors={['#7c3aed', '#a78bfa']}
+          onPress={handleNavAveriasForm}
+        />
+
+        <ActionCard
+          title="Averías Registradas"
+          subtitle="Consultar informes de averías"
+          icon="file-document-multiple-outline"
+          colors={['#6d28d9', '#8b5cf6']}
+          onPress={handleNavAveriasList}
         />
 
         <View style={styles.footer} />

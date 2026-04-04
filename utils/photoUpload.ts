@@ -89,6 +89,18 @@ export const buildActecoStorageBase = (inspection: {
   return `urgencias/${location}_${date}`;
 };
 
+export const buildAveriasStorageBase = (inspection: {
+  clientName?: string;
+  avisoDate?: string;
+  location?: string;
+  id?: string;
+}): string => {
+  const location = sanitizePathSegment(inspection.location || 'sin_ubicacion', MAX_BASE_SEGMENT_LENGTH);
+  const date = normalizeDateSegment(inspection.avisoDate);
+
+  return `averias/${location}_${date}`;
+};
+
 export const buildLegacyActecoStorageBase = (inspection: {
   clientName?: string;
   avisoDate?: string;

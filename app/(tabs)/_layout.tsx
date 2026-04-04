@@ -52,6 +52,14 @@ export default function Layout() {
         <Stack.Screen name="acteco-report-view" />
         <Stack.Screen name="acteco-solucion-materiales" />
         <Stack.Screen name="acteco-inspections-list" />
+
+        <Stack.Screen name="averia-machine-form" />
+        <Stack.Screen name="averia-defects-form" />
+        <Stack.Screen name="averia-solucion-form" />
+        <Stack.Screen name="averia-materiales-form" />
+        <Stack.Screen name="averia-final-form" />
+        <Stack.Screen name="averia-report-view" />
+        <Stack.Screen name="averia-inspections-list" />
         <Stack.Screen name="login" options={{ headerShown: false }} />
       </Stack>
     </PaperProvider>
