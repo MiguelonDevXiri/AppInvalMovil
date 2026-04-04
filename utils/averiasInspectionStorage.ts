@@ -21,7 +21,6 @@ export interface AveriaInspection {
   machineModel: string;
   serialNumber: string;
   licensePlate: string;
-  notes: string;
   // Averías detectadas (lista dinámica)
   defects: AveriaDefect[];
   // Intervención / Solución
@@ -67,11 +66,11 @@ const buildAveriasStorageBase = (inspection: Pick<AveriaInspection, 'licensePlat
   return `averias/${plate}_${client}_${date}`;
 };
 
-const GENERAL_PHOTO_FILE_NAMES: Record<string, string> = {
-  photoGeneral1: 'Frontal',
-  photoGeneral2: 'Posterior',
-  photoGeneral3: 'Lateral_Izquierdo',
-  photoGeneral4: 'Lateral_Derecho',
+const GENERAL_PHOTO_SUFFIXES: Record<string, string> = {
+  photoGeneral1: 'A1',
+  photoGeneral2: 'A2',
+  photoGeneral3: 'A3',
+  photoGeneral4: 'A4',
 };
 
 // ==================== CACHE ====================
@@ -126,7 +125,6 @@ const dbRowToInspection = (
     machineModel: row.machine_model || '',
     serialNumber: row.serial_number || '',
     licensePlate: row.license_plate || '',
-    notes: row.notes || '',
     defects,
     solucionDescription: row.solucion_description || '',
     solucionPhotos,
@@ -243,7 +241,6 @@ export const saveAveriaInspection = async (inspection: AveriaInspection): Promis
         machine_model: inspection.machineModel,
         serial_number: inspection.serialNumber,
         license_plate: inspection.licensePlate || null,
-        notes: inspection.notes || null,
         solucion_description: inspection.solucionDescription,
         created_at: inspection.createdAt || now,
         updated_at: now,
@@ -306,7 +303,8 @@ export const saveAveriaInspection = async (inspection: AveriaInspection): Promis
     for (const field of generalPhotoFields) {
       const uri = inspection[field];
       if (uri) {
-        const storagePath = `${storageBase}/general/${GENERAL_PHOTO_FILE_NAMES[field]}.jpg`;
+        const plate = sanitizePathSegment(inspection.licensePlate || 'sin_matricula', 30);
+        const storagePath = `${storageBase}/general/${plate}_${GENERAL_PHOTO_SUFFIXES[field]}.jpg`;
         const photoUrl = await uploadPhoto(uri, storagePath);
         if (photoUrl) {
           await supabase.from('averias_photos').insert({
@@ -448,7 +446,6 @@ export const paramsToInspection = (params: any): AveriaInspection => {
     machineModel: params.model || '',
     serialNumber: params.serialNumber || '',
     licensePlate: params.licensePlate || '',
-    notes: params.notes || '',
     defects,
     solucionDescription: params.solucionDescription || '',
     solucionPhotos,
@@ -475,7 +472,6 @@ export const inspectionToParams = (inspection: AveriaInspection): any => {
     model: inspection.machineModel,
     serialNumber: inspection.serialNumber,
     licensePlate: inspection.licensePlate || '',
-    notes: inspection.notes || '',
     defects: JSON.stringify(inspection.defects),
     solucionDescription: inspection.solucionDescription,
     solucionPhotos: JSON.stringify(inspection.solucionPhotos),

@@ -17,54 +17,83 @@ import { shareAveriasPDFReport } from '../../utils/averiasReportGenerator';
 export default function AveriaReportViewScreen() {
   const params = useLocalSearchParams();
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
   const [progressText, setProgressText] = useState('');
   const [progressPercent, setProgressPercent] = useState(0);
   const [inspection, setInspection] = useState<AveriaInspection | null>(null);
   const [loading, setLoading] = useState(true);
+  const [pdfGenerated, setPdfGenerated] = useState(false);
 
-  useEffect(() => { loadInspection(); }, []);
+  useEffect(() => { loadAndSave(); }, []);
 
-  const loadInspection = async () => {
+  const loadAndSave = async () => {
     try {
       setLoading(true);
+      let insp: AveriaInspection;
       if (params.inspectionId && typeof params.inspectionId === 'string') {
         const loaded = await getAveriaInspectionById(params.inspectionId);
-        setInspection(loaded || paramsToInspection(params));
+        insp = loaded || paramsToInspection(params);
       } else {
-        setInspection(paramsToInspection(params));
+        insp = paramsToInspection(params);
+      }
+      setInspection(insp);
+      setLoading(false);
+
+      // Auto-generar y subir PDF
+      if (!params.inspectionId || params.inspectionId === insp.id) {
+        await autoGeneratePDF(insp);
       }
     } catch (error) {
-      console.error('❌ Error al cargar avería:', error);
+      console.error('❌ Error:', error);
       Alert.alert('Error', 'No se pudo cargar la inspección');
-    } finally {
       setLoading(false);
     }
   };
 
-  const handleShareReport = async () => {
-    if (!inspection) { Alert.alert('Error', 'No hay datos'); return; }
+  const autoGeneratePDF = async (insp: AveriaInspection) => {
     try {
       setIsGenerating(true);
       setProgressText('Guardando inspección...');
       setProgressPercent(5);
 
-      const saved = await saveAveriaInspection(inspection);
+      const saved = await saveAveriaInspection(insp);
+      setInspection(saved);
       setProgressPercent(10);
 
+      setProgressText('Generando PDF...');
       const success = await shareAveriasPDFReport(saved, (percent, text) => {
         setProgressPercent(percent);
         setProgressText(text);
-      });
+      }, true); // autoUploadOnly = true (no compartir, solo generar y subir)
 
       if (success) {
         setProgressPercent(100);
-        setProgressText('¡Listo!');
+        setProgressText('¡PDF generado!');
+        setPdfGenerated(true);
       }
     } catch (error) {
-      console.error('❌ Error al compartir informe:', error);
-      Alert.alert('Error', 'No se pudo generar el informe');
+      console.error('❌ Error al generar PDF:', error);
     } finally {
       setIsGenerating(false);
+      setProgressPercent(0);
+      setProgressText('');
+    }
+  };
+
+  const handleSharePDF = async () => {
+    if (!inspection) return;
+    try {
+      setIsSharing(true);
+      setProgressText('Compartiendo...');
+      setProgressPercent(50);
+      await shareAveriasPDFReport(inspection, (percent, text) => {
+        setProgressPercent(percent);
+        setProgressText(text);
+      }, false); // compartir
+    } catch (error) {
+      Alert.alert('Error', 'No se pudo compartir el PDF');
+    } finally {
+      setIsSharing(false);
       setProgressPercent(0);
       setProgressText('');
     }
@@ -106,7 +135,9 @@ export default function AveriaReportViewScreen() {
             <MaterialCommunityIcons name="arrow-left" size={22} color="white" />
           </TouchableOpacity>
           <Text style={{ color: 'white', fontSize: TYPOGRAPHY.sizes.xl, fontWeight: TYPOGRAPHY.weights.bold as any }}>Resumen del Informe</Text>
-          <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: TYPOGRAPHY.sizes.sm, marginTop: SPACING.xs }}>Revisa los datos antes de generar el PDF</Text>
+          <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: TYPOGRAPHY.sizes.sm, marginTop: SPACING.xs }}>
+            {pdfGenerated ? '✅ PDF generado y subido' : 'Generando PDF...'}
+          </Text>
         </LinearGradient>
 
         {/* Datos del Cliente */}
@@ -115,9 +146,9 @@ export default function AveriaReportViewScreen() {
             <Title style={styles.sectionTitle}>📋 Datos del Cliente</Title>
             <Divider style={styles.dividerLine} />
             <InfoRow label="Cliente" value={inspection.clientName} />
+            <InfoRow label="Matrícula" value={inspection.licensePlate} />
             <InfoRow label="Fecha" value={`${inspection.avisoDate} ${inspection.avisoTime}`} />
             <InfoRow label="Ubicación" value={inspection.location} />
-            <InfoRow label="Matrícula" value={inspection.licensePlate} />
             {inspection.reviewedBy ? <InfoRow label="Revisado por" value={inspection.reviewedBy} /> : null}
           </Card.Content>
         </Card>
@@ -127,11 +158,10 @@ export default function AveriaReportViewScreen() {
           <Card.Content>
             <Title style={styles.sectionTitle}>⚙️ Datos de la Máquina</Title>
             <Divider style={styles.dividerLine} />
-            <InfoRow label="Tipo" value={inspection.machineType} />
-            {inspection.machineBrand ? <InfoRow label="Marca" value={inspection.machineBrand} /> : null}
+            <InfoRow label="Marca" value={inspection.machineBrand} />
+            {inspection.machineType ? <InfoRow label="Tipo" value={inspection.machineType} /> : null}
             {inspection.machineModel ? <InfoRow label="Modelo" value={inspection.machineModel} /> : null}
             {inspection.serialNumber ? <InfoRow label="Nº Serie" value={inspection.serialNumber} /> : null}
-            {inspection.licensePlate ? <InfoRow label="Matrícula" value={inspection.licensePlate} /> : null}
           </Card.Content>
         </Card>
 
@@ -215,29 +245,18 @@ export default function AveriaReportViewScreen() {
             </Card.Content>
           </Card>
         )}
-
-        {/* Notas */}
-        {inspection.notes ? (
-          <Card style={styles.card}>
-            <Card.Content>
-              <Title style={styles.sectionTitle}>📝 Notas</Title>
-              <Divider style={styles.dividerLine} />
-              <Paragraph>{inspection.notes}</Paragraph>
-            </Card.Content>
-          </Card>
-        ) : null}
       </ScrollView>
 
       <SafeAreaView style={styles.buttonSafeArea} edges={['bottom']}>
         <View style={styles.buttonContainer}>
-          <Button mode="outlined" onPress={handleFinish} style={styles.button} icon="home" textColor="#7c3aed" disabled={isGenerating}>Volver al Inicio</Button>
-          <Button mode="contained" onPress={handleShareReport} style={styles.button} icon="file-pdf-box" buttonColor="#7c3aed" disabled={isGenerating} loading={isGenerating}>
-            {isGenerating ? 'Generando...' : 'Generar PDF'}
+          <Button mode="outlined" onPress={handleFinish} style={styles.button} icon="home" textColor="#7c3aed" disabled={isGenerating || isSharing}>Inicio</Button>
+          <Button mode="contained" onPress={handleSharePDF} style={styles.button} icon="share-variant" buttonColor="#7c3aed" disabled={isGenerating || isSharing} loading={isSharing}>
+            {isSharing ? 'Compartiendo...' : 'Compartir PDF'}
           </Button>
         </View>
       </SafeAreaView>
 
-      {isGenerating && (
+      {(isGenerating || isSharing) && (
         <View style={styles.overlay}>
           <View style={styles.overlayBox}>
             <ActivityIndicator size="large" color="#7c3aed" />
@@ -285,9 +304,6 @@ const styles = StyleSheet.create({
   tableRowEven: { backgroundColor: BRAND_COLORS.grayLight },
   tableRowOdd: { backgroundColor: 'white' },
   tableCell: { fontSize: TYPOGRAPHY.sizes.sm, color: '#1e293b' },
-  signatureSection: { marginTop: SPACING.md, marginBottom: SPACING.md, padding: SPACING.md, backgroundColor: BRAND_COLORS.grayLight, borderRadius: BORDER_RADIUS.md, borderWidth: 1, borderColor: BRAND_COLORS.grayMedium },
-  signatureLabel: { fontWeight: TYPOGRAPHY.weights.bold as any, color: BRAND_COLORS.grayText, marginBottom: SPACING.sm },
-  signatureImage: { width: '100%', height: 120, backgroundColor: 'white', borderRadius: BORDER_RADIUS.sm, borderWidth: 1, borderColor: BRAND_COLORS.grayMedium },
   buttonSafeArea: { backgroundColor: 'white', borderTopWidth: 1, borderTopColor: BRAND_COLORS.grayMedium },
   buttonContainer: { flexDirection: 'row', padding: SPACING.md, gap: SPACING.md },
   button: { flex: 1 },

@@ -22,7 +22,7 @@ export default function AveriaMachineFormScreen() {
   const [reviewedBy, setReviewedBy] = useState('');
   const [avisoDate, setAvisoDate] = useState(new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }));
   const [avisoTime, setAvisoTime] = useState(new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }));
-  const [notes, setNotes] = useState('');
+  // sin notas
 
   const [errors, setErrors] = useState({ clientName: false, licensePlate: false, brand: false });
   const [isEditing, setIsEditing] = useState(false);
@@ -41,7 +41,7 @@ export default function AveriaMachineFormScreen() {
       if (params.reviewedBy) setReviewedBy(params.reviewedBy as string);
       if (params.avisoDate) setAvisoDate(params.avisoDate as string);
       if (params.avisoTime) setAvisoTime(params.avisoTime as string);
-      if (params.notes) setNotes(params.notes as string);
+      // sin notas
     }
   }, []);
 
@@ -72,7 +72,7 @@ export default function AveriaMachineFormScreen() {
       params: {
         ...params,
         clientName, licensePlate, machineType, brand, model, serialNumber,
-        location, reviewedBy, avisoDate, avisoTime, notes,
+        location, reviewedBy, avisoDate, avisoTime,
         isEditing: isEditing ? 'true' : 'false',
       },
     });
@@ -127,7 +127,6 @@ export default function AveriaMachineFormScreen() {
               <TextInput label="Tipo de máquina" value={machineType} onChangeText={setMachineType} style={styles.input} mode="outlined" outlineColor={BRAND_COLORS.grayMedium} activeOutlineColor="#7c3aed" />
               <TextInput label="Modelo" value={model} onChangeText={setModel} style={styles.input} mode="outlined" outlineColor={BRAND_COLORS.grayMedium} activeOutlineColor="#7c3aed" />
               <TextInput label="Número de serie" value={serialNumber} onChangeText={setSerialNumber} style={styles.input} mode="outlined" outlineColor={BRAND_COLORS.grayMedium} activeOutlineColor="#7c3aed" />
-              <TextInput label="Notas" value={notes} onChangeText={setNotes} style={styles.input} mode="outlined" multiline numberOfLines={3} outlineColor={BRAND_COLORS.grayMedium} activeOutlineColor="#7c3aed" />
             </Card.Content>
           </Card>
 
