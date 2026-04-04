@@ -15,12 +15,13 @@ export interface AveriaInspection {
   avisoDate: string;
   avisoTime: string;
   location: string;
-  requestedBy: string;
+  reviewedBy: string;
   machineType: string;
   machineBrand: string;
   machineModel: string;
   serialNumber: string;
-  licensePlate?: string;
+  licensePlate: string;
+  notes: string;
   // Averías detectadas (lista dinámica)
   defects: AveriaDefect[];
   // Intervención / Solución
@@ -33,11 +34,6 @@ export interface AveriaInspection {
   photoGeneral2?: string;
   photoGeneral3?: string;
   photoGeneral4?: string;
-  // Firmas
-  technicianName: string;
-  technicianSignature: string;
-  clientSignatureName: string;
-  clientSignature: string;
   // Timestamps
   createdAt: string;
   updatedAt: string;
@@ -64,10 +60,11 @@ const normalizeDateSegment = (value?: string): string => {
   return sanitized || 'sin_fecha';
 };
 
-const buildAveriasStorageBase = (inspection: Pick<AveriaInspection, 'location' | 'avisoDate'>): string => {
-  const location = sanitizePathSegment(inspection.location || 'sin_ubicacion', 60);
+const buildAveriasStorageBase = (inspection: Pick<AveriaInspection, 'licensePlate' | 'clientName' | 'avisoDate'>): string => {
+  const plate = sanitizePathSegment(inspection.licensePlate || 'sin_matricula', 30);
+  const client = sanitizePathSegment(inspection.clientName || 'cliente', 40);
   const date = normalizeDateSegment(inspection.avisoDate);
-  return `averias/${location}_${date}`;
+  return `averias/${plate}_${client}_${date}`;
 };
 
 const GENERAL_PHOTO_FILE_NAMES: Record<string, string> = {
@@ -123,12 +120,13 @@ const dbRowToInspection = (
     avisoDate: row.aviso_date || '',
     avisoTime: row.aviso_time || '',
     location: row.location || '',
-    requestedBy: row.requested_by || '',
+    reviewedBy: row.reviewed_by || row.technician_name || '',
     machineType: row.machine_type || '',
     machineBrand: row.machine_brand || '',
     machineModel: row.machine_model || '',
     serialNumber: row.serial_number || '',
     licensePlate: row.license_plate || '',
+    notes: row.notes || '',
     defects,
     solucionDescription: row.solucion_description || '',
     solucionPhotos,
@@ -142,10 +140,6 @@ const dbRowToInspection = (
     photoGeneral2: generalPhotos['photoGeneral2'] || '',
     photoGeneral3: generalPhotos['photoGeneral3'] || '',
     photoGeneral4: generalPhotos['photoGeneral4'] || '',
-    technicianName: row.technician_name || '',
-    technicianSignature: row.technician_signature || '',
-    clientSignatureName: row.client_signature_name || '',
-    clientSignature: row.client_signature || '',
     createdAt: row.created_at || '',
     updatedAt: row.updated_at || '',
   };
@@ -243,17 +237,14 @@ export const saveAveriaInspection = async (inspection: AveriaInspection): Promis
         aviso_date: inspection.avisoDate,
         aviso_time: inspection.avisoTime,
         location: inspection.location,
-        requested_by: inspection.requestedBy,
+        reviewed_by: inspection.reviewedBy,
         machine_type: inspection.machineType,
         machine_brand: inspection.machineBrand,
         machine_model: inspection.machineModel,
         serial_number: inspection.serialNumber,
         license_plate: inspection.licensePlate || null,
+        notes: inspection.notes || null,
         solucion_description: inspection.solucionDescription,
-        technician_name: inspection.technicianName,
-        technician_signature: inspection.technicianSignature,
-        client_signature_name: inspection.clientSignatureName,
-        client_signature: inspection.clientSignature,
         created_at: inspection.createdAt || now,
         updated_at: now,
       });
@@ -264,7 +255,8 @@ export const saveAveriaInspection = async (inspection: AveriaInspection): Promis
     }
 
     const storageBase = buildAveriasStorageBase({
-      location: inspection.location,
+      licensePlate: inspection.licensePlate,
+      clientName: inspection.clientName,
       avisoDate: inspection.avisoDate,
     });
 
@@ -383,7 +375,8 @@ export const deleteAveriaInspection = async (id: string): Promise<boolean> => {
     const inspection = await getAveriaInspectionById(id);
     if (inspection) {
       const storageBase = buildAveriasStorageBase({
-        location: inspection.location,
+        licensePlate: inspection.licensePlate,
+        clientName: inspection.clientName,
         avisoDate: inspection.avisoDate,
       });
       await deletePhotosInFolder(storageBase);
@@ -449,12 +442,13 @@ export const paramsToInspection = (params: any): AveriaInspection => {
     avisoDate: params.avisoDate || '',
     avisoTime: params.avisoTime || '',
     location: params.location || '',
-    requestedBy: params.requestedBy || '',
+    reviewedBy: params.reviewedBy || '',
     machineType: params.machineType || '',
     machineBrand: params.brand || '',
     machineModel: params.model || '',
     serialNumber: params.serialNumber || '',
     licensePlate: params.licensePlate || '',
+    notes: params.notes || '',
     defects,
     solucionDescription: params.solucionDescription || '',
     solucionPhotos,
@@ -463,10 +457,6 @@ export const paramsToInspection = (params: any): AveriaInspection => {
     photoGeneral2: params.photoGeneral2 || '',
     photoGeneral3: params.photoGeneral3 || '',
     photoGeneral4: params.photoGeneral4 || '',
-    technicianName: params.technicianName || '',
-    technicianSignature: params.technicianSignature || '',
-    clientSignatureName: params.clientSignatureName || '',
-    clientSignature: params.clientSignature || '',
     createdAt: params.createdAt || new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
@@ -479,12 +469,13 @@ export const inspectionToParams = (inspection: AveriaInspection): any => {
     avisoDate: inspection.avisoDate,
     avisoTime: inspection.avisoTime,
     location: inspection.location,
-    requestedBy: inspection.requestedBy,
+    reviewedBy: inspection.reviewedBy,
     machineType: inspection.machineType,
     brand: inspection.machineBrand,
     model: inspection.machineModel,
     serialNumber: inspection.serialNumber,
     licensePlate: inspection.licensePlate || '',
+    notes: inspection.notes || '',
     defects: JSON.stringify(inspection.defects),
     solucionDescription: inspection.solucionDescription,
     solucionPhotos: JSON.stringify(inspection.solucionPhotos),
@@ -493,10 +484,6 @@ export const inspectionToParams = (inspection: AveriaInspection): any => {
     photoGeneral2: inspection.photoGeneral2 || '',
     photoGeneral3: inspection.photoGeneral3 || '',
     photoGeneral4: inspection.photoGeneral4 || '',
-    technicianName: inspection.technicianName,
-    technicianSignature: inspection.technicianSignature,
-    clientSignatureName: inspection.clientSignatureName,
-    clientSignature: inspection.clientSignature,
     createdAt: inspection.createdAt,
     updatedAt: inspection.updatedAt,
   };

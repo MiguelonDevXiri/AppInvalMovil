@@ -11,11 +11,10 @@ import type { AveriaInspection } from './averiasInspectionStorage';
 
 const generateFileName = (report: AveriaInspection): string => {
   try {
-    const cleanClient = report.clientName.trim().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '').toUpperCase();
-    const cleanLocation = report.location.trim().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '').substring(0, 30);
+    const cleanPlate = report.licensePlate.trim().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '').toUpperCase();
+    const cleanClient = report.clientName.trim().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '').toUpperCase().substring(0, 30);
     const cleanDate = report.avisoDate.replace(/\//g, '-').replace(/\s+/g, '');
-    const cleanTime = report.avisoTime.replace(/:/g, '-').replace(/\s+/g, '');
-    return `${cleanClient}_AVERIAS_${cleanLocation}_${cleanDate}_${cleanTime}.pdf`;
+    return `${cleanPlate}_${cleanClient}_AVERIAS_${cleanDate}.pdf`;
   } catch (error) {
     return `AVERIAS_${Date.now()}.pdf`;
   }
@@ -84,15 +83,7 @@ export const generateAveriasHTML = async (report: AveriaInspection): Promise<str
       });
     }
 
-    // Firmas
-    let firmaTecnico = '';
-    let firmaCliente = '';
-    if (report.technicianSignature && report.technicianSignature.trim() !== '') {
-      firmaTecnico = await getImageBase64(report.technicianSignature, 300);
-    }
-    if (report.clientSignature && report.clientSignature.trim() !== '') {
-      firmaCliente = await getImageBase64(report.clientSignature, 300);
-    }
+    // No firmas en averías
 
     // Materiales
     let materialesRows = '<tr><td colspan="3" style="text-align: center; color: #999; font-style: italic;">Sin materiales registrados</td></tr>';
@@ -131,7 +122,7 @@ export const generateAveriasHTML = async (report: AveriaInspection): Promise<str
     if (defectsWithPhotos.length > 0) {
       defectsHTML = defectsWithPhotos.map((d, i) => `
         <div class="section">
-          <div class="section-header" style="background: linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%); border-left-color: #e87a20;">🔧 AVERÍA ${i + 1}</div>
+          <div class="section-header orange">🔧 AVERÍA ${i + 1}</div>
           <div class="section-content ${!d.description ? 'empty' : ''}">${d.description || 'Sin descripción'}</div>
         </div>
         ${d.photos.length > 0 ? `
@@ -185,8 +176,8 @@ export const generateAveriasHTML = async (report: AveriaInspection): Promise<str
           .header-right .company-name { font-size: 12px; font-weight: bold; color: #fff; margin-bottom: 4px; }
           .info-container { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
           .info-column { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; }
-          .column-header { background: linear-gradient(135deg, #0f2f57 0%, #173f73 100%); color: white; padding: 8px 13px; font-weight: bold; font-size: 9px; text-transform: uppercase; letter-spacing: 1px; text-align: center; border-bottom: 3px solid #7c3aed; }
-          .column-header.purple { background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%); border-bottom: 3px solid #0f2f57; }
+          .column-header { background: linear-gradient(135deg, #0f2f57 0%, #173f73 100%); color: white; padding: 8px 13px; font-weight: bold; font-size: 9px; text-transform: uppercase; letter-spacing: 1px; text-align: center; border-bottom: 3px solid #e87a20; }
+          .column-header.orange { background: linear-gradient(135deg, #e87a20 0%, #c2410c 100%); border-bottom: 3px solid #0f2f57; }
           .info-table { width: 100%; border-collapse: collapse; }
           .info-table td { padding: 8px 10px; border-bottom: 0.5px solid #e2e8f0; }
           .info-table tr:last-child td { border-bottom: none; }
@@ -194,18 +185,18 @@ export const generateAveriasHTML = async (report: AveriaInspection): Promise<str
           .info-table td.label { font-size: 9px; color: #4b5563; text-transform: uppercase; letter-spacing: 0.7px; width: 35%; }
           .info-table td.value { font-size: 12px; font-weight: bold; color: #111827; width: 65%; }
           .section { margin: 12px 0; page-break-inside: avoid; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; }
-          .section-header { background: linear-gradient(135deg, #0f2f57 0%, #173f73 100%); color: white; padding: 8px 13px; font-weight: bold; font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; border-left: 4px solid #7c3aed; }
-          .section-header.purple { background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%); border-left: 4px solid #0f2f57; }
+          .section-header { background: linear-gradient(135deg, #0f2f57 0%, #173f73 100%); color: white; padding: 8px 13px; font-weight: bold; font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; border-left: 4px solid #e87a20; }
+          .section-header.orange { background: linear-gradient(135deg, #e87a20 0%, #c2410c 100%); border-left: 4px solid #0f2f57; }
           .section-content { padding: 12px 14px; min-height: 40px; line-height: 1.5; color: #374151; font-size: 11px; }
           .section-content.empty { color: #9ca3af; font-style: italic; }
           .photos-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 20px 0; }
           .photo-item { page-break-inside: avoid; }
           .photo-section { background: #f8fafc; border-radius: 12px; padding: 12px; border: 1px solid #e2e8f0; }
-          .photo-title { font-weight: bold; font-size: 9px; color: #7c3aed; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.7px; text-align: center; }
+          .photo-title { font-weight: bold; font-size: 9px; color: #0f2f57; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.7px; text-align: center; }
           .photo-container { background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px; text-align: center; }
           .photo { max-width: 100%; width: 100%; height: auto; max-height: 180px; border-radius: 8px; object-fit: contain; }
           .materials-table { width: 100%; border-collapse: collapse; }
-          .materials-table thead { background: linear-gradient(90deg, #0f2f57 0%, #173f73 60%, #7c3aed 100%); color: white; }
+          .materials-table thead { background: linear-gradient(90deg, #0f2f57 0%, #173f73 60%, #e87a20 100%); color: white; }
           .materials-table th { padding: 10px 12px; text-align: left; font-weight: bold; font-size: 9px; text-transform: uppercase; }
           .materials-table td { padding: 10px 12px; border-bottom: 0.5px solid #e2e8f0; background: white; font-size: 11px; }
           .materials-table tbody tr:nth-child(even) td { background: #f8fafc; }
@@ -218,7 +209,7 @@ export const generateAveriasHTML = async (report: AveriaInspection): Promise<str
           .signature-line { border-top: 2px solid #1f2937; margin: 10px 20px 15px 20px; }
           .signature-name { font-size: 11px; color: #1f2937; font-weight: bold; margin-top: 5px; }
           .footer { margin-top: 28px; text-align: center; font-size: 8px; color: #6b7280; page-break-inside: avoid; }
-          .footer-separator { height: 2px; background: linear-gradient(90deg, transparent 0%, #7c3aed 20%, #0f2f57 80%, transparent 100%); border-radius: 2px; margin-bottom: 14px; }
+          .footer-separator { height: 2px; background: linear-gradient(90deg, transparent 0%, #e87a20 20%, #0f2f57 80%, transparent 100%); border-radius: 2px; margin-bottom: 14px; }
           .footer-logo { max-width: 110px; max-height: 40px; object-fit: contain; opacity: 0.85; }
           .footer-address { font-size: 8px; color: #374151; font-weight: bold; line-height: 1.5; margin-bottom: 10px; }
           .footer-text { font-size: 6.5px; color: #9ca3af; line-height: 1.4; text-align: justify; padding: 0 15px; }
@@ -249,14 +240,15 @@ export const generateAveriasHTML = async (report: AveriaInspection): Promise<str
             <div class="column-header">📋 DATOS DEL CLIENTE</div>
             <table class="info-table">
               <tr><td class="label">Cliente:</td><td class="value">${report.clientName || '-'}</td></tr>
+              <tr><td class="label">Matrícula:</td><td class="value">${report.licensePlate || '-'}</td></tr>
               <tr><td class="label">Fecha:</td><td class="value">${report.avisoDate || '-'}</td></tr>
               <tr><td class="label">Hora:</td><td class="value">${report.avisoTime || '-'}</td></tr>
               <tr><td class="label">Ubicación:</td><td class="value">${report.location || '-'}</td></tr>
-              <tr><td class="label">Pedido por:</td><td class="value">${report.requestedBy || '-'}</td></tr>
+              <tr><td class="label">Revisado por:</td><td class="value">${report.reviewedBy || '-'}</td></tr>
             </table>
           </div>
           <div class="info-column">
-            <div class="column-header purple">⚙️ DATOS DE LA MÁQUINA</div>
+            <div class="column-header orange">⚙️ DATOS DE LA MÁQUINA</div>
             <table class="info-table">
               <tr><td class="label">Tipo:</td><td class="value">${report.machineType || '-'}</td></tr>
               <tr><td class="label">Marca:</td><td class="value">${report.machineBrand || '-'}</td></tr>
@@ -272,7 +264,7 @@ export const generateAveriasHTML = async (report: AveriaInspection): Promise<str
         ${defectsHTML}
 
         <div class="section">
-          <div class="section-header purple">🛠️ INTERVENCIÓN / SOLUCIÓN</div>
+          <div class="section-header orange">🛠️ INTERVENCIÓN / SOLUCIÓN</div>
           <div class="section-content ${!report.solucionDescription ? 'empty' : ''}">${report.solucionDescription || 'No especificada'}</div>
         </div>
 
@@ -291,25 +283,6 @@ export const generateAveriasHTML = async (report: AveriaInspection): Promise<str
               </thead>
               <tbody>${materialesRows}</tbody>
             </table>
-          </div>
-        </div>
-
-        <div class="signatures-section">
-          <div class="signature-box">
-            <div class="signature-label">✍️ Firma del Técnico</div>
-            <div class="signature-image-container">
-              ${firmaTecnico ? `<img src="${firmaTecnico}" class="signature-image" />` : '<div class="signature-placeholder">Sin firma</div>'}
-            </div>
-            <div class="signature-line"></div>
-            <div class="signature-name">${report.technicianName || 'Nombre del Técnico'}</div>
-          </div>
-          <div class="signature-box">
-            <div class="signature-label">✍️ Firma del Cliente</div>
-            <div class="signature-image-container">
-              ${firmaCliente ? `<img src="${firmaCliente}" class="signature-image" />` : '<div class="signature-placeholder">Sin firma</div>'}
-            </div>
-            <div class="signature-line"></div>
-            <div class="signature-name">${report.clientSignatureName || 'Nombre y DNI del Cliente'}</div>
           </div>
         </div>
 
@@ -373,7 +346,7 @@ export const shareAveriasPDFReport = async (report: AveriaInspection, onProgress
       try {
         const pdfBase64 = await FileSystem.readAsStringAsync(finalUri, { encoding: FileSystem.EncodingType.Base64 });
         const sanitize = (s: string) => s.replace(/[^a-zA-Z0-9_-]/g, '_').substring(0, 50);
-        const storagePath = `averias/${sanitize(report.location)}_${sanitize(report.avisoDate)}/informe_${customFileName}`;
+        const storagePath = `averias/${sanitize(report.licensePlate)}_${sanitize(report.clientName)}_${sanitize(report.avisoDate)}/informe_${customFileName}`;
         await supabase.storage.from('inspection-photos').upload(storagePath, decode(pdfBase64), {
           contentType: 'application/pdf',
           upsert: true,

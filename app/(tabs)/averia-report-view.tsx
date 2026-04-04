@@ -117,7 +117,8 @@ export default function AveriaReportViewScreen() {
             <InfoRow label="Cliente" value={inspection.clientName} />
             <InfoRow label="Fecha" value={`${inspection.avisoDate} ${inspection.avisoTime}`} />
             <InfoRow label="Ubicación" value={inspection.location} />
-            {inspection.requestedBy ? <InfoRow label="Pedido por" value={inspection.requestedBy} /> : null}
+            <InfoRow label="Matrícula" value={inspection.licensePlate} />
+            {inspection.reviewedBy ? <InfoRow label="Revisado por" value={inspection.reviewedBy} /> : null}
           </Card.Content>
         </Card>
 
@@ -215,27 +216,16 @@ export default function AveriaReportViewScreen() {
           </Card>
         )}
 
-        {/* Firmas */}
-        <Card style={styles.card}>
-          <Card.Content>
-            <Title style={styles.sectionTitle}>✍️ Firmas</Title>
-            <Divider style={styles.dividerLine} />
-            <InfoRow label="Técnico" value={inspection.technicianName} />
-            {inspection.technicianSignature ? (
-              <View style={styles.signatureSection}>
-                <Text style={styles.signatureLabel}>Firma del técnico:</Text>
-                <Image source={{ uri: inspection.technicianSignature }} style={styles.signatureImage} resizeMode="contain" />
-              </View>
-            ) : null}
-            <InfoRow label="Cliente" value={inspection.clientSignatureName} />
-            {inspection.clientSignature ? (
-              <View style={styles.signatureSection}>
-                <Text style={styles.signatureLabel}>Firma del cliente:</Text>
-                <Image source={{ uri: inspection.clientSignature }} style={styles.signatureImage} resizeMode="contain" />
-              </View>
-            ) : null}
-          </Card.Content>
-        </Card>
+        {/* Notas */}
+        {inspection.notes ? (
+          <Card style={styles.card}>
+            <Card.Content>
+              <Title style={styles.sectionTitle}>📝 Notas</Title>
+              <Divider style={styles.dividerLine} />
+              <Paragraph>{inspection.notes}</Paragraph>
+            </Card.Content>
+          </Card>
+        ) : null}
       </ScrollView>
 
       <SafeAreaView style={styles.buttonSafeArea} edges={['bottom']}>

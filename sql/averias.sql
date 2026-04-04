@@ -15,13 +15,10 @@ CREATE TABLE IF NOT EXISTS averias_inspections (
   machine_model TEXT,
   serial_number TEXT,
   license_plate TEXT,
+  notes TEXT,
+  reviewed_by TEXT,
   -- Intervención / Solución
   solucion_description TEXT,
-  -- Firmas
-  technician_name TEXT,
-  technician_signature TEXT,
-  client_signature_name TEXT,
-  client_signature TEXT,
   -- Timestamps
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now()
