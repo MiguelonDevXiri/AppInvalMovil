@@ -561,12 +561,53 @@ export const generateHTMLReport = async (
     `;
   }
 
+  const validMaterials = (checklistResults?.materials || []).filter((material) => {
+    return material.name.trim() !== '' || material.quantity.trim() !== '' || material.reference.trim() !== '';
+  });
+
+  let materialsHtml = '';
+  if (validMaterials.length > 0) {
+    const materialsRows = validMaterials.map((material) => `
+      <tr>
+        <td>${material.name || '-'}</td>
+        <td style="text-align:center;">${material.quantity || '-'}</td>
+        <td>${material.reference || '-'}</td>
+        <td style="text-align:center;">${material.available === true ? 'Sí' : material.available === false ? 'No' : '-'}</td>
+      </tr>
+    `).join('');
+
+    materialsHtml = `
+      <div class="section">
+        <div class="section-header">
+          <div class="section-icon">03</div>
+          <div class="section-header-text">
+            <div class="section-title">Materiales</div>
+            <div class="section-subtitle">Material usado o pendiente de reposición</div>
+          </div>
+        </div>
+        <div class="materials-section">
+          <table class="materials-table">
+            <thead>
+              <tr>
+                <th style="width: 36%;">Material</th>
+                <th style="width: 16%; text-align:center;">Cantidad</th>
+                <th style="width: 30%;">Referencia</th>
+                <th style="width: 18%; text-align:center;">¿Hay?</th>
+              </tr>
+            </thead>
+            <tbody>${materialsRows}</tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  }
+
   let commentsHtml = '';
   if ((machine.notes || machine.commentsWithPhotos) && checklistResults && checklistResults.results) {
     commentsHtml = `
       <div class="section comments-section">
         <div class="section-header">
-          <div class="section-icon">03</div>
+          <div class="section-icon">${validMaterials.length > 0 ? '04' : '03'}</div>
           <div class="section-header-text">
             <div class="section-title">Comentarios específicos</div>
             <div class="section-subtitle">Observaciones adicionales del técnico</div>
@@ -1082,6 +1123,45 @@ export const generateHTMLReport = async (
           padding: 6px 9px 6px 9px;
         }
 
+        .materials-section {
+          background: #ffffff;
+          border: 1px solid #e2e8f0;
+          border-radius: 12px;
+          overflow: hidden;
+          box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+        }
+
+        .materials-table {
+          width: 100%;
+          border-collapse: collapse;
+          font-size: 11px;
+        }
+
+        .materials-table thead {
+          background: linear-gradient(90deg, #0f2f57 0%, #173f73 60%, #e87a20 100%);
+          color: white;
+        }
+
+        .materials-table th {
+          padding: 9px 10px;
+          text-align: left;
+          font-weight: bold;
+          font-size: 9px;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+
+        .materials-table td {
+          padding: 9px 10px;
+          border-bottom: 0.5px solid #e2e8f0;
+          background: white;
+          color: #1f2937;
+        }
+
+        .materials-table tbody tr:nth-child(even) td {
+          background: #f8fafc;
+        }
+
         .comments-section {
           background: #ffffff;
           border: 1px solid #e2e8f0;
@@ -1254,6 +1334,7 @@ export const generateHTMLReport = async (
 
         ${generalPhotosThumbnails}
         ${checklistHtml}
+        ${materialsHtml}
         ${commentsHtml}
 
         <div class="footer">

@@ -21,6 +21,8 @@ export interface AveriaInspection {
   machineModel: string;
   serialNumber: string;
   licensePlate: string;
+  otNumber?: string;
+  notes: string;
   // Averías detectadas (lista dinámica)
   defects: AveriaDefect[];
   // Intervención / Solución
@@ -125,6 +127,8 @@ const dbRowToInspection = (
     machineModel: row.machine_model || '',
     serialNumber: row.serial_number || '',
     licensePlate: row.license_plate || '',
+    otNumber: row.ot_number || '',
+    notes: row.notes || '',
     defects,
     solucionDescription: row.solucion_description || '',
     solucionPhotos,
@@ -241,6 +245,8 @@ export const saveAveriaInspection = async (inspection: AveriaInspection): Promis
         machine_model: inspection.machineModel,
         serial_number: inspection.serialNumber,
         license_plate: inspection.licensePlate || null,
+        ot_number: inspection.otNumber || null,
+        notes: inspection.notes || null,
         solucion_description: inspection.solucionDescription,
         created_at: inspection.createdAt || now,
         updated_at: now,
@@ -446,6 +452,8 @@ export const paramsToInspection = (params: any): AveriaInspection => {
     machineModel: params.model || '',
     serialNumber: params.serialNumber || '',
     licensePlate: params.licensePlate || '',
+    otNumber: params.otNumber || '',
+    notes: params.notes || params.observaciones || '',
     defects,
     solucionDescription: params.solucionDescription || '',
     solucionPhotos,
@@ -472,6 +480,8 @@ export const inspectionToParams = (inspection: AveriaInspection): any => {
     model: inspection.machineModel,
     serialNumber: inspection.serialNumber,
     licensePlate: inspection.licensePlate || '',
+    otNumber: inspection.otNumber || '',
+    notes: inspection.notes || '',
     defects: JSON.stringify(inspection.defects),
     solucionDescription: inspection.solucionDescription,
     solucionPhotos: JSON.stringify(inspection.solucionPhotos),

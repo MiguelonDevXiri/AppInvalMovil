@@ -162,6 +162,7 @@ export default function AveriaReportViewScreen() {
             {inspection.machineType ? <InfoRow label="Tipo" value={inspection.machineType} /> : null}
             {inspection.machineModel ? <InfoRow label="Modelo" value={inspection.machineModel} /> : null}
             {inspection.serialNumber ? <InfoRow label="Nº Serie" value={inspection.serialNumber} /> : null}
+            {inspection.otNumber ? <InfoRow label="Nº OT" value={inspection.otNumber} /> : null}
           </Card.Content>
         </Card>
 
@@ -203,6 +204,17 @@ export default function AveriaReportViewScreen() {
                   ))}
                 </View>
               )}
+            </Card.Content>
+          </Card>
+        ) : null}
+
+        {/* Notas / observaciones */}
+        {inspection.notes ? (
+          <Card style={styles.card}>
+            <Card.Content>
+              <Title style={styles.sectionTitle}>📝 Notas / Observaciones</Title>
+              <Divider style={styles.dividerLine} />
+              <Paragraph>{inspection.notes}</Paragraph>
             </Card.Content>
           </Card>
         ) : null}

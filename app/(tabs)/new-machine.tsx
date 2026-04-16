@@ -21,6 +21,7 @@ export default function NewMachineScreen() {
     model: '',
     serialNumber: '',
     licensePlate: '',
+    otNumber: '',
     clientName: '',
     clientType: '',
     location: '',

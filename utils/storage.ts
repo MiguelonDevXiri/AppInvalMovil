@@ -18,6 +18,7 @@ export interface Machine {
   model?: string;
   serialNumber?: string;
   licensePlate?: string;
+  otNumber?: string;
   clientName: string;
   clientType?: string;
   location?: string;
@@ -41,12 +42,21 @@ export interface ChecklistPhotoWithComment {
 
 export type ChecklistPhoto = string | string[] | ChecklistPhotoWithComment[];
 
+export interface ChecklistMaterial {
+  id: string;
+  name: string;
+  quantity: string;
+  reference: string;
+  available: boolean | null;
+}
+
 export interface ChecklistData {
   machineId: string;
   results: { [key: string]: string };
   photos: { [key: string]: ChecklistPhoto };
   completedAt: string;
   cantDoComments?: { [key: string]: string };
+  materials?: ChecklistMaterial[];
 }
 
 export interface GeneralPhotosData {
@@ -204,6 +214,7 @@ export const getMachines = async (): Promise<Machine[]> => {
       model: row.model || undefined,
       serialNumber: row.serial_number || undefined,
       licensePlate: row.license_plate || undefined,
+      otNumber: row.ot_number || undefined,
       clientName: row.client_name || '',
       clientType: row.client_type || undefined,
       location: row.location || undefined,
@@ -267,6 +278,7 @@ export const getMachineById = async (machineId: string): Promise<Machine | null>
       model: data.model || undefined,
       serialNumber: data.serial_number || undefined,
       licensePlate: data.license_plate || undefined,
+      otNumber: data.ot_number || undefined,
       clientName: data.client_name || '',
       clientType: data.client_type || undefined,
       location: data.location || undefined,
@@ -315,6 +327,7 @@ export const saveMachine = async (machineData: Machine): Promise<Machine> => {
       model: machineData.model || null,
       serial_number: machineData.serialNumber || null,
       license_plate: machineData.licensePlate || null,
+      ot_number: machineData.otNumber || null,
       client_name: machineData.clientName,
       client_type: machineData.clientType || null,
       location: machineData.location || null,
@@ -481,6 +494,29 @@ export const getChecklistByMachineId = async (machineId: string): Promise<Checkl
       .eq('machine_id', machineId)
       .order('created_at', { ascending: true });
 
+    let materials: ChecklistMaterial[] | undefined;
+    try {
+      const { data: materialsRows, error: materialsError } = await supabase
+        .from('checklist_materials')
+        .select('*')
+        .eq('machine_id', machineId)
+        .order('sort_order');
+
+      if (materialsError) {
+        console.warn('No se pudieron cargar los materiales del checklist:', materialsError.message);
+      } else if (materialsRows && materialsRows.length > 0) {
+        materials = materialsRows.map((row: any) => ({
+          id: row.id,
+          name: row.name || '',
+          quantity: row.quantity || '',
+          reference: row.reference || '',
+          available: typeof row.available === 'boolean' ? row.available : null,
+        }));
+      }
+    } catch (materialsError) {
+      console.warn('No se pudieron cargar los materiales del checklist:', materialsError);
+    }
+
     // Reconstruir el objeto photos agrupado por item_id
     const photosMap: { [key: string]: ChecklistPhotoWithComment[] } = {};
 
@@ -502,6 +538,7 @@ export const getChecklistByMachineId = async (machineId: string): Promise<Checkl
       photos: photosMap,
       completedAt: completedAt || new Date().toISOString(),
       cantDoComments: Object.keys(cantDoCommentsMap).length > 0 ? cantDoCommentsMap : undefined,
+      materials,
     };
 
     console.log('Checklist encontrado');
@@ -585,8 +622,52 @@ export const saveChecklist = async (checklistData: ChecklistData): Promise<Check
       }
     }
 
+    const validMaterials = (checklistData.materials || []).filter((material) => {
+      return material.name.trim() !== '' || material.quantity.trim() !== '' || material.reference.trim() !== '';
+    });
+
+    try {
+      const { error: deleteMaterialsError } = await supabase
+        .from('checklist_materials')
+        .delete()
+        .eq('machine_id', machineId);
+
+      if (deleteMaterialsError) {
+        throw deleteMaterialsError;
+      }
+    } catch (materialsError) {
+      console.warn('No se pudieron borrar los materiales previos del checklist:', materialsError);
+      if (validMaterials.length > 0) {
+        throw materialsError;
+      }
+    }
+
+    if (validMaterials.length > 0) {
+      const materialRows = validMaterials.map((material, index) => ({
+        id: isUUID(material.id) ? material.id : generateUUID(),
+        machine_id: machineId,
+        name: material.name,
+        quantity: material.quantity,
+        reference: material.reference,
+        available: typeof material.available === 'boolean' ? material.available : null,
+        sort_order: index,
+      }));
+
+      const { error: insertMaterialsError } = await supabase
+        .from('checklist_materials')
+        .insert(materialRows);
+
+      if (insertMaterialsError) {
+        console.error('Error al guardar materiales del checklist:', insertMaterialsError);
+        throw insertMaterialsError;
+      }
+    }
+
     console.log('Checklist guardado exitosamente');
-    return checklistData;
+    return {
+      ...checklistData,
+      materials: validMaterials,
+    };
   } catch (error) {
     console.error('Error al guardar checklist:', error);
     throw error;
@@ -602,6 +683,11 @@ export const deleteChecklistByMachineId = async (machineId: string): Promise<boo
 
     await supabase.from('checklist_photos').delete().eq('machine_id', machineId);
     await supabase.from('checklist_results').delete().eq('machine_id', machineId);
+    try {
+      await supabase.from('checklist_materials').delete().eq('machine_id', machineId);
+    } catch (materialsError) {
+      console.warn('No se pudieron borrar los materiales del checklist:', materialsError);
+    }
 
     // Borrar fotos del Storage
     await deletePhotosInFolder(`${basePath}/checklist`);
@@ -942,6 +1028,11 @@ export const clearAllData = async (): Promise<boolean> => {
 
     await supabase.from('checklist_photos').delete().neq('id', '00000000-0000-0000-0000-000000000000');
     await supabase.from('checklist_results').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    try {
+      await supabase.from('checklist_materials').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    } catch (materialsError) {
+      console.warn('No se pudieron limpiar los materiales del checklist:', materialsError);
+    }
     await supabase.from('machine_photos').delete().neq('id', '00000000-0000-0000-0000-000000000000');
     await supabase.from('machine_comments').delete().neq('id', '00000000-0000-0000-0000-000000000000');
     await supabase.from('machines').delete().neq('id', '00000000-0000-0000-0000-000000000000');

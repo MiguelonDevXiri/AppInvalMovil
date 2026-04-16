@@ -36,6 +36,7 @@ export default function Layout() {
         <Stack.Screen name="machine-type-selection" />
         <Stack.Screen name="new-machine" />
         <Stack.Screen name="checklist" />
+        <Stack.Screen name="checklist-materials" />
         <Stack.Screen name="comments" />
         <Stack.Screen name="photos" />
         <Stack.Screen name="report" />

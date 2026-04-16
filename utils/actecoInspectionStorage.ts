@@ -15,6 +15,7 @@ export interface ActecoInspection {
   machineModel: string;
   serialNumber: string;
   licensePlate?: string;
+  otNumber?: string;
   photoGeneral1?: string;
   photoGeneral2?: string;
   photoGeneral3?: string;
@@ -177,6 +178,7 @@ const dbRowToInspection = (row: any, photos: any[], materials: any[]): ActecoIns
     machineModel: row.machine_model || '',
     serialNumber: row.serial_number || '',
     licensePlate: row.license_plate || '',
+    otNumber: row.ot_number || '',
     photoGeneral1: generalPhotos['photoGeneral1'] || '',
     photoGeneral2: generalPhotos['photoGeneral2'] || '',
     photoGeneral3: generalPhotos['photoGeneral3'] || '',
@@ -226,6 +228,7 @@ export const saveActecoInspection = async (inspection: ActecoInspection): Promis
       machine_model: inspection.machineModel,
       serial_number: inspection.serialNumber,
       license_plate: inspection.licensePlate || null,
+      ot_number: inspection.otNumber || null,
       has_averia: inspection.hasAveria,
       aviso_averia: inspection.avisoAveria,
       averia_detectada: inspection.averiaDetectada,
@@ -411,6 +414,7 @@ export const paramsToInspection = (params: any): ActecoInspection => {
     machineModel: params.model || '',
     serialNumber: params.serialNumber || '',
     licensePlate: params.licensePlate || '',
+    otNumber: params.otNumber || '',
     photoGeneral1: params.photoGeneral1 || '',
     photoGeneral2: params.photoGeneral2 || '',
     photoGeneral3: params.photoGeneral3 || '',
@@ -446,6 +450,7 @@ export const inspectionToParams = (inspection: ActecoInspection): any => {
     model: inspection.machineModel,
     serialNumber: inspection.serialNumber,
     licensePlate: inspection.licensePlate || '',
+    otNumber: inspection.otNumber || '',
     photoGeneral1: inspection.photoGeneral1 || '',
     photoGeneral2: inspection.photoGeneral2 || '',
     photoGeneral3: inspection.photoGeneral3 || '',

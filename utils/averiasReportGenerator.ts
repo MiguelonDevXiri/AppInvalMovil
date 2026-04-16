@@ -255,6 +255,7 @@ export const generateAveriasHTML = async (report: AveriaInspection): Promise<str
               <tr><td class="label">Modelo:</td><td class="value">${report.machineModel || '-'}</td></tr>
               <tr><td class="label">Nº Serie:</td><td class="value">${report.serialNumber || '-'}</td></tr>
               <tr><td class="label">Matrícula:</td><td class="value">${report.licensePlate || '-'}</td></tr>
+              <tr><td class="label">Nº OT:</td><td class="value">${report.otNumber || '-'}</td></tr>
             </table>
           </div>
         </div>
@@ -271,6 +272,13 @@ export const generateAveriasHTML = async (report: AveriaInspection): Promise<str
         </div>
 
         ${fotosSolucionHTML}
+
+        ${report.notes ? `
+          <div class="section">
+            <div class="section-header">📝 NOTAS / OBSERVACIONES</div>
+            <div class="section-content">${report.notes}</div>
+          </div>
+        ` : ''}
 
         <div class="section">
           <div class="section-header">🧰 MATERIALES UTILIZADOS</div>

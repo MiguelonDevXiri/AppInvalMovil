@@ -18,6 +18,7 @@ export default function AveriaMachineFormScreen() {
   const [brand, setBrand] = useState('');
   const [model, setModel] = useState('');
   const [serialNumber, setSerialNumber] = useState('');
+  const [otNumber, setOtNumber] = useState('');
   const [location, setLocation] = useState('');
   const [reviewedBy, setReviewedBy] = useState('');
   const [avisoDate, setAvisoDate] = useState(new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }));
@@ -37,6 +38,7 @@ export default function AveriaMachineFormScreen() {
       if (params.brand) setBrand(params.brand as string);
       if (params.model) setModel(params.model as string);
       if (params.serialNumber) setSerialNumber(params.serialNumber as string);
+      if (params.otNumber) setOtNumber(params.otNumber as string);
       if (params.location) setLocation(params.location as string);
       if (params.reviewedBy) setReviewedBy(params.reviewedBy as string);
       if (params.avisoDate) setAvisoDate(params.avisoDate as string);
@@ -72,7 +74,7 @@ export default function AveriaMachineFormScreen() {
       params: {
         ...params,
         clientName, licensePlate, machineType, brand, model, serialNumber,
-        location, reviewedBy, avisoDate, avisoTime,
+        otNumber, location, reviewedBy, avisoDate, avisoTime,
         isEditing: isEditing ? 'true' : 'false',
       },
     });

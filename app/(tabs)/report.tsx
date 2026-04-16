@@ -272,6 +272,31 @@ export default function ReportScreen() {
           )
         )}
 
+        {!isOthersMachineType && checklistResults?.materials && checklistResults.materials.length > 0 && (
+          <Card style={styles.sectionCard}>
+            <Card.Content>
+              <Text style={styles.sectionTitle}>Materiales</Text>
+              <Divider style={styles.divider} />
+              <View style={styles.materialsTable}>
+                <View style={styles.materialsHeaderRow}>
+                  <Text style={[styles.materialsHeaderText, { flex: 2 }]}>Material</Text>
+                  <Text style={[styles.materialsHeaderText, { flex: 1 }]}>Cant.</Text>
+                  <Text style={[styles.materialsHeaderText, { flex: 1.4 }]}>Ref.</Text>
+                  <Text style={[styles.materialsHeaderText, { flex: 0.9 }]}>¿Hay?</Text>
+                </View>
+                {checklistResults.materials.map((material, index) => (
+                  <View key={material.id || index} style={[styles.materialsRow, index % 2 === 0 ? styles.materialsRowEven : styles.materialsRowOdd]}>
+                    <Text style={[styles.materialsCell, { flex: 2 }]}>{material.name || '—'}</Text>
+                    <Text style={[styles.materialsCell, { flex: 1 }]}>{material.quantity || '—'}</Text>
+                    <Text style={[styles.materialsCell, { flex: 1.4 }]}>{material.reference || '—'}</Text>
+                    <Text style={[styles.materialsCell, { flex: 0.9 }]}>{material.available === true ? 'Sí' : material.available === false ? 'No' : '—'}</Text>
+                  </View>
+                ))}
+              </View>
+            </Card.Content>
+          </Card>
+        )}
+
         {!isOthersMachineType && machine.notes && (
           <Card style={styles.sectionCard}>
             <Card.Content>
@@ -507,6 +532,36 @@ const styles = StyleSheet.create({
     backgroundColor: BRAND_COLORS.grayLight,
     height: 1,
     opacity: 0.5,
+  },
+  materialsTable: {
+    marginTop: SPACING.sm,
+  },
+  materialsHeaderRow: {
+    flexDirection: 'row',
+    backgroundColor: BRAND_COLORS.primaryBlue,
+    padding: SPACING.sm,
+    borderRadius: BORDER_RADIUS.sm,
+  },
+  materialsHeaderText: {
+    color: 'white',
+    fontWeight: TYPOGRAPHY.weights.bold as any,
+    fontSize: TYPOGRAPHY.sizes.xs,
+  },
+  materialsRow: {
+    flexDirection: 'row',
+    padding: SPACING.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: BRAND_COLORS.grayMedium,
+  },
+  materialsRowEven: {
+    backgroundColor: BRAND_COLORS.grayLight,
+  },
+  materialsRowOdd: {
+    backgroundColor: 'white',
+  },
+  materialsCell: {
+    fontSize: TYPOGRAPHY.sizes.xs,
+    color: '#1e293b',
   },
   evidenceContainer: {
     marginTop: SPACING.sm,

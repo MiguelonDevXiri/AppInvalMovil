@@ -16,11 +16,16 @@ interface Material {
 
 export default function AveriaMaterialesFormScreen() {
   const params = useLocalSearchParams();
+  const [notes, setNotes] = useState('');
   const [materiales, setMateriales] = useState<Material[]>([
     { id: '1', name: '', quantity: '', reference: '' },
   ]);
 
   useEffect(() => {
+    if (params.notes) {
+      setNotes(params.notes as string);
+    }
+
     if (params.materiales) {
       try {
         const parsed = JSON.parse(params.materiales as string);
@@ -54,6 +59,7 @@ export default function AveriaMaterialesFormScreen() {
       pathname: '/(tabs)/averia-final-form' as any,
       params: {
         ...params,
+        notes,
         materiales: JSON.stringify(validMateriales),
       },
     });
@@ -74,6 +80,25 @@ export default function AveriaMaterialesFormScreen() {
             <Text style={styles.headerTitle}>Materiales Utilizados</Text>
             <Text style={styles.headerSubtitle}>Registra los materiales gastados</Text>
           </LinearGradient>
+
+          <Card style={styles.notesCard}>
+            <Card.Content>
+              <Text style={styles.sectionTitle}>📝 Notas / Observaciones</Text>
+              <Divider style={styles.divider} />
+              <TextInput
+                label="Observaciones de la intervención"
+                value={notes}
+                onChangeText={setNotes}
+                style={styles.notesInput}
+                mode="outlined"
+                multiline
+                numberOfLines={4}
+                placeholder="Añade notas o detalles que deban verse en web y PDF"
+                outlineColor={BRAND_COLORS.grayMedium}
+                activeOutlineColor="#7c3aed"
+              />
+            </Card.Content>
+          </Card>
 
           <Card style={styles.materialesCard}>
             <Card.Content>
@@ -152,6 +177,8 @@ const styles = StyleSheet.create({
   backBtn: { position: 'absolute', left: 12, top: 12, zIndex: 10, width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
   headerTitle: { fontSize: TYPOGRAPHY.sizes.xl, fontWeight: TYPOGRAPHY.weights.bold as any, color: 'white' },
   headerSubtitle: { fontSize: TYPOGRAPHY.sizes.sm, color: 'rgba(255,255,255,0.8)', marginTop: SPACING.xs },
+  notesCard: { margin: SPACING.md, marginBottom: SPACING.sm, borderRadius: BORDER_RADIUS.lg, borderLeftWidth: 3, borderLeftColor: BRAND_COLORS.primaryBlue, ...SHADOWS.small },
+  notesInput: { backgroundColor: 'white' },
   materialesCard: { margin: SPACING.md, borderRadius: BORDER_RADIUS.lg, borderLeftWidth: 3, borderLeftColor: BRAND_COLORS.success, ...SHADOWS.small },
   materialesHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: SPACING.sm },
   sectionTitle: { fontSize: TYPOGRAPHY.sizes.md, fontWeight: TYPOGRAPHY.weights.bold as any, color: '#7c3aed' },

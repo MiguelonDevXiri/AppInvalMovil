@@ -23,6 +23,7 @@ export default function ActecoReportFormScreen() {
   const [model, setModel] = useState('');
   const [serialNumber, setSerialNumber] = useState('');
   const [licensePlate, setLicensePlate] = useState('');
+  const [otNumber, setOtNumber] = useState('');
 
   const [isEditing, setIsEditing] = useState(false);
 
@@ -49,6 +50,7 @@ export default function ActecoReportFormScreen() {
     if (params.model) setModel(params.model as string);
     if (params.serialNumber) setSerialNumber(params.serialNumber as string);
     if (params.licensePlate) setLicensePlate(params.licensePlate as string);
+    if (params.otNumber) setOtNumber(params.otNumber as string);
 
     console.log('✅ Datos cargados para edición');
   };
@@ -82,6 +84,7 @@ export default function ActecoReportFormScreen() {
       model,
       serialNumber,
       licensePlate,
+      otNumber,
       isEditing: isEditing ? 'true' : 'false'
     };
 
@@ -242,6 +245,7 @@ export default function ActecoReportFormScreen() {
                 activeOutlineColor={BRAND_COLORS.primaryOrange}
                 placeholder="Matrícula (si aplica)"
               />
+
             </Card.Content>
           </Card>
 

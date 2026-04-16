@@ -8,7 +8,7 @@ import { Button, Divider, ProgressBar, Text } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BORDER_RADIUS, BRAND_COLORS, GRADIENTS, SHADOWS, SPACING, TYPOGRAPHY } from '../../constants/Colors';
 import { getChecklistByMachineType } from '../../data/machineChecklists';
-import { getChecklistByMachineId, getMachineById, Machine, saveChecklist } from '../../utils/storage';
+import { ChecklistMaterial, getChecklistByMachineId, getMachineById, Machine, saveChecklist } from '../../utils/storage';
 
 interface ChecklistItemType {
   id: string;
@@ -39,6 +39,7 @@ export default function ChecklistScreen() {
   const [checklistCategories, setChecklistCategories] = useState<ChecklistCategory[]>([]);
   const [checklistResults, setChecklistResults] = useState<ChecklistResults>({});
   const [photos, setPhotos] = useState<Photos>({});
+  const [materials, setMaterials] = useState<ChecklistMaterial[]>([]);
   const [progress, setProgress] = useState(0);
   const [currentCategory, setCurrentCategory] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -100,6 +101,9 @@ export default function ChecklistScreen() {
           }
           if (savedChecklist.cantDoComments) {
             setCantDoComments(savedChecklist.cantDoComments);
+          }
+          if (savedChecklist.materials) {
+            setMaterials(savedChecklist.materials);
           }
         }
         setLoading(false);
@@ -248,10 +252,10 @@ export default function ChecklistScreen() {
       if (!machineId) return;
       setSavingText('Guardando checklist...');
       setIsSaving(true);
-      await saveChecklist({ machineId: machineId.toString(), results: checklistResults, photos, completedAt: new Date().toISOString(), cantDoComments });
-      setSavingText('Preparando comentarios...');
+      await saveChecklist({ machineId: machineId.toString(), results: checklistResults, photos, completedAt: new Date().toISOString(), cantDoComments, materials });
+      setSavingText('Preparando materiales...');
       setIsSaving(false);
-      router.push({ pathname: '/comments', params: { machineId: machineId.toString() } });
+      router.push({ pathname: '/checklist-materials', params: { machineId: machineId.toString() } });
     } catch (error) {
       console.error('Error al guardar el checklist:', error);
       setIsSaving(false);
