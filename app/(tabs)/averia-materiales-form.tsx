@@ -1,4 +1,5 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
@@ -52,8 +53,14 @@ export default function AveriaMaterialesFormScreen() {
     setMateriales(materiales.map(m => m.id === id ? { ...m, [field]: value } : m));
   };
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     const validMateriales = materiales.filter(m => m.name.trim() !== '' || m.quantity.trim() !== '');
+
+    try {
+      await AsyncStorage.setItem('averia_draft_notes', notes);
+    } catch (error) {
+      console.error('No se pudo guardar el borrador de notas:', error);
+    }
 
     router.push({
       pathname: '/(tabs)/averia-final-form' as any,

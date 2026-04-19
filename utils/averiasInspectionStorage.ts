@@ -409,6 +409,14 @@ export const deleteAveriaInspection = async (id: string): Promise<boolean> => {
 // ==================== CONVERSORES PARAMS ↔ MODELO ====================
 
 export const paramsToInspection = (params: any): AveriaInspection => {
+  const getParamString = (value: unknown): string => {
+    if (Array.isArray(value)) {
+      return typeof value[0] === 'string' ? value[0] : '';
+    }
+
+    return typeof value === 'string' ? value : '';
+  };
+
   let defects: AveriaDefect[] = [];
   if (params.defects) {
     try {
@@ -452,8 +460,8 @@ export const paramsToInspection = (params: any): AveriaInspection => {
     machineModel: params.model || '',
     serialNumber: params.serialNumber || '',
     licensePlate: params.licensePlate || '',
-    otNumber: params.otNumber || '',
-    notes: params.notes || params.observaciones || '',
+    otNumber: getParamString(params.otNumber),
+    notes: getParamString(params.notes) || getParamString(params.observaciones),
     defects,
     solucionDescription: params.solucionDescription || '',
     solucionPhotos,

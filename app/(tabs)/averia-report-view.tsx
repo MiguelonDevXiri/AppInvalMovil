@@ -1,4 +1,5 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
@@ -26,6 +27,14 @@ export default function AveriaReportViewScreen() {
 
   useEffect(() => { loadAndSave(); }, []);
 
+  const getParamString = (value: unknown): string => {
+    if (Array.isArray(value)) {
+      return typeof value[0] === 'string' ? value[0] : '';
+    }
+
+    return typeof value === 'string' ? value : '';
+  };
+
   const loadAndSave = async () => {
     try {
       setLoading(true);
@@ -36,6 +45,14 @@ export default function AveriaReportViewScreen() {
       } else {
         insp = paramsToInspection(params);
       }
+
+      const paramNotes = getParamString(params.notes) || getParamString(params.observaciones);
+      const draftNotes = await AsyncStorage.getItem('averia_draft_notes');
+      const fallbackNotes = paramNotes.trim() || draftNotes?.trim() || '';
+      if (fallbackNotes && !insp.notes.trim()) {
+        insp = { ...insp, notes: fallbackNotes };
+      }
+
       setInspection(insp);
       setLoading(false);
 
@@ -57,6 +74,11 @@ export default function AveriaReportViewScreen() {
       setProgressPercent(5);
 
       const saved = await saveAveriaInspection(insp);
+      try {
+        await AsyncStorage.removeItem('averia_draft_notes');
+      } catch (error) {
+        console.error('No se pudo limpiar el borrador de notas:', error);
+      }
       setInspection(saved);
       setProgressPercent(10);
 
