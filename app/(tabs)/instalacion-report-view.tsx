@@ -307,6 +307,7 @@ export default function InstalacionReportViewScreen() {
             <ChecklistStatusRow
               label="¿Se comprueban presiones y funcionamiento general de la máquina?"
               value={inspection.pressuresChecked}
+              reason={inspection.pressuresCheckedReason}
             />
           </Card.Content>
         </Card>

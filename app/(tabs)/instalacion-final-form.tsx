@@ -32,6 +32,23 @@ const DRAFT_KEY = 'instalacion_draft_notes';
 type FinalPhotoSlot = 1 | 2 | 3 | 4;
 type ChecklistValue = boolean | null;
 
+type ChecklistQuestionProps = {
+  title: string;
+  value: ChecklistValue;
+  onChange: (nextValue: boolean) => void;
+  reason?: string;
+  onChangeReason?: (nextValue: string) => void;
+  requireReason?: boolean;
+};
+
+type PhotoSlotProps = {
+  slot: FinalPhotoSlot;
+  photo: string | null;
+  isPrimary?: boolean;
+  onTakePhoto: (slot: FinalPhotoSlot) => void;
+  onPickPhoto: (slot: FinalPhotoSlot) => void;
+};
+
 export default function InstalacionFinalFormScreen() {
   const params = useLocalSearchParams();
   const [finalPhoto1, setFinalPhoto1] = useState<string | null>(null);
@@ -45,6 +62,7 @@ export default function InstalacionFinalFormScreen() {
   const [staysRunning, setStaysRunning] = useState<ChecklistValue>(null);
   const [staysRunningReason, setStaysRunningReason] = useState('');
   const [pressuresChecked, setPressuresChecked] = useState<ChecklistValue>(null);
+  const [pressuresCheckedReason, setPressuresCheckedReason] = useState('');
 
   useEffect(() => {
     const loadInitialState = async () => {
@@ -63,6 +81,7 @@ export default function InstalacionFinalFormScreen() {
 
       setWorksCorrectlyReason(getParamString(params.worksCorrectlyReason));
       setStaysRunningReason(getParamString(params.staysRunningReason));
+      setPressuresCheckedReason(getParamString(params.pressuresCheckedReason));
 
       const paramNotes = getParamString(params.notes) || getParamString(params.observaciones);
       if (paramNotes) {
@@ -167,6 +186,11 @@ export default function InstalacionFinalFormScreen() {
       return;
     }
 
+    if (pressuresChecked === false && !pressuresCheckedReason.trim()) {
+      Alert.alert('Motivo requerido', 'Indica por qué no se han podido comprobar correctamente las presiones o el funcionamiento general.');
+      return;
+    }
+
     try {
       await AsyncStorage.setItem(DRAFT_KEY, notes);
     } catch (error) {
@@ -182,6 +206,7 @@ export default function InstalacionFinalFormScreen() {
         staysRunning: String(staysRunning),
         staysRunningReason,
         pressuresChecked: String(pressuresChecked),
+        pressuresCheckedReason,
         finalPhoto: finalPhoto1,
         finalPhoto1,
         finalPhoto2: finalPhoto2 || '',
@@ -191,86 +216,6 @@ export default function InstalacionFinalFormScreen() {
       },
     });
   };
-
-  const PhotoSlot = ({
-    slot,
-    photo,
-    isPrimary = false,
-  }: {
-    slot: FinalPhotoSlot;
-    photo: string | null;
-    isPrimary?: boolean;
-  }) => (
-    <View style={styles.photoSlot}>
-      <Text style={styles.photoSlotLabel}>{isPrimary ? 'Foto principal *' : `Foto final ${slot}`}</Text>
-      {photo ? (
-        <TouchableOpacity onPress={() => handleTakePhoto(slot)} activeOpacity={0.85}>
-          <Image source={{ uri: photo }} style={styles.photoThumb} />
-          <Text style={styles.changePhotoText}>✓ Tocar para cambiar</Text>
-        </TouchableOpacity>
-      ) : (
-        <View>
-          <TouchableOpacity style={styles.emptyPhotoThumb} onPress={() => handleTakePhoto(slot)} activeOpacity={0.8}>
-            <Text style={styles.cameraEmoji}>📷</Text>
-            <Text style={styles.emptyPhotoText}>{isPrimary ? 'Tomar foto principal' : 'Tomar foto final'}</Text>
-          </TouchableOpacity>
-          <Button mode="text" onPress={() => handlePickPhoto(slot)} compact labelStyle={styles.galleryText}>
-            o elegir de galería
-          </Button>
-        </View>
-      )}
-    </View>
-  );
-
-  const ChecklistQuestion = ({
-    title,
-    value,
-    onChange,
-    reason,
-    onChangeReason,
-    requireReason,
-  }: {
-    title: string;
-    value: ChecklistValue;
-    onChange: (nextValue: boolean) => void;
-    reason?: string;
-    onChangeReason?: (nextValue: string) => void;
-    requireReason?: boolean;
-  }) => (
-    <View style={styles.checklistItem}>
-      <Text style={styles.checklistQuestion}>{title}</Text>
-      <View style={styles.answerRow}>
-        <TouchableOpacity
-          style={[styles.answerButton, value === true && styles.answerButtonYesActive]}
-          onPress={() => onChange(true)}
-          activeOpacity={0.85}
-        >
-          <Text style={[styles.answerButtonText, value === true && styles.answerButtonTextActive]}>Sí</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.answerButton, value === false && styles.answerButtonNoActive]}
-          onPress={() => onChange(false)}
-          activeOpacity={0.85}
-        >
-          <Text style={[styles.answerButtonText, value === false && styles.answerButtonTextActive]}>No</Text>
-        </TouchableOpacity>
-      </View>
-      {value === false && onChangeReason ? (
-        <TextInput
-          label={requireReason ? 'Si no, ¿por qué? *' : 'Si no, ¿por qué?'}
-          value={reason || ''}
-          onChangeText={onChangeReason}
-          style={styles.reasonInput}
-          mode="outlined"
-          multiline
-          numberOfLines={3}
-          outlineColor={BRAND_COLORS.grayMedium}
-          activeOutlineColor={INSTALLATION_PRIMARY}
-          placeholder="Explica el motivo"
-        />
-      ) : null}
-    </View>
-  );
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -300,7 +245,7 @@ export default function InstalacionFinalFormScreen() {
             <Card.Content>
               <Text style={styles.sectionTitle}>☑️ Checklist Final</Text>
               <Divider style={styles.divider} />
-              <ChecklistQuestion
+              <InstalacionChecklistQuestion
                 title="¿Funciona bien la máquina?"
                 value={worksCorrectly}
                 onChange={setWorksCorrectly}
@@ -308,7 +253,7 @@ export default function InstalacionFinalFormScreen() {
                 onChangeReason={setWorksCorrectlyReason}
                 requireReason
               />
-              <ChecklistQuestion
+              <InstalacionChecklistQuestion
                 title="¿La máquina se queda en marcha?"
                 value={staysRunning}
                 onChange={setStaysRunning}
@@ -316,10 +261,13 @@ export default function InstalacionFinalFormScreen() {
                 onChangeReason={setStaysRunningReason}
                 requireReason
               />
-              <ChecklistQuestion
+              <InstalacionChecklistQuestion
                 title="¿Se comprueban presiones y funcionamiento general de la máquina?"
                 value={pressuresChecked}
                 onChange={setPressuresChecked}
+                reason={pressuresCheckedReason}
+                onChangeReason={setPressuresCheckedReason}
+                requireReason
               />
             </Card.Content>
           </Card>
@@ -329,10 +277,10 @@ export default function InstalacionFinalFormScreen() {
               <Text style={styles.sectionTitle}>📷 Fotos Finales</Text>
               <Divider style={styles.divider} />
               <View style={styles.photosGrid}>
-                <PhotoSlot slot={1} photo={finalPhoto1} isPrimary />
-                <PhotoSlot slot={2} photo={finalPhoto2} />
-                <PhotoSlot slot={3} photo={finalPhoto3} />
-                <PhotoSlot slot={4} photo={finalPhoto4} />
+                <InstalacionPhotoSlot slot={1} photo={finalPhoto1} isPrimary onTakePhoto={handleTakePhoto} onPickPhoto={handlePickPhoto} />
+                <InstalacionPhotoSlot slot={2} photo={finalPhoto2} onTakePhoto={handleTakePhoto} onPickPhoto={handlePickPhoto} />
+                <InstalacionPhotoSlot slot={3} photo={finalPhoto3} onTakePhoto={handleTakePhoto} onPickPhoto={handlePickPhoto} />
+                <InstalacionPhotoSlot slot={4} photo={finalPhoto4} onTakePhoto={handleTakePhoto} onPickPhoto={handlePickPhoto} />
               </View>
               <Text style={styles.helpText}>
                 Puedes añadir hasta 4 fotos finales. La primera es obligatoria y será la foto principal en la web.
@@ -405,6 +353,81 @@ function getParamBoolean(value: unknown): boolean | null {
   if (normalized === 'true') return true;
   if (normalized === 'false') return false;
   return null;
+}
+
+function InstalacionPhotoSlot({
+  slot,
+  photo,
+  isPrimary = false,
+  onTakePhoto,
+  onPickPhoto,
+}: PhotoSlotProps) {
+  return (
+    <View style={styles.photoSlot}>
+      <Text style={styles.photoSlotLabel}>{isPrimary ? 'Foto principal *' : `Foto final ${slot}`}</Text>
+      {photo ? (
+        <TouchableOpacity onPress={() => onTakePhoto(slot)} activeOpacity={0.85}>
+          <Image source={{ uri: photo }} style={styles.photoThumb} />
+          <Text style={styles.changePhotoText}>✓ Tocar para cambiar</Text>
+        </TouchableOpacity>
+      ) : (
+        <View>
+          <TouchableOpacity style={styles.emptyPhotoThumb} onPress={() => onTakePhoto(slot)} activeOpacity={0.8}>
+            <Text style={styles.cameraEmoji}>📷</Text>
+            <Text style={styles.emptyPhotoText}>{isPrimary ? 'Tomar foto principal' : 'Tomar foto final'}</Text>
+          </TouchableOpacity>
+          <Button mode="text" onPress={() => onPickPhoto(slot)} compact labelStyle={styles.galleryText}>
+            o elegir de galería
+          </Button>
+        </View>
+      )}
+    </View>
+  );
+}
+
+function InstalacionChecklistQuestion({
+  title,
+  value,
+  onChange,
+  reason,
+  onChangeReason,
+  requireReason,
+}: ChecklistQuestionProps) {
+  return (
+    <View style={styles.checklistItem}>
+      <Text style={styles.checklistQuestion}>{title}</Text>
+      <View style={styles.answerRow}>
+        <TouchableOpacity
+          style={[styles.answerButton, value === true && styles.answerButtonYesActive]}
+          onPress={() => onChange(true)}
+          activeOpacity={0.85}
+        >
+          <Text style={[styles.answerButtonText, value === true && styles.answerButtonTextActive]}>Sí</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.answerButton, value === false && styles.answerButtonNoActive]}
+          onPress={() => onChange(false)}
+          activeOpacity={0.85}
+        >
+          <Text style={[styles.answerButtonText, value === false && styles.answerButtonTextActive]}>No</Text>
+        </TouchableOpacity>
+      </View>
+      {value === false && onChangeReason ? (
+        <TextInput
+          label={requireReason ? 'Si no, ¿por qué? *' : 'Si no, ¿por qué?'}
+          value={reason || ''}
+          onChangeText={onChangeReason}
+          style={styles.reasonInput}
+          mode="outlined"
+          multiline
+          numberOfLines={3}
+          outlineColor={BRAND_COLORS.grayMedium}
+          activeOutlineColor={INSTALLATION_PRIMARY}
+          placeholder="Explica el motivo"
+        />
+      ) : null}
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({

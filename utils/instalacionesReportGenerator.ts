@@ -112,7 +112,7 @@ export const generateInstalacionesHTML = async (report: InstalacionInspection): 
       {
         label: '¿Se comprueban presiones y funcionamiento general de la máquina?',
         value: report.pressuresChecked,
-        reason: '',
+        reason: report.pressuresChecked === false ? report.pressuresCheckedReason : '',
       },
     ];
 

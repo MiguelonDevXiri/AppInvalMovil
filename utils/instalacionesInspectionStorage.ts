@@ -33,6 +33,7 @@ export interface InstalacionInspection {
   staysRunning: boolean | null;
   staysRunningReason: string;
   pressuresChecked: boolean | null;
+  pressuresCheckedReason: string;
   finalPhoto?: string;
   finalPhoto2?: string;
   finalPhoto3?: string;
@@ -140,6 +141,7 @@ const dbRowToInspection = (
     staysRunning: typeof row.machine_stays_running === 'boolean' ? row.machine_stays_running : null,
     staysRunningReason: row.machine_stays_running_reason || '',
     pressuresChecked: typeof row.pressures_checked === 'boolean' ? row.pressures_checked : null,
+    pressuresCheckedReason: row.pressures_checked_reason || '',
     finalPhoto: finalPhotos[0] || '',
     finalPhoto2: finalPhotos[1] || '',
     finalPhoto3: finalPhotos[2] || '',
@@ -239,6 +241,7 @@ export const saveInstalacionInspection = async (
       machine_stays_running: inspection.staysRunning,
       machine_stays_running_reason: inspection.staysRunningReason || null,
       pressures_checked: inspection.pressuresChecked,
+      pressures_checked_reason: inspection.pressuresCheckedReason || null,
       created_at: inspection.createdAt || now,
       updated_at: now,
     });
@@ -415,6 +418,7 @@ export const paramsToInspection = (params: any): InstalacionInspection => {
     staysRunning: getParamBoolean(params.staysRunning),
     staysRunningReason: getParamString(params.staysRunningReason),
     pressuresChecked: getParamBoolean(params.pressuresChecked),
+    pressuresCheckedReason: getParamString(params.pressuresCheckedReason),
     finalPhoto: getParamString(params.finalPhoto) || getParamString(params.finalPhoto1),
     finalPhoto2: getParamString(params.finalPhoto2),
     finalPhoto3: getParamString(params.finalPhoto3),
@@ -450,6 +454,7 @@ export const inspectionToParams = (inspection: InstalacionInspection): any => {
     staysRunning: inspection.staysRunning === null ? '' : String(inspection.staysRunning),
     staysRunningReason: inspection.staysRunningReason || '',
     pressuresChecked: inspection.pressuresChecked === null ? '' : String(inspection.pressuresChecked),
+    pressuresCheckedReason: inspection.pressuresCheckedReason || '',
     finalPhoto: inspection.finalPhoto || '',
     finalPhoto1: inspection.finalPhoto || '',
     finalPhoto2: inspection.finalPhoto2 || '',

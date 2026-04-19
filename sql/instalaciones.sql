@@ -46,6 +46,7 @@ ALTER TABLE instalaciones_inspections ADD COLUMN IF NOT EXISTS machine_works_cor
 ALTER TABLE instalaciones_inspections ADD COLUMN IF NOT EXISTS machine_stays_running BOOLEAN;
 ALTER TABLE instalaciones_inspections ADD COLUMN IF NOT EXISTS machine_stays_running_reason TEXT;
 ALTER TABLE instalaciones_inspections ADD COLUMN IF NOT EXISTS pressures_checked BOOLEAN;
+ALTER TABLE instalaciones_inspections ADD COLUMN IF NOT EXISTS pressures_checked_reason TEXT;
 
 CREATE INDEX IF NOT EXISTS idx_instalaciones_photos_inspection ON instalaciones_photos(inspection_id);
 CREATE INDEX IF NOT EXISTS idx_instalaciones_materials_inspection ON instalaciones_materials(inspection_id);
