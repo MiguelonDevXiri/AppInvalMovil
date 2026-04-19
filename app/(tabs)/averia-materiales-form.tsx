@@ -22,19 +22,41 @@ export default function AveriaMaterialesFormScreen() {
     { id: '1', name: '', quantity: '', reference: '' },
   ]);
 
-  useEffect(() => {
-    if (params.notes) {
-      setNotes(params.notes as string);
+  const getParamString = (value: unknown): string => {
+    if (Array.isArray(value)) {
+      return typeof value[0] === 'string' ? value[0] : '';
     }
 
-    if (params.materiales) {
-      try {
-        const parsed = JSON.parse(params.materiales as string);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setMateriales(parsed);
+    return typeof value === 'string' ? value : '';
+  };
+
+  useEffect(() => {
+    const loadNotes = async () => {
+      const paramNotes = getParamString(params.notes);
+      if (paramNotes) {
+        setNotes(paramNotes);
+      } else {
+        try {
+          const savedDraftNotes = await AsyncStorage.getItem('averia_draft_notes');
+          if (savedDraftNotes) {
+            setNotes(savedDraftNotes);
+          }
+        } catch (error) {
+          console.error('No se pudo recuperar el borrador de notas:', error);
         }
-      } catch (e) {}
-    }
+      }
+
+      if (params.materiales) {
+        try {
+          const parsed = JSON.parse(params.materiales as string);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setMateriales(parsed);
+          }
+        } catch (e) {}
+      }
+    };
+
+    loadNotes();
   }, []);
 
   const handleAddMaterial = () => {
