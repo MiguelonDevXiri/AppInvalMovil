@@ -105,6 +105,14 @@ export default function HomeScreen() {
     router.push('/averia-inspections-list');
   }, []);
 
+  const handleNavInstalacionForm = useCallback(() => {
+    router.push('/instalacion-machine-form');
+  }, []);
+
+  const handleNavInstalacionList = useCallback(() => {
+    router.push('/instalacion-inspections-list');
+  }, []);
+
   const handleLogout = async () => {
     Alert.alert(
       'Cerrar Sesión',
@@ -234,6 +242,28 @@ export default function HomeScreen() {
           icon="file-document-multiple-outline"
           colors={['#6d28d9', '#8b5cf6']}
           onPress={handleNavAveriasList}
+        />
+
+        <View style={styles.sectionHeader}>
+          <View style={styles.sectionLine} />
+          <Text style={styles.sectionLabel}>Instalaciones</Text>
+          <View style={styles.sectionLine} />
+        </View>
+
+        <ActionCard
+          title="Instalaciones"
+          subtitle="Registrar nueva instalación"
+          icon="hammer-screwdriver"
+          colors={['#0f766e', '#14b8a6', '#5eead4']}
+          onPress={handleNavInstalacionForm}
+        />
+
+        <ActionCard
+          title="Instalaciones Registradas"
+          subtitle="Consultar informes guardados"
+          icon="file-document-multiple-outline"
+          colors={['#115e59', '#14b8a6']}
+          onPress={handleNavInstalacionList}
         />
 
         <View style={styles.footer} />

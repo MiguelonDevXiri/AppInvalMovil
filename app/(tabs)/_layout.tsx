@@ -61,6 +61,14 @@ export default function Layout() {
         <Stack.Screen name="averia-final-form" />
         <Stack.Screen name="averia-report-view" />
         <Stack.Screen name="averia-inspections-list" />
+
+        <Stack.Screen name="instalacion-machine-form" />
+        <Stack.Screen name="instalacion-site-photos-form" />
+        <Stack.Screen name="instalacion-work-form" />
+        <Stack.Screen name="instalacion-materiales-form" />
+        <Stack.Screen name="instalacion-final-form" />
+        <Stack.Screen name="instalacion-report-view" />
+        <Stack.Screen name="instalacion-inspections-list" />
         <Stack.Screen name="login" options={{ headerShown: false }} />
       </Stack>
     </PaperProvider>
