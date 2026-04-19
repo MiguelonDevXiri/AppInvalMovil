@@ -41,12 +41,20 @@ export default function InstalacionReportViewScreen() {
       params.clientName ||
       params.workDescription ||
       params.finalPhoto ||
+      params.finalPhoto2 ||
+      params.finalPhoto3 ||
+      params.finalPhoto4 ||
       params.photoSite1 ||
       params.photoSite2 ||
       params.photoSite3 ||
       params.photoSite4 ||
       params.materiales ||
-      params.notes
+      params.notes ||
+      params.worksCorrectly ||
+      params.worksCorrectlyReason ||
+      params.staysRunning ||
+      params.staysRunningReason ||
+      params.pressuresChecked
     );
 
   useEffect(() => {
@@ -185,6 +193,13 @@ export default function InstalacionReportViewScreen() {
     inspection.photoSite4,
   ].filter(Boolean) as string[];
 
+  const finalPhotos = [
+    inspection.finalPhoto,
+    inspection.finalPhoto2,
+    inspection.finalPhoto3,
+    inspection.finalPhoto4,
+  ].filter((value, index, array): value is string => Boolean(value) && array.indexOf(value) === index);
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
@@ -277,12 +292,42 @@ export default function InstalacionReportViewScreen() {
 
         <Card style={styles.card}>
           <Card.Content>
+            <Title style={styles.sectionTitle}>☑️ Checklist Final</Title>
+            <Divider style={styles.dividerLine} />
+            <ChecklistStatusRow
+              label="¿Funciona bien la máquina?"
+              value={inspection.worksCorrectly}
+              reason={inspection.worksCorrectlyReason}
+            />
+            <ChecklistStatusRow
+              label="¿La máquina se queda en marcha?"
+              value={inspection.staysRunning}
+              reason={inspection.staysRunningReason}
+            />
+            <ChecklistStatusRow
+              label="¿Se comprueban presiones y funcionamiento general de la máquina?"
+              value={inspection.pressuresChecked}
+            />
+          </Card.Content>
+        </Card>
+
+        <Card style={styles.card}>
+          <Card.Content>
             <Title style={styles.sectionTitle}>✅ Resultado Final</Title>
             <Divider style={styles.dividerLine} />
-            {inspection.finalPhoto ? (
-              <Image source={{ uri: inspection.finalPhoto }} style={styles.finalPhoto} />
+            {finalPhotos.length > 0 ? (
+              <View style={styles.finalPhotosGrid}>
+                {finalPhotos.map((uri, index) => (
+                  <View key={`${uri}_${index}`} style={styles.finalPhotoSlot}>
+                    <Image source={{ uri }} style={styles.finalPhoto} />
+                    <Text style={styles.finalPhotoLabel}>
+                      {index === 0 ? 'Foto principal web' : `Foto final ${index + 1}`}
+                    </Text>
+                  </View>
+                ))}
+              </View>
             ) : (
-              <Text style={styles.emptyText}>Sin foto final</Text>
+              <Text style={styles.emptyText}>Sin fotos finales</Text>
             )}
             {inspection.notes ? (
               <View style={styles.notesBlock}>
@@ -351,6 +396,42 @@ function InfoRow({ label, value }: { label: string; value: string | null | undef
     <View style={styles.infoRow}>
       <Text style={styles.infoLabel}>{label}:</Text>
       <Text style={styles.infoValue}>{value || '—'}</Text>
+    </View>
+  );
+}
+
+function ChecklistStatusRow({
+  label,
+  value,
+  reason,
+}: {
+  label: string;
+  value: boolean | null;
+  reason?: string;
+}) {
+  const badgeStyle =
+    value === true
+      ? [styles.checklistBadge, styles.checklistBadgeSuccess]
+      : value === false
+        ? [styles.checklistBadge, styles.checklistBadgeDanger]
+        : [styles.checklistBadge, styles.checklistBadgePending];
+
+  const badgeTextStyle =
+    value === true
+      ? styles.checklistBadgeTextSuccess
+      : value === false
+        ? styles.checklistBadgeTextDanger
+        : styles.checklistBadgeTextPending;
+
+  return (
+    <View style={styles.checklistItem}>
+      <View style={styles.checklistItemHeader}>
+        <Text style={styles.checklistItemLabel}>{label}</Text>
+        <View style={badgeStyle}>
+          <Text style={badgeTextStyle}>{value === true ? 'Sí' : value === false ? 'No' : 'Pendiente'}</Text>
+        </View>
+      </View>
+      {value === false && reason ? <Paragraph style={styles.checklistReason}>Motivo: {reason}</Paragraph> : null}
     </View>
   );
 }
@@ -487,11 +568,73 @@ const styles = StyleSheet.create({
     fontSize: TYPOGRAPHY.sizes.sm,
     color: '#1e293b',
   },
+  checklistItem: {
+    paddingVertical: SPACING.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: BRAND_COLORS.grayMedium,
+  },
+  checklistItemHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: SPACING.sm,
+  },
+  checklistItemLabel: {
+    flex: 1,
+    fontSize: TYPOGRAPHY.sizes.sm,
+    color: '#1e293b',
+    fontWeight: TYPOGRAPHY.weights.bold as any,
+  },
+  checklistBadge: {
+    borderRadius: 999,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.xs,
+  },
+  checklistBadgeSuccess: {
+    backgroundColor: '#dcfce7',
+  },
+  checklistBadgeDanger: {
+    backgroundColor: '#fee2e2',
+  },
+  checklistBadgePending: {
+    backgroundColor: '#e2e8f0',
+  },
+  checklistBadgeTextSuccess: {
+    color: '#166534',
+    fontWeight: TYPOGRAPHY.weights.bold as any,
+  },
+  checklistBadgeTextDanger: {
+    color: '#b91c1c',
+    fontWeight: TYPOGRAPHY.weights.bold as any,
+  },
+  checklistBadgeTextPending: {
+    color: '#475569',
+    fontWeight: TYPOGRAPHY.weights.bold as any,
+  },
+  checklistReason: {
+    marginTop: SPACING.xs,
+    color: '#64748b',
+  },
+  finalPhotosGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: SPACING.sm,
+  },
+  finalPhotoSlot: {
+    width: '48%',
+  },
   finalPhoto: {
     width: '100%',
-    height: 220,
+    height: 160,
     borderRadius: BORDER_RADIUS.md,
     backgroundColor: BRAND_COLORS.grayMedium,
+  },
+  finalPhotoLabel: {
+    marginTop: SPACING.xs,
+    textAlign: 'center',
+    color: INSTALLATION_PRIMARY,
+    fontSize: TYPOGRAPHY.sizes.xs,
+    fontWeight: TYPOGRAPHY.weights.bold as any,
   },
   notesBlock: {
     marginTop: SPACING.md,

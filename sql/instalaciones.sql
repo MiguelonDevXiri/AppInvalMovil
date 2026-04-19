@@ -41,6 +41,12 @@ CREATE TABLE IF NOT EXISTS instalaciones_materials (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
+ALTER TABLE instalaciones_inspections ADD COLUMN IF NOT EXISTS machine_works_correctly BOOLEAN;
+ALTER TABLE instalaciones_inspections ADD COLUMN IF NOT EXISTS machine_works_correctly_reason TEXT;
+ALTER TABLE instalaciones_inspections ADD COLUMN IF NOT EXISTS machine_stays_running BOOLEAN;
+ALTER TABLE instalaciones_inspections ADD COLUMN IF NOT EXISTS machine_stays_running_reason TEXT;
+ALTER TABLE instalaciones_inspections ADD COLUMN IF NOT EXISTS pressures_checked BOOLEAN;
+
 CREATE INDEX IF NOT EXISTS idx_instalaciones_photos_inspection ON instalaciones_photos(inspection_id);
 CREATE INDEX IF NOT EXISTS idx_instalaciones_materials_inspection ON instalaciones_materials(inspection_id);
 CREATE INDEX IF NOT EXISTS idx_instalaciones_inspections_created_at ON instalaciones_inspections(created_at DESC);

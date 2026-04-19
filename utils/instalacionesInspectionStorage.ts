@@ -28,7 +28,15 @@ export interface InstalacionInspection {
   photoSite2?: string;
   photoSite3?: string;
   photoSite4?: string;
+  worksCorrectly: boolean | null;
+  worksCorrectlyReason: string;
+  staysRunning: boolean | null;
+  staysRunningReason: string;
+  pressuresChecked: boolean | null;
   finalPhoto?: string;
+  finalPhoto2?: string;
+  finalPhoto3?: string;
+  finalPhoto4?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -39,6 +47,14 @@ const SITE_PHOTO_SUFFIXES: Record<string, string> = {
   photoSite3: 'S3',
   photoSite4: 'S4',
 };
+
+const SITE_PHOTO_FIELDS = ['photoSite1', 'photoSite2', 'photoSite3', 'photoSite4'] as const;
+const FINAL_PHOTO_UPLOADS = [
+  { field: 'finalPhoto' as const, storageSuffix: 'final', position: 'finalPhoto1' },
+  { field: 'finalPhoto2' as const, storageSuffix: 'final_2', position: 'finalPhoto2' },
+  { field: 'finalPhoto3' as const, storageSuffix: 'final_3', position: 'finalPhoto3' },
+  { field: 'finalPhoto4' as const, storageSuffix: 'final_4', position: 'finalPhoto4' },
+];
 
 const generateUUID = (): string => {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
@@ -83,13 +99,14 @@ const dbRowToInspection = (
   materialsRows: any[]
 ): InstalacionInspection => {
   const sitePhotos: Record<string, string> = {};
-  let finalPhoto = '';
+  const finalPhotos = (photosRows || [])
+    .filter((photo) => photo.photo_type === 'final' && photo.photo_url)
+    .sort((a, b) => (Number(a.sort_order) || 0) - (Number(b.sort_order) || 0))
+    .map((photo) => photo.photo_url as string);
 
-  for (const photo of photosRows) {
+  for (const photo of photosRows || []) {
     if (photo.photo_type === 'site' && photo.position) {
       sitePhotos[photo.position] = photo.photo_url;
-    } else if (photo.photo_type === 'final') {
-      finalPhoto = photo.photo_url;
     }
   }
 
@@ -108,7 +125,7 @@ const dbRowToInspection = (
     otNumber: row.ot_number || '',
     workDescription: row.work_description || '',
     notes: row.notes || '',
-    materiales: materialsRows.map((material: any) => ({
+    materiales: (materialsRows || []).map((material: any) => ({
       id: material.id,
       name: material.name || '',
       quantity: material.quantity || '',
@@ -118,7 +135,15 @@ const dbRowToInspection = (
     photoSite2: sitePhotos.photoSite2 || '',
     photoSite3: sitePhotos.photoSite3 || '',
     photoSite4: sitePhotos.photoSite4 || '',
-    finalPhoto,
+    worksCorrectly: typeof row.machine_works_correctly === 'boolean' ? row.machine_works_correctly : null,
+    worksCorrectlyReason: row.machine_works_correctly_reason || '',
+    staysRunning: typeof row.machine_stays_running === 'boolean' ? row.machine_stays_running : null,
+    staysRunningReason: row.machine_stays_running_reason || '',
+    pressuresChecked: typeof row.pressures_checked === 'boolean' ? row.pressures_checked : null,
+    finalPhoto: finalPhotos[0] || '',
+    finalPhoto2: finalPhotos[1] || '',
+    finalPhoto3: finalPhotos[2] || '',
+    finalPhoto4: finalPhotos[3] || '',
     createdAt: row.created_at || '',
     updatedAt: row.updated_at || '',
   };
@@ -209,6 +234,11 @@ export const saveInstalacionInspection = async (
       ot_number: inspection.otNumber || null,
       work_description: inspection.workDescription,
       notes: inspection.notes || null,
+      machine_works_correctly: inspection.worksCorrectly,
+      machine_works_correctly_reason: inspection.worksCorrectlyReason || null,
+      machine_stays_running: inspection.staysRunning,
+      machine_stays_running_reason: inspection.staysRunningReason || null,
+      pressures_checked: inspection.pressuresChecked,
       created_at: inspection.createdAt || now,
       updated_at: now,
     });
@@ -227,10 +257,9 @@ export const saveInstalacionInspection = async (
     await supabase.from('instalaciones_photos').delete().eq('inspection_id', inspectionId);
     await supabase.from('instalaciones_materials').delete().eq('inspection_id', inspectionId);
 
-    const sitePhotoFields = ['photoSite1', 'photoSite2', 'photoSite3', 'photoSite4'] as const;
     const plate = sanitizePathSegment(inspection.licensePlate || 'sin_matricula', 30);
 
-    for (const [index, field] of sitePhotoFields.entries()) {
+    for (const [index, field] of SITE_PHOTO_FIELDS.entries()) {
       const uri = inspection[field];
       if (!uri) continue;
 
@@ -249,18 +278,21 @@ export const saveInstalacionInspection = async (
       }
     }
 
-    if (inspection.finalPhoto) {
-      const storagePath = `${storageBase}/final/${plate}_final.jpg`;
-      const finalPhotoUrl = await uploadPhoto(inspection.finalPhoto, storagePath);
+    for (const [index, config] of FINAL_PHOTO_UPLOADS.entries()) {
+      const uri = inspection[config.field];
+      if (!uri) continue;
+
+      const storagePath = `${storageBase}/final/${plate}_${config.storageSuffix}.jpg`;
+      const finalPhotoUrl = await uploadPhoto(uri, storagePath);
 
       if (finalPhotoUrl) {
         await supabase.from('instalaciones_photos').insert({
           id: generateUUID(),
           inspection_id: inspectionId,
           photo_type: 'final',
-          position: 'finalPhoto',
+          position: config.position,
           photo_url: finalPhotoUrl,
-          sort_order: 0,
+          sort_order: index,
         });
       }
     }
@@ -333,6 +365,20 @@ const getParamString = (value: unknown): string => {
   return typeof value === 'string' ? value : '';
 };
 
+const getParamBoolean = (value: unknown): boolean | null => {
+  if (Array.isArray(value)) {
+    return getParamBoolean(value[0]);
+  }
+
+  if (typeof value === 'boolean') return value;
+  if (typeof value !== 'string') return null;
+
+  const normalized = value.trim().toLowerCase();
+  if (normalized === 'true') return true;
+  if (normalized === 'false') return false;
+  return null;
+};
+
 export const paramsToInspection = (params: any): InstalacionInspection => {
   let materiales: InstalacionMaterial[] = [];
 
@@ -364,7 +410,15 @@ export const paramsToInspection = (params: any): InstalacionInspection => {
     photoSite2: getParamString(params.photoSite2),
     photoSite3: getParamString(params.photoSite3),
     photoSite4: getParamString(params.photoSite4),
-    finalPhoto: getParamString(params.finalPhoto),
+    worksCorrectly: getParamBoolean(params.worksCorrectly),
+    worksCorrectlyReason: getParamString(params.worksCorrectlyReason),
+    staysRunning: getParamBoolean(params.staysRunning),
+    staysRunningReason: getParamString(params.staysRunningReason),
+    pressuresChecked: getParamBoolean(params.pressuresChecked),
+    finalPhoto: getParamString(params.finalPhoto) || getParamString(params.finalPhoto1),
+    finalPhoto2: getParamString(params.finalPhoto2),
+    finalPhoto3: getParamString(params.finalPhoto3),
+    finalPhoto4: getParamString(params.finalPhoto4),
     createdAt: getParamString(params.createdAt) || new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
@@ -391,7 +445,16 @@ export const inspectionToParams = (inspection: InstalacionInspection): any => {
     photoSite2: inspection.photoSite2 || '',
     photoSite3: inspection.photoSite3 || '',
     photoSite4: inspection.photoSite4 || '',
+    worksCorrectly: inspection.worksCorrectly === null ? '' : String(inspection.worksCorrectly),
+    worksCorrectlyReason: inspection.worksCorrectlyReason || '',
+    staysRunning: inspection.staysRunning === null ? '' : String(inspection.staysRunning),
+    staysRunningReason: inspection.staysRunningReason || '',
+    pressuresChecked: inspection.pressuresChecked === null ? '' : String(inspection.pressuresChecked),
     finalPhoto: inspection.finalPhoto || '',
+    finalPhoto1: inspection.finalPhoto || '',
+    finalPhoto2: inspection.finalPhoto2 || '',
+    finalPhoto3: inspection.finalPhoto3 || '',
+    finalPhoto4: inspection.finalPhoto4 || '',
     createdAt: inspection.createdAt,
     updatedAt: inspection.updatedAt,
   };

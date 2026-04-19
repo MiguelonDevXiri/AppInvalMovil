@@ -72,9 +72,17 @@ export const generateInstalacionesHTML = async (report: InstalacionInspection): 
     );
     const sitePhotos = sitePhotoResults.filter((image) => image !== '');
 
-    const finalPhoto = report.finalPhoto
-      ? await getImageBase64(report.finalPhoto).catch(() => '')
-      : '';
+    const finalPhotoSources = [
+      report.finalPhoto,
+      report.finalPhoto2,
+      report.finalPhoto3,
+      report.finalPhoto4,
+    ].filter((value, index, array): value is string => Boolean(value) && array.indexOf(value) === index);
+
+    const finalPhotoResults = await Promise.all(
+      finalPhotoSources.map((source) => getImageBase64(source).catch(() => ''))
+    );
+    const finalPhotos = finalPhotoResults.filter((image) => image !== '');
 
     let materialesRows = '<tr><td colspan="3" style="text-align: center; color: #999; font-style: italic;">Sin materiales registrados</td></tr>';
     if (report.materiales && report.materiales.length > 0) {
@@ -89,6 +97,24 @@ export const generateInstalacionesHTML = async (report: InstalacionInspection): 
         `).join('');
       }
     }
+
+    const checklistRows = [
+      {
+        label: '¿Funciona bien la máquina?',
+        value: report.worksCorrectly,
+        reason: report.worksCorrectly === false ? report.worksCorrectlyReason : '',
+      },
+      {
+        label: '¿La máquina se queda en marcha?',
+        value: report.staysRunning,
+        reason: report.staysRunning === false ? report.staysRunningReason : '',
+      },
+      {
+        label: '¿Se comprueban presiones y funcionamiento general de la máquina?',
+        value: report.pressuresChecked,
+        reason: '',
+      },
+    ];
 
     const sitePhotosHTML = sitePhotos.length > 0
       ? `
@@ -109,12 +135,49 @@ export const generateInstalacionesHTML = async (report: InstalacionInspection): 
       `
       : '';
 
-    const finalSectionContent = finalPhoto
-      ? `
-        <div class="photo-section final-photo-block">
-          <div class="photo-title">✅ Foto Final de la Instalación</div>
-          <div class="photo-container"><img src="${finalPhoto}" class="photo final-photo" /></div>
+    const checklistHTML = `
+      <div class="section">
+        <div class="section-header">☑️ CHECKLIST FINAL</div>
+        <div class="section-content" style="padding: 0;">
+          <table class="materials-table checklist-table">
+            <thead>
+              <tr>
+                <th style="width: 48%;">Comprobación</th>
+                <th style="width: 18%; text-align: center;">Estado</th>
+                <th style="width: 34%;">Motivo</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${checklistRows.map((item) => {
+                const statusLabel = item.value === true ? 'Sí' : item.value === false ? 'No' : 'Pendiente';
+                const statusClass = item.value === true ? 'ok' : item.value === false ? 'bad' : 'pending';
+                return `
+                  <tr>
+                    <td>${item.label}</td>
+                    <td style="text-align: center;"><span class="status-pill ${statusClass}">${statusLabel}</span></td>
+                    <td>${item.reason || '-'}</td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
         </div>
+      </div>
+    `;
+
+    const finalSectionContent = finalPhotos.length > 0
+      ? `
+        <div class="photos-grid final-photos-grid">
+          ${finalPhotos.map((photo, index) => `
+            <div class="photo-item">
+              <div class="photo-section final-photo-block">
+                <div class="photo-title">${index === 0 ? '✅ Foto Final Principal' : `📷 Foto Final ${index + 1}`}</div>
+                <div class="photo-container"><img src="${photo}" class="photo final-photo" /></div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+        <div class="section-note">La primera foto final es la que se usa como imagen principal en la web.</div>
       `
       : '<div class="section-content empty">Sin foto final registrada.</div>';
 
@@ -167,11 +230,17 @@ export const generateInstalacionesHTML = async (report: InstalacionInspection): 
           .photo { max-width: 100%; width: 100%; height: auto; max-height: 180px; border-radius: 8px; object-fit: contain; }
           .final-photo-block { margin: 14px 14px 0 14px; }
           .final-photo { max-height: 260px; }
+          .final-photos-grid { margin-top: 0; }
+          .section-note { padding: 0 14px 14px 14px; color: #64748b; font-size: 10px; font-style: italic; }
           .materials-table { width: 100%; border-collapse: collapse; }
           .materials-table thead { background: linear-gradient(90deg, #0f2f57 0%, #173f73 60%, #e87a20 100%); color: white; }
           .materials-table th { padding: 10px 12px; text-align: left; font-weight: bold; font-size: 9px; text-transform: uppercase; }
           .materials-table td { padding: 10px 12px; border-bottom: 0.5px solid #e2e8f0; background: white; font-size: 11px; }
           .materials-table tbody tr:nth-child(even) td { background: #f8fafc; }
+          .status-pill { display: inline-block; min-width: 70px; padding: 5px 10px; border-radius: 999px; font-size: 10px; font-weight: bold; }
+          .status-pill.ok { background: #dcfce7; color: #166534; }
+          .status-pill.bad { background: #fee2e2; color: #b91c1c; }
+          .status-pill.pending { background: #e2e8f0; color: #475569; }
           .footer { margin-top: 28px; text-align: center; font-size: 8px; color: #6b7280; page-break-inside: avoid; }
           .footer-separator { height: 2px; background: linear-gradient(90deg, transparent 0%, #e87a20 20%, #0f2f57 80%, transparent 100%); border-radius: 2px; margin-bottom: 14px; }
           .footer-logo { max-width: 110px; max-height: 40px; object-fit: contain; opacity: 0.85; }
@@ -246,6 +315,8 @@ export const generateInstalacionesHTML = async (report: InstalacionInspection): 
             </table>
           </div>
         </div>
+
+        ${checklistHTML}
 
         <div class="section">
           <div class="section-header orange">✅ CIERRE DE LA INSTALACIÓN</div>

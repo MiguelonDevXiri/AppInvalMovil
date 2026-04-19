@@ -29,17 +29,40 @@ const INSTALLATION_PRIMARY = '#0f766e';
 const INSTALLATION_BORDER = '#99f6e4';
 const DRAFT_KEY = 'instalacion_draft_notes';
 
+type FinalPhotoSlot = 1 | 2 | 3 | 4;
+type ChecklistValue = boolean | null;
+
 export default function InstalacionFinalFormScreen() {
   const params = useLocalSearchParams();
-  const [finalPhoto, setFinalPhoto] = useState<string | null>(null);
+  const [finalPhoto1, setFinalPhoto1] = useState<string | null>(null);
+  const [finalPhoto2, setFinalPhoto2] = useState<string | null>(null);
+  const [finalPhoto3, setFinalPhoto3] = useState<string | null>(null);
+  const [finalPhoto4, setFinalPhoto4] = useState<string | null>(null);
   const [notes, setNotes] = useState('');
   const [draftLoaded, setDraftLoaded] = useState(false);
+  const [worksCorrectly, setWorksCorrectly] = useState<ChecklistValue>(null);
+  const [worksCorrectlyReason, setWorksCorrectlyReason] = useState('');
+  const [staysRunning, setStaysRunning] = useState<ChecklistValue>(null);
+  const [staysRunningReason, setStaysRunningReason] = useState('');
+  const [pressuresChecked, setPressuresChecked] = useState<ChecklistValue>(null);
 
   useEffect(() => {
     const loadInitialState = async () => {
-      if (params.finalPhoto && (params.finalPhoto as string).trim() !== '') {
-        setFinalPhoto(params.finalPhoto as string);
-      }
+      const firstFinalPhoto = getParamString(params.finalPhoto) || getParamString(params.finalPhoto1);
+      if (firstFinalPhoto) setFinalPhoto1(firstFinalPhoto);
+      if (getParamString(params.finalPhoto2)) setFinalPhoto2(getParamString(params.finalPhoto2));
+      if (getParamString(params.finalPhoto3)) setFinalPhoto3(getParamString(params.finalPhoto3));
+      if (getParamString(params.finalPhoto4)) setFinalPhoto4(getParamString(params.finalPhoto4));
+
+      const paramWorksCorrectly = getParamBoolean(params.worksCorrectly);
+      if (paramWorksCorrectly !== null) setWorksCorrectly(paramWorksCorrectly);
+      const paramStaysRunning = getParamBoolean(params.staysRunning);
+      if (paramStaysRunning !== null) setStaysRunning(paramStaysRunning);
+      const paramPressuresChecked = getParamBoolean(params.pressuresChecked);
+      if (paramPressuresChecked !== null) setPressuresChecked(paramPressuresChecked);
+
+      setWorksCorrectlyReason(getParamString(params.worksCorrectlyReason));
+      setStaysRunningReason(getParamString(params.staysRunningReason));
 
       const paramNotes = getParamString(params.notes) || getParamString(params.observaciones);
       if (paramNotes) {
@@ -77,7 +100,14 @@ export default function InstalacionFinalFormScreen() {
     persistDraft();
   }, [draftLoaded, notes]);
 
-  const handleTakePhoto = async () => {
+  const setPhotoBySlot = (slot: FinalPhotoSlot, uri: string | null) => {
+    if (slot === 1) setFinalPhoto1(uri);
+    if (slot === 2) setFinalPhoto2(uri);
+    if (slot === 3) setFinalPhoto3(uri);
+    if (slot === 4) setFinalPhoto4(uri);
+  };
+
+  const handleTakePhoto = async (slot: FinalPhotoSlot) => {
     try {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== 'granted') {
@@ -87,14 +117,14 @@ export default function InstalacionFinalFormScreen() {
 
       const result = await ImagePicker.launchCameraAsync({ allowsEditing: false, quality: 0.8 });
       if (!result.canceled && result.assets?.length > 0) {
-        setFinalPhoto(result.assets[0].uri);
+        setPhotoBySlot(slot, result.assets[0].uri);
       }
     } catch {
       Alert.alert('Error', 'No se pudo tomar la foto final.');
     }
   };
 
-  const handlePickPhoto = async () => {
+  const handlePickPhoto = async (slot: FinalPhotoSlot) => {
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
@@ -109,7 +139,7 @@ export default function InstalacionFinalFormScreen() {
       });
 
       if (!result.canceled && result.assets?.length > 0) {
-        setFinalPhoto(result.assets[0].uri);
+        setPhotoBySlot(slot, result.assets[0].uri);
       }
     } catch {
       Alert.alert('Error', 'No se pudo seleccionar la foto final.');
@@ -117,8 +147,23 @@ export default function InstalacionFinalFormScreen() {
   };
 
   const handleContinue = async () => {
-    if (!finalPhoto) {
-      Alert.alert('Foto requerida', 'Añade la foto final de la instalación antes de continuar.');
+    if (!finalPhoto1) {
+      Alert.alert('Foto requerida', 'Añade al menos la primera foto final antes de continuar.');
+      return;
+    }
+
+    if (worksCorrectly === null || staysRunning === null || pressuresChecked === null) {
+      Alert.alert('Checklist requerido', 'Completa el checklist final antes de continuar.');
+      return;
+    }
+
+    if (worksCorrectly === false && !worksCorrectlyReason.trim()) {
+      Alert.alert('Motivo requerido', 'Indica por qué la máquina no funciona bien.');
+      return;
+    }
+
+    if (staysRunning === false && !staysRunningReason.trim()) {
+      Alert.alert('Motivo requerido', 'Indica por qué la máquina no se queda en marcha.');
       return;
     }
 
@@ -132,11 +177,100 @@ export default function InstalacionFinalFormScreen() {
       pathname: '/(tabs)/instalacion-report-view' as any,
       params: {
         ...params,
-        finalPhoto,
+        worksCorrectly: String(worksCorrectly),
+        worksCorrectlyReason,
+        staysRunning: String(staysRunning),
+        staysRunningReason,
+        pressuresChecked: String(pressuresChecked),
+        finalPhoto: finalPhoto1,
+        finalPhoto1,
+        finalPhoto2: finalPhoto2 || '',
+        finalPhoto3: finalPhoto3 || '',
+        finalPhoto4: finalPhoto4 || '',
         notes,
       },
     });
   };
+
+  const PhotoSlot = ({
+    slot,
+    photo,
+    isPrimary = false,
+  }: {
+    slot: FinalPhotoSlot;
+    photo: string | null;
+    isPrimary?: boolean;
+  }) => (
+    <View style={styles.photoSlot}>
+      <Text style={styles.photoSlotLabel}>{isPrimary ? 'Foto principal *' : `Foto final ${slot}`}</Text>
+      {photo ? (
+        <TouchableOpacity onPress={() => handleTakePhoto(slot)} activeOpacity={0.85}>
+          <Image source={{ uri: photo }} style={styles.photoThumb} />
+          <Text style={styles.changePhotoText}>✓ Tocar para cambiar</Text>
+        </TouchableOpacity>
+      ) : (
+        <View>
+          <TouchableOpacity style={styles.emptyPhotoThumb} onPress={() => handleTakePhoto(slot)} activeOpacity={0.8}>
+            <Text style={styles.cameraEmoji}>📷</Text>
+            <Text style={styles.emptyPhotoText}>{isPrimary ? 'Tomar foto principal' : 'Tomar foto final'}</Text>
+          </TouchableOpacity>
+          <Button mode="text" onPress={() => handlePickPhoto(slot)} compact labelStyle={styles.galleryText}>
+            o elegir de galería
+          </Button>
+        </View>
+      )}
+    </View>
+  );
+
+  const ChecklistQuestion = ({
+    title,
+    value,
+    onChange,
+    reason,
+    onChangeReason,
+    requireReason,
+  }: {
+    title: string;
+    value: ChecklistValue;
+    onChange: (nextValue: boolean) => void;
+    reason?: string;
+    onChangeReason?: (nextValue: string) => void;
+    requireReason?: boolean;
+  }) => (
+    <View style={styles.checklistItem}>
+      <Text style={styles.checklistQuestion}>{title}</Text>
+      <View style={styles.answerRow}>
+        <TouchableOpacity
+          style={[styles.answerButton, value === true && styles.answerButtonYesActive]}
+          onPress={() => onChange(true)}
+          activeOpacity={0.85}
+        >
+          <Text style={[styles.answerButtonText, value === true && styles.answerButtonTextActive]}>Sí</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.answerButton, value === false && styles.answerButtonNoActive]}
+          onPress={() => onChange(false)}
+          activeOpacity={0.85}
+        >
+          <Text style={[styles.answerButtonText, value === false && styles.answerButtonTextActive]}>No</Text>
+        </TouchableOpacity>
+      </View>
+      {value === false && onChangeReason ? (
+        <TextInput
+          label={requireReason ? 'Si no, ¿por qué? *' : 'Si no, ¿por qué?'}
+          value={reason || ''}
+          onChangeText={onChangeReason}
+          style={styles.reasonInput}
+          mode="outlined"
+          multiline
+          numberOfLines={3}
+          outlineColor={BRAND_COLORS.grayMedium}
+          activeOutlineColor={INSTALLATION_PRIMARY}
+          placeholder="Explica el motivo"
+        />
+      ) : null}
+    </View>
+  );
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -159,30 +293,50 @@ export default function InstalacionFinalFormScreen() {
               <MaterialCommunityIcons name="arrow-left" size={22} color="white" />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Cierre de la Instalación</Text>
-            <Text style={styles.headerSubtitle}>Foto final y notas / observaciones</Text>
+            <Text style={styles.headerSubtitle}>Checklist final, fotos finales y notas / observaciones</Text>
           </LinearGradient>
+
+          <Card style={styles.checklistCard}>
+            <Card.Content>
+              <Text style={styles.sectionTitle}>☑️ Checklist Final</Text>
+              <Divider style={styles.divider} />
+              <ChecklistQuestion
+                title="¿Funciona bien la máquina?"
+                value={worksCorrectly}
+                onChange={setWorksCorrectly}
+                reason={worksCorrectlyReason}
+                onChangeReason={setWorksCorrectlyReason}
+                requireReason
+              />
+              <ChecklistQuestion
+                title="¿La máquina se queda en marcha?"
+                value={staysRunning}
+                onChange={setStaysRunning}
+                reason={staysRunningReason}
+                onChangeReason={setStaysRunningReason}
+                requireReason
+              />
+              <ChecklistQuestion
+                title="¿Se comprueban presiones y funcionamiento general de la máquina?"
+                value={pressuresChecked}
+                onChange={setPressuresChecked}
+              />
+            </Card.Content>
+          </Card>
 
           <Card style={styles.photoCard}>
             <Card.Content>
-              <Text style={styles.sectionTitle}>📷 Foto Final</Text>
+              <Text style={styles.sectionTitle}>📷 Fotos Finales</Text>
               <Divider style={styles.divider} />
-
-              {finalPhoto ? (
-                <TouchableOpacity onPress={handleTakePhoto} activeOpacity={0.85}>
-                  <Image source={{ uri: finalPhoto }} style={styles.finalPhoto} />
-                  <Text style={styles.changePhotoText}>✓ Tocar para cambiar la foto final</Text>
-                </TouchableOpacity>
-              ) : (
-                <View>
-                  <TouchableOpacity style={styles.emptyPhotoThumb} onPress={handleTakePhoto} activeOpacity={0.8}>
-                    <Text style={styles.cameraEmoji}>📷</Text>
-                    <Text style={styles.emptyPhotoText}>Tomar foto final</Text>
-                  </TouchableOpacity>
-                  <Button mode="text" onPress={handlePickPhoto} compact labelStyle={styles.galleryText}>
-                    o elegir de galería
-                  </Button>
-                </View>
-              )}
+              <View style={styles.photosGrid}>
+                <PhotoSlot slot={1} photo={finalPhoto1} isPrimary />
+                <PhotoSlot slot={2} photo={finalPhoto2} />
+                <PhotoSlot slot={3} photo={finalPhoto3} />
+                <PhotoSlot slot={4} photo={finalPhoto4} />
+              </View>
+              <Text style={styles.helpText}>
+                Puedes añadir hasta 4 fotos finales. La primera es obligatoria y será la foto principal en la web.
+              </Text>
             </Card.Content>
           </Card>
 
@@ -239,6 +393,20 @@ function getParamString(value: unknown): string {
   return typeof value === 'string' ? value : '';
 }
 
+function getParamBoolean(value: unknown): boolean | null {
+  if (Array.isArray(value)) {
+    return getParamBoolean(value[0]);
+  }
+
+  if (typeof value === 'boolean') return value;
+  if (typeof value !== 'string') return null;
+
+  const normalized = value.trim().toLowerCase();
+  if (normalized === 'true') return true;
+  if (normalized === 'false') return false;
+  return null;
+}
+
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
@@ -279,9 +447,18 @@ const styles = StyleSheet.create({
     fontSize: TYPOGRAPHY.sizes.sm,
     color: 'rgba(255,255,255,0.82)',
     marginTop: SPACING.xs,
+    textAlign: 'center',
+  },
+  checklistCard: {
+    margin: SPACING.md,
+    marginBottom: SPACING.sm,
+    borderRadius: BORDER_RADIUS.lg,
+    borderLeftWidth: 3,
+    borderLeftColor: INSTALLATION_PRIMARY,
+    ...SHADOWS.small,
   },
   photoCard: {
-    margin: SPACING.md,
+    marginHorizontal: SPACING.md,
     marginBottom: SPACING.sm,
     borderRadius: BORDER_RADIUS.lg,
     borderLeftWidth: 3,
@@ -307,16 +484,80 @@ const styles = StyleSheet.create({
     height: 1,
     marginBottom: SPACING.md,
   },
-  finalPhoto: {
+  checklistItem: {
+    marginBottom: SPACING.md,
+    padding: SPACING.md,
+    borderRadius: BORDER_RADIUS.md,
+    backgroundColor: '#f8fffd',
+    borderWidth: 1,
+    borderColor: INSTALLATION_BORDER,
+  },
+  checklistQuestion: {
+    fontSize: TYPOGRAPHY.sizes.sm,
+    fontWeight: TYPOGRAPHY.weights.bold as any,
+    color: '#0f172a',
+    marginBottom: SPACING.sm,
+  },
+  answerRow: {
+    flexDirection: 'row',
+    gap: SPACING.sm,
+  },
+  answerButton: {
+    flex: 1,
+    borderRadius: BORDER_RADIUS.md,
+    borderWidth: 1,
+    borderColor: BRAND_COLORS.grayMedium,
+    backgroundColor: 'white',
+    paddingVertical: SPACING.sm,
+    alignItems: 'center',
+  },
+  answerButtonYesActive: {
+    borderColor: '#16a34a',
+    backgroundColor: '#dcfce7',
+  },
+  answerButtonNoActive: {
+    borderColor: '#dc2626',
+    backgroundColor: '#fee2e2',
+  },
+  answerButtonText: {
+    fontSize: TYPOGRAPHY.sizes.sm,
+    fontWeight: TYPOGRAPHY.weights.bold as any,
+    color: '#334155',
+  },
+  answerButtonTextActive: {
+    color: '#0f172a',
+  },
+  reasonInput: {
+    marginTop: SPACING.sm,
+    backgroundColor: 'white',
+  },
+  photosGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: SPACING.sm,
+  },
+  photoSlot: {
+    width: '48%',
+    marginBottom: SPACING.sm,
+  },
+  photoSlotLabel: {
+    fontSize: TYPOGRAPHY.sizes.sm,
+    fontWeight: TYPOGRAPHY.weights.bold as any,
+    color: INSTALLATION_PRIMARY,
+    marginBottom: SPACING.xs,
+    textAlign: 'center',
+  },
+  photoThumb: {
     width: '100%',
-    height: 220,
+    height: 150,
     borderRadius: BORDER_RADIUS.md,
     borderWidth: 2,
     borderColor: INSTALLATION_BORDER,
   },
   emptyPhotoThumb: {
     width: '100%',
-    height: 220,
+    height: 150,
     backgroundColor: BRAND_COLORS.grayMedium,
     borderRadius: BORDER_RADIUS.md,
     justifyContent: 'center',
@@ -332,6 +573,8 @@ const styles = StyleSheet.create({
     fontSize: TYPOGRAPHY.sizes.sm,
     color: BRAND_COLORS.grayText,
     marginTop: SPACING.xs,
+    textAlign: 'center',
+    paddingHorizontal: SPACING.sm,
   },
   changePhotoText: {
     textAlign: 'center',

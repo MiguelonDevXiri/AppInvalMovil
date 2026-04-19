@@ -81,8 +81,8 @@ export default function InstalacionSitePhotosFormScreen() {
   };
 
   const handleContinue = () => {
-    if (!photoSite1 || !photoSite2 || !photoSite3 || !photoSite4) {
-      Alert.alert('Fotos requeridas', 'Debes añadir las 4 fotos del sitio antes de continuar.');
+    if (![photoSite1, photoSite2, photoSite3, photoSite4].some(Boolean)) {
+      Alert.alert('Foto requerida', 'Debes añadir al menos 1 foto del sitio antes de continuar.');
       return;
     }
 
@@ -151,7 +151,7 @@ export default function InstalacionSitePhotosFormScreen() {
               <PhotoSlot slot={4} photo={photoSite4} />
             </View>
             <Text style={styles.helpText}>
-              Las 4 fotos del sitio son obligatorias para documentar correctamente la instalación.
+              Añade al menos 1 foto del sitio. Puedes registrar hasta 4 si necesitas más detalle.
             </Text>
           </Card.Content>
         </Card>
