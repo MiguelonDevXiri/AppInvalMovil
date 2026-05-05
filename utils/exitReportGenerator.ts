@@ -40,6 +40,15 @@ const getImageBase64 = async (uri: string, maxWidth: number = 400): Promise<stri
   }
 };
 
+const getImagesBase64Sequential = async (uris: string[], maxWidth?: number): Promise<string[]> => {
+  const results: string[] = [];
+  for (const uri of uris) {
+    const image = await getImageBase64(uri, maxWidth).catch(() => '');
+    results.push(image);
+  }
+  return results;
+};
+
 const cleanFileName = (name: string): string => {
   return name
     .replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ'\s]/g, '_')
@@ -68,7 +77,7 @@ export const generateExitPDF = async (
 
     const verifiedBy = exitChecks.find(c => c.verifiedBy)?.verifiedBy || 'No especificado';
     const verifiedAt = exitChecks.find(c => c.verifiedAt)?.verifiedAt;
-    const dateStr = verifiedAt ? new Date(verifiedAt).toLocaleString() : new Date().toLocaleString();
+    const dateStr = verifiedAt ? new Date(verifiedAt).toLocaleDateString('es-ES') : new Date().toLocaleDateString('es-ES');
     const logoBase64 = getLogoBase64();
     const machineTypeAbbr = getMachineTypeAbbreviation(machine.machineType || 'otros');
 
@@ -77,8 +86,7 @@ export const generateExitPDF = async (
     let exitPhotosHtml = '';
     if (exitPhotos?.photos) {
       const photoEntries = Object.entries(exitPhotos.photos).filter(([_, url]) => url);
-      const photoPromises = photoEntries.map(([_, url]) => getImageBase64(url!, 400));
-      const photoBase64s = await Promise.all(photoPromises);
+      const photoBase64s = await getImagesBase64Sequential(photoEntries.map(([_, url]) => url!), 400);
 
       if (photoBase64s.some(b => b)) {
         exitPhotosHtml = `
@@ -121,8 +129,7 @@ export const generateExitPDF = async (
 
     // Process all check photos in parallel
     const checksWithPhotos = checklistChecks.filter(c => c.photoUrl);
-    const checkPhotoPromises = checksWithPhotos.map(c => getImageBase64(c.photoUrl!, 300).catch(() => ''));
-    const checkPhotoResults = await Promise.all(checkPhotoPromises);
+    const checkPhotoResults = await getImagesBase64Sequential(checksWithPhotos.map(c => c.photoUrl!), 300);
     const checkPhotoMap: Record<string, string> = {};
     checksWithPhotos.forEach((c, i) => {
       if (checkPhotoResults[i]) checkPhotoMap[c.itemId] = checkPhotoResults[i];
@@ -130,8 +137,7 @@ export const generateExitPDF = async (
 
     // Also process comment check photos
     const commentChecksWithPhotos = commentChecks.filter(c => c.photoUrl);
-    const commentPhotoPromises = commentChecksWithPhotos.map(c => getImageBase64(c.photoUrl!, 300).catch(() => ''));
-    const commentPhotoResults = await Promise.all(commentPhotoPromises);
+    const commentPhotoResults = await getImagesBase64Sequential(commentChecksWithPhotos.map(c => c.photoUrl!), 300);
     const commentPhotoMap: Record<string, string> = {};
     commentChecksWithPhotos.forEach((c, i) => {
       if (commentPhotoResults[i]) commentPhotoMap[c.itemId] = commentPhotoResults[i];
@@ -528,7 +534,7 @@ export const generateExitPDF = async (
                 <div class="info-row"><div class="info-label">Cliente</div><div class="info-value">${machine.clientName || 'No especificado'}</div></div>
                 <div class="info-row"><div class="info-label">Ubicación</div><div class="info-value">${machine.location || 'No especificado'}</div></div>
                 <div class="info-row"><div class="info-label">Técnico entrada</div><div class="info-value">${machine.reviewedBy || 'No especificado'}</div></div>
-                <div class="info-row"><div class="info-label">Fecha entrada</div><div class="info-value">${machine.date || 'No especificado'}</div></div>
+                <div class="info-row"><div class="info-label">Fecha entrada</div><div class="info-value">${machine.date ? new Date(machine.date).toLocaleDateString('es-ES') : 'No especificado'}</div></div>
               </div>
             </div>
             <div class="info-card">
@@ -573,7 +579,8 @@ export const generateExitPDF = async (
 
     const clientName = cleanFileName(machine.clientName);
     const identifier = cleanFileName(machine.licensePlate || machine.serialNumber || '');
-    const pdfStoragePath = `inspecciones/${clientName}_${identifier}/informe_salida_${clientName}_${identifier}.pdf`;
+    const recordId = cleanFileName((machine.id || machine.date || '').slice(0, 8));
+    const pdfStoragePath = `inspecciones/${clientName}_${identifier}_${recordId}/informe_salida_${clientName}_${identifier}.pdf`;
 
     await supabase.storage.from('inspection-photos').upload(pdfStoragePath, decode(pdfBase64), {
       contentType: 'application/pdf',

@@ -6,7 +6,7 @@ import { router } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Modal, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Button, Card, Chip, IconButton, Menu, Searchbar, Text, TextInput } from 'react-native-paper';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import MachineCard from '../../components/MachineCard';
 import { BORDER_RADIUS, BRAND_COLORS, GRADIENTS, SHADOWS, SPACING, TYPOGRAPHY } from '../../constants/Colors';
 import { deleteMachine, getMachines, Machine } from '../../utils/storage';
@@ -18,6 +18,7 @@ interface Filters {
 }
 
 export default function MachineListScreen() {
+  const insets = useSafeAreaInsets();
   const [machines, setMachines] = useState<Machine[]>([]);
   const [filteredMachines, setFilteredMachines] = useState<Machine[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -79,6 +80,11 @@ export default function MachineListScreen() {
       result = result.filter(machine =>
         machine.name.toLowerCase().includes(searchLower) ||
         machine.clientName.toLowerCase().includes(searchLower) ||
+        (machine.machineType && machine.machineType.toLowerCase().includes(searchLower)) ||
+        (machine.brand && machine.brand.toLowerCase().includes(searchLower)) ||
+        (machine.licensePlate && machine.licensePlate.toLowerCase().includes(searchLower)) ||
+        (machine.location && machine.location.toLowerCase().includes(searchLower)) ||
+        (machine.otNumber && machine.otNumber.toLowerCase().includes(searchLower)) ||
         (machine.model && machine.model.toLowerCase().includes(searchLower)) ||
         (machine.serialNumber && machine.serialNumber.toLowerCase().includes(searchLower))
       );
@@ -198,8 +204,12 @@ export default function MachineListScreen() {
     handleMenuClose();
     if (!selectedMachine) return;
     router.push({
-      pathname: '/checklist',
-      params: { machineId: selectedMachine.id }
+      pathname: '/new-machine',
+      params: {
+        machineId: selectedMachine.id,
+        machineTypeId: selectedMachine.machineType || 'otros',
+        isEditing: 'true',
+      },
     });
   };
 
@@ -265,7 +275,7 @@ export default function MachineListScreen() {
 
         <View style={styles.searchContainer}>
           <Searchbar
-            placeholder="Buscar máquina o cliente..."
+            placeholder="Buscar por cliente, tipo, matrícula, ubicación, marca u OT..."
             onChangeText={handleSearch}
             value={searchQuery}
             style={styles.searchbar}
@@ -370,7 +380,7 @@ export default function MachineListScreen() {
         )}
 
         {isSelectionMode && selectedIds.size > 0 && (
-          <View style={styles.deleteBar}>
+          <View style={[styles.deleteBar, { paddingBottom: insets.bottom + SPACING.md }]}>
             <TouchableOpacity style={styles.deleteButton} onPress={handleDeleteSelected}>
               <MaterialCommunityIcons name="delete" size={20} color="white" />
               <Text style={styles.deleteButtonText}>Eliminar seleccionados ({selectedIds.size})</Text>

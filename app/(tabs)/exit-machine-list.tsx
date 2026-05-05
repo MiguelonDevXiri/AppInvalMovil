@@ -112,7 +112,7 @@ export default function ExitMachineListScreen() {
           >
             <MaterialCommunityIcons name="arrow-left" size={22} color="white" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Inspección de Salida</Text>
+          <Text style={styles.headerTitle}>Salida renoves</Text>
         </LinearGradient>
 
         <View style={styles.searchContainer}>

@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Alert, Image, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { ActivityIndicator, Button, Card, Divider, Paragraph, Text, Title } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -13,6 +13,7 @@ import {
   SPACING,
   TYPOGRAPHY,
 } from '../../constants/Colors';
+import { LazyPhotoGrid } from '../../components/LazyPhotoGrid';
 import {
   getInstalacionInspectionById,
   paramsToInspection,
@@ -66,7 +67,9 @@ export default function InstalacionReportViewScreen() {
       setLoading(true);
 
       let currentInspection: InstalacionInspection;
-      if (params.inspectionId && typeof params.inspectionId === 'string') {
+      if (shouldAutoGenerate) {
+        currentInspection = paramsToInspection(params);
+      } else if (params.inspectionId && typeof params.inspectionId === 'string') {
         const loadedInspection = await getInstalacionInspectionById(params.inspectionId);
         currentInspection = loadedInspection || paramsToInspection(params);
       } else {
@@ -224,7 +227,7 @@ export default function InstalacionReportViewScreen() {
             <Divider style={styles.dividerLine} />
             <InfoRow label="Cliente" value={inspection.clientName} />
             <InfoRow label="Matrícula" value={inspection.licensePlate} />
-            <InfoRow label="Fecha" value={`${inspection.avisoDate} ${inspection.avisoTime}`.trim()} />
+            <InfoRow label="Fecha" value={inspection.avisoDate} />
             <InfoRow label="Ubicación" value={inspection.location} />
             {inspection.reviewedBy ? <InfoRow label="Revisado por" value={inspection.reviewedBy} /> : null}
           </Card.Content>
@@ -247,11 +250,7 @@ export default function InstalacionReportViewScreen() {
             <Card.Content>
               <Title style={styles.sectionTitle}>📸 Fotos del Sitio</Title>
               <Divider style={styles.dividerLine} />
-              <View style={styles.photosRow}>
-                {sitePhotos.map((uri, index) => (
-                  <Image key={`${uri}_${index}`} source={{ uri }} style={styles.photoThumb} />
-                ))}
-              </View>
+              <LazyPhotoGrid title="Fotos del sitio" photos={sitePhotos} labelPrefix="S" accentColor={INSTALLATION_PRIMARY} />
             </Card.Content>
           </Card>
         )}
@@ -317,16 +316,7 @@ export default function InstalacionReportViewScreen() {
             <Title style={styles.sectionTitle}>✅ Resultado Final</Title>
             <Divider style={styles.dividerLine} />
             {finalPhotos.length > 0 ? (
-              <View style={styles.finalPhotosGrid}>
-                {finalPhotos.map((uri, index) => (
-                  <View key={`${uri}_${index}`} style={styles.finalPhotoSlot}>
-                    <Image source={{ uri }} style={styles.finalPhoto} />
-                    <Text style={styles.finalPhotoLabel}>
-                      {index === 0 ? 'Foto principal web' : `Foto final ${index + 1}`}
-                    </Text>
-                  </View>
-                ))}
-              </View>
+              <LazyPhotoGrid title="Fotos finales" photos={finalPhotos} labelPrefix="F" accentColor={INSTALLATION_PRIMARY} />
             ) : (
               <Text style={styles.emptyText}>Sin fotos finales</Text>
             )}

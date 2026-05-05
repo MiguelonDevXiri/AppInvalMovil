@@ -61,6 +61,15 @@ export default function Layout() {
         <Stack.Screen name="averia-final-form" />
         <Stack.Screen name="averia-report-view" />
         <Stack.Screen name="averia-inspections-list" />
+        <Stack.Screen name="reparacion-machine-form" />
+        <Stack.Screen name="reparacion-entry-photos-form" />
+        <Stack.Screen name="reparacion-repairs-form" />
+        <Stack.Screen name="reparacion-final-form" />
+        <Stack.Screen name="reparacion-report-view" />
+        <Stack.Screen name="reparacion-inspections-list" />
+        <Stack.Screen name="reparacion-exit-list" />
+        <Stack.Screen name="reparacion-exit-management" />
+        <Stack.Screen name="reparacion-exit-form" />
 
         <Stack.Screen name="instalacion-machine-form" />
         <Stack.Screen name="instalacion-site-photos-form" />
@@ -69,6 +78,11 @@ export default function Layout() {
         <Stack.Screen name="instalacion-final-form" />
         <Stack.Screen name="instalacion-report-view" />
         <Stack.Screen name="instalacion-inspections-list" />
+
+        <Stack.Screen name="mantenimiento-machine-type-selection" />
+        <Stack.Screen name="mantenimiento-form" />
+        <Stack.Screen name="mantenimiento-report-view" />
+        <Stack.Screen name="mantenimiento-inspections-list" />
         <Stack.Screen name="login" options={{ headerShown: false }} />
       </Stack>
     </PaperProvider>

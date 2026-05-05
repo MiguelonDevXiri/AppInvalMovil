@@ -29,6 +29,12 @@ const buildShortId = (value?: string): string => {
   return sanitized.slice(0, 8) || 'sin_id';
 };
 
+export const buildRecordStorageSuffix = (id?: string, fallback?: string): string => {
+  const recordId = buildShortId(id);
+  if (recordId !== 'sin_id') return recordId;
+  return buildShortId(fallback);
+};
+
 export const sanitizePathSegment = (value: string, maxLength: number = MAX_SEGMENT_LENGTH): string => {
   if (!value) return '';
 
@@ -54,8 +60,9 @@ export const buildMachineStorageBase = (machine: {
 }): string => {
   const client = sanitizePathSegment(machine.clientName || 'cliente', MAX_BASE_SEGMENT_LENGTH);
   const licensePlate = sanitizePathSegment(machine.licensePlate || 'sin_matricula', 30);
+  const record = buildRecordStorageSuffix(machine.id, machine.date);
 
-  return `inspecciones/${client}_${licensePlate}`;
+  return `inspecciones/${client}_${licensePlate}_${record}`;
 };
 
 export const buildLegacyMachineStorageBase = (machine: {
@@ -85,8 +92,9 @@ export const buildActecoStorageBase = (inspection: {
 }): string => {
   const location = sanitizePathSegment(inspection.location || 'sin_ubicacion', MAX_BASE_SEGMENT_LENGTH);
   const date = normalizeDateSegment(inspection.avisoDate);
+  const record = buildRecordStorageSuffix(inspection.id, inspection.avisoDate);
 
-  return `urgencias/${location}_${date}`;
+  return `urgencias/${location}_${date}_${record}`;
 };
 
 export const buildAveriasStorageBase = (inspection: {
@@ -97,8 +105,9 @@ export const buildAveriasStorageBase = (inspection: {
 }): string => {
   const location = sanitizePathSegment(inspection.location || 'sin_ubicacion', MAX_BASE_SEGMENT_LENGTH);
   const date = normalizeDateSegment(inspection.avisoDate);
+  const record = buildRecordStorageSuffix(inspection.id, inspection.avisoDate);
 
-  return `averias/${location}_${date}`;
+  return `averias/${location}_${date}_${record}`;
 };
 
 export const buildLegacyActecoStorageBase = (inspection: {

@@ -8,6 +8,7 @@ import { decode } from 'base64-arraybuffer';
 import { getChecklistByMachineType } from '../data/machineChecklists';
 import { ChecklistData, GeneralPhotosData, Machine } from './storage';
 import { supabase } from './supabase';
+import { renderSafetySummaryHTML } from './safetyChecklist';
 
 // Función para obtener texto de estado
 export const getStatusText = (status: string): string => {
@@ -96,6 +97,18 @@ const getImageBase64 = async (uri: string): Promise<string> => {
 // Función para obtener imagen thumbnail más grande para fotos generales
 const getThumbnailBase64 = async (uri: string): Promise<string> => {
   return getImageBase64WithOrientation(uri, 400, true);
+};
+
+const resolveImagesSequential = async (
+  uris: string[],
+  resolver: (uri: string) => Promise<string>
+): Promise<string[]> => {
+  const results: string[] = [];
+  for (const uri of uris) {
+    const image = await resolver(uri).catch(() => '');
+    results.push(image);
+  }
+  return results;
 };
 
 // Función para obtener una imagen de placeholder en caso de error
@@ -269,11 +282,11 @@ const processComments = async (machine: Machine): Promise<string> => {
   let htmlContent = '';
 
   if (machine.commentsWithPhotos && machine.commentsWithPhotos.length > 0) {
-    // Procesar todas las fotos de comentarios en paralelo
-    const photoPromises = machine.commentsWithPhotos.map((comment) =>
-      comment.photoUri ? getImageBase64(comment.photoUri).catch(() => '') : Promise.resolve('')
+    // Procesar fotos secuencialmente para evitar picos de memoria en Android.
+    const photoResults = await resolveImagesSequential(
+      machine.commentsWithPhotos.map((comment) => comment.photoUri || ''),
+      (uri) => (uri ? getImageBase64(uri) : Promise.resolve(''))
     );
-    const photoResults = await Promise.all(photoPromises);
 
     for (let i = 0; i < machine.commentsWithPhotos.length; i++) {
       const comment = machine.commentsWithPhotos[i];
@@ -349,27 +362,27 @@ export const generateHTMLReport = async (
   };
 
   if (generalPhotos && generalPhotos.photos) {
-    const photoPromises: Promise<string>[] = [];
+    const photoUris: string[] = [];
     const photoLabels: string[] = [];
 
     if (generalPhotos.photos.front) {
-      photoPromises.push(getThumbnailBase64(generalPhotos.photos.front));
+      photoUris.push(generalPhotos.photos.front);
       photoLabels.push(generalPhotoLabelMap.front);
     }
     if (generalPhotos.photos.back) {
-      photoPromises.push(getThumbnailBase64(generalPhotos.photos.back));
+      photoUris.push(generalPhotos.photos.back);
       photoLabels.push(generalPhotoLabelMap.back);
     }
     if (generalPhotos.photos.left) {
-      photoPromises.push(getThumbnailBase64(generalPhotos.photos.left));
+      photoUris.push(generalPhotos.photos.left);
       photoLabels.push(generalPhotoLabelMap.left);
     }
     if (generalPhotos.photos.right) {
-      photoPromises.push(getThumbnailBase64(generalPhotos.photos.right));
+      photoUris.push(generalPhotos.photos.right);
       photoLabels.push(generalPhotoLabelMap.right);
     }
 
-    const thumbnails = await Promise.all(photoPromises);
+    const thumbnails = await resolveImagesSequential(photoUris, getThumbnailBase64);
 
     generalPhotosThumbnails = `
       <div class="section">
@@ -414,7 +427,7 @@ export const generateHTMLReport = async (
 
       if (activeItems.length > 0) {
         type ActiveItem = typeof category.items[number];
-        // Pre-process all photos for fail items in this category in parallel
+        // Pre-procesar fotos de errores de forma secuencial para no saturar memoria.
         const failItemsWithPhotos: { item: ActiveItem; photoArray: any[] }[] = [];
         for (const item of activeItems) {
           const status = checklistResults.results[item.id];
@@ -430,20 +443,19 @@ export const generateHTMLReport = async (
           }
         }
 
-        // Resolve all photo base64 in parallel for this category
-        const allPhotoPromises: Promise<string>[] = [];
+        const allPhotoUris: string[] = [];
         const photoIndexMap: { itemId: string; startIdx: number; count: number; comments: (string | undefined)[] }[] = [];
         for (const { item, photoArray } of failItemsWithPhotos) {
-          const startIdx = allPhotoPromises.length;
+          const startIdx = allPhotoUris.length;
           const comments: (string | undefined)[] = [];
           for (const p of photoArray) {
             const { uri, comment } = processPhotoItem(p);
-            allPhotoPromises.push(getImageBase64(uri).catch(() => ''));
+            allPhotoUris.push(uri);
             comments.push(comment);
           }
           photoIndexMap.push({ itemId: item.id, startIdx, count: photoArray.length, comments });
         }
-        const allPhotoResults = await Promise.all(allPhotoPromises);
+        const allPhotoResults = await resolveImagesSequential(allPhotoUris, getImageBase64);
 
         // Build a lookup: itemId -> resolved photo HTML
         const photoHtmlByItemId: Record<string, string> = {};
@@ -601,6 +613,8 @@ export const generateHTMLReport = async (
       </div>
     `;
   }
+
+  const safetySummaryHtml = renderSafetySummaryHTML(machine.safetyChecklist);
 
   let commentsHtml = '';
   if ((machine.notes || machine.commentsWithPhotos) && checklistResults && checklistResults.results) {
@@ -1333,6 +1347,7 @@ export const generateHTMLReport = async (
         </div>
 
         ${generalPhotosThumbnails}
+        ${safetySummaryHtml}
         ${checklistHtml}
         ${materialsHtml}
         ${commentsHtml}
@@ -1464,7 +1479,8 @@ export const sharePDFReport = async (
       // Subir PDF a Supabase Storage
       onProgress?.(92, 'Subiendo PDF a la nube...');
       try {
-        const pdfStoragePath = `inspecciones/${cleanFileName(machine.clientName)}_${cleanFileName(machine.licensePlate || machine.serialNumber || '')}/informe_${pdfFileName}`;
+        const recordId = cleanFileName((machine.id || machine.date || '').slice(0, 8));
+        const pdfStoragePath = `inspecciones/${cleanFileName(machine.clientName)}_${cleanFileName(machine.licensePlate || machine.serialNumber || '')}_${recordId}/informe_${pdfFileName}`;
         await supabase.storage.from('inspection-photos').upload(pdfStoragePath, decode(pdfBase64), {
           contentType: 'application/pdf',
           upsert: true,
@@ -1580,7 +1596,8 @@ export const generateAndUploadPDF = async (
     pdfFileName += '.pdf';
 
     onProgress?.(85, 'Subiendo PDF a la nube...');
-    const pdfStoragePath = `inspecciones/${cleanFileName(machine.clientName)}_${cleanFileName(machine.licensePlate || machine.serialNumber || '')}/informe_${pdfFileName}`;
+    const recordId = cleanFileName((machine.id || machine.date || '').slice(0, 8));
+    const pdfStoragePath = `inspecciones/${cleanFileName(machine.clientName)}_${cleanFileName(machine.licensePlate || machine.serialNumber || '')}_${recordId}/informe_${pdfFileName}`;
     await supabase.storage.from('inspection-photos').upload(pdfStoragePath, decode(pdfBase64), {
       contentType: 'application/pdf',
       upsert: true,

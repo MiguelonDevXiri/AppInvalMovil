@@ -6,7 +6,7 @@ import { router } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Modal, Pressable, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Button, Card, Divider, IconButton, Menu, Searchbar, Text, Title } from 'react-native-paper';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BORDER_RADIUS, BRAND_COLORS, SHADOWS, SPACING, TYPOGRAPHY } from '../../constants/Colors';
 import {
   AveriaInspection,
@@ -41,8 +41,9 @@ const AveriaCard = ({ inspection, onPress, onMenuPress, onLongPress, isSelection
                 <IconButton icon="dots-vertical" onPress={(e) => onMenuPress(inspection, e)} size={20} style={styles.menuButton} />
               )}
             </View>
-            <Text>📅 {inspection.avisoDate} {inspection.avisoTime}</Text>
+            <Text>📅 {inspection.avisoDate}</Text>
             <Text>🚗 {inspection.licensePlate || 'Sin matrícula'}</Text>
+            <Text>🧾 OT: {inspection.otNumber || 'Sin OT'}</Text>
             <Text>📍 {inspection.location || 'Sin ubicación'}</Text>
             <Text>⚙️ {inspection.machineBrand || 'Sin marca'}</Text>
             <Text style={{ color: '#7c3aed', fontWeight: '600', marginTop: SPACING.xs }}>🔧 {inspection.defects?.length || 0} avería(s)</Text>
@@ -57,6 +58,7 @@ const AveriaCard = ({ inspection, onPress, onMenuPress, onLongPress, isSelection
 );
 
 export default function AveriaInspectionsListScreen() {
+  const insets = useSafeAreaInsets();
   const [inspections, setInspections] = useState<AveriaInspection[]>([]);
   const [filteredInspections, setFilteredInspections] = useState<AveriaInspection[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -87,7 +89,7 @@ export default function AveriaInspectionsListScreen() {
       const sorted = data.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       setInspections(sorted);
       setFilteredInspections(sorted);
-    } catch (error) {
+    } catch {
       Alert.alert('Error', 'No se pudieron cargar las averías.');
     } finally {
       setLoading(false);
@@ -101,7 +103,8 @@ export default function AveriaInspectionsListScreen() {
       i.clientName.toLowerCase().includes(q) ||
       i.licensePlate.toLowerCase().includes(q) ||
       i.location.toLowerCase().includes(q) ||
-      (i.machineBrand && i.machineBrand.toLowerCase().includes(q))
+      (i.machineBrand && i.machineBrand.toLowerCase().includes(q)) ||
+      ((i.otNumber || '').toLowerCase().includes(q))
     ));
   };
 
@@ -203,7 +206,7 @@ export default function AveriaInspectionsListScreen() {
         )}
 
         <View style={styles.searchContainer}>
-          <Searchbar placeholder="Buscar por cliente, matrícula, ubicación..." onChangeText={setSearchQuery} value={searchQuery} style={styles.searchbar} />
+          <Searchbar placeholder="Buscar por cliente, matrícula, OT, ubicación o marca..." onChangeText={setSearchQuery} value={searchQuery} style={styles.searchbar} />
         </View>
 
         {loading ? (
@@ -225,7 +228,7 @@ export default function AveriaInspectionsListScreen() {
         )}
 
         {isSelectionMode && selectedIds.size > 0 && (
-          <View style={styles.deleteBar}>
+          <View style={[styles.deleteBar, { paddingBottom: insets.bottom + SPACING.md }]}>
             <TouchableOpacity style={styles.deleteBtn} onPress={handleDeleteSelected}>
               <MaterialCommunityIcons name="delete" size={20} color="white" />
               <Text style={styles.deleteBtnText}>Eliminar seleccionados ({selectedIds.size})</Text>

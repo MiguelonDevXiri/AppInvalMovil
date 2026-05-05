@@ -90,6 +90,7 @@ export default function ActecoFinalFormScreen() {
         ctx.lineJoin = 'round';
 
         let drawing = false;
+        let hasSignature = false;
         let lastX = 0;
         let lastY = 0;
 
@@ -122,6 +123,7 @@ export default function ActecoFinalFormScreen() {
           ctx.moveTo(lastX, lastY);
           ctx.lineTo(coords.x, coords.y);
           ctx.stroke();
+          hasSignature = true;
 
           lastX = coords.x;
           lastY = coords.y;
@@ -132,9 +134,6 @@ export default function ActecoFinalFormScreen() {
           e.preventDefault();
           e.stopPropagation();
           drawing = false;
-
-          const dataUrl = canvas.toDataURL('image/png');
-          window.ReactNativeWebView.postMessage(dataUrl);
         }
 
         canvas.addEventListener('touchstart', startDrawing, { passive: false });
@@ -148,6 +147,17 @@ export default function ActecoFinalFormScreen() {
 
         window.clearSignature = function() {
           ctx.clearRect(0, 0, canvas.width, canvas.height);
+          hasSignature = false;
+        };
+
+        window.saveSignature = function() {
+          if (!hasSignature) {
+            window.ReactNativeWebView.postMessage('EMPTY_SIGNATURE');
+            return;
+          }
+
+          const dataUrl = canvas.toDataURL('image/png');
+          window.ReactNativeWebView.postMessage(dataUrl);
         };
       </script>
     </body>
@@ -156,6 +166,11 @@ export default function ActecoFinalFormScreen() {
 
   const handleTechnicianMessage = (event: any) => {
     const signature = event.nativeEvent.data;
+    if (signature === 'EMPTY_SIGNATURE') {
+      Alert.alert('Firma vacía', 'Dibuja la firma antes de aceptar');
+      return;
+    }
+
     if (signature && signature.startsWith('data:image')) {
       setTechnicianSignature(signature);
       setShowTechnicianSignature(false);
@@ -164,6 +179,11 @@ export default function ActecoFinalFormScreen() {
 
   const handleClientMessage = (event: any) => {
     const signature = event.nativeEvent.data;
+    if (signature === 'EMPTY_SIGNATURE') {
+      Alert.alert('Firma vacía', 'Dibuja la firma antes de aceptar');
+      return;
+    }
+
     if (signature && signature.startsWith('data:image')) {
       setClientSignature(signature);
       setShowClientSignature(false);
@@ -389,28 +409,38 @@ export default function ActecoFinalFormScreen() {
                 style={styles.webview}
               />
             </View>
-            <View style={styles.signatureFooter}>
-              <Button
-                mode="text"
-                onPress={() => setShowTechnicianSignature(false)}
-                textColor={BRAND_COLORS.grayText}
-                style={styles.footerButton}
-              >
-                Cancelar
-              </Button>
-              <Button
-                mode="text"
-                onPress={() => {
-                  if (technicianWebViewRef.current) {
-                    technicianWebViewRef.current.injectJavaScript('window.clearSignature();');
-                  }
-                }}
-                textColor={BRAND_COLORS.primaryOrange}
-                style={styles.footerButton}
-              >
-                Limpiar
-              </Button>
-            </View>
+            <SafeAreaView style={styles.signatureFooterSafeArea} edges={['bottom']}>
+              <View style={styles.signatureFooter}>
+                <Button
+                  mode="text"
+                  onPress={() => setShowTechnicianSignature(false)}
+                  textColor={BRAND_COLORS.grayText}
+                  style={styles.footerButton}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  mode="text"
+                  onPress={() => {
+                    technicianWebViewRef.current?.injectJavaScript('window.clearSignature(); true;');
+                  }}
+                  textColor={BRAND_COLORS.primaryOrange}
+                  style={styles.footerButton}
+                >
+                  Limpiar
+                </Button>
+                <Button
+                  mode="contained"
+                  onPress={() => {
+                    technicianWebViewRef.current?.injectJavaScript('window.saveSignature(); true;');
+                  }}
+                  buttonColor={BRAND_COLORS.success}
+                  style={styles.footerButton}
+                >
+                  Aceptar
+                </Button>
+              </View>
+            </SafeAreaView>
           </View>
         )}
 
@@ -432,28 +462,38 @@ export default function ActecoFinalFormScreen() {
                 style={styles.webview}
               />
             </View>
-            <View style={styles.signatureFooter}>
-              <Button
-                mode="text"
-                onPress={() => setShowClientSignature(false)}
-                textColor={BRAND_COLORS.grayText}
-                style={styles.footerButton}
-              >
-                Cancelar
-              </Button>
-              <Button
-                mode="text"
-                onPress={() => {
-                  if (clientWebViewRef.current) {
-                    clientWebViewRef.current.injectJavaScript('window.clearSignature();');
-                  }
-                }}
-                textColor={BRAND_COLORS.primaryOrange}
-                style={styles.footerButton}
-              >
-                Limpiar
-              </Button>
-            </View>
+            <SafeAreaView style={styles.signatureFooterSafeArea} edges={['bottom']}>
+              <View style={styles.signatureFooter}>
+                <Button
+                  mode="text"
+                  onPress={() => setShowClientSignature(false)}
+                  textColor={BRAND_COLORS.grayText}
+                  style={styles.footerButton}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  mode="text"
+                  onPress={() => {
+                    clientWebViewRef.current?.injectJavaScript('window.clearSignature(); true;');
+                  }}
+                  textColor={BRAND_COLORS.primaryOrange}
+                  style={styles.footerButton}
+                >
+                  Limpiar
+                </Button>
+                <Button
+                  mode="contained"
+                  onPress={() => {
+                    clientWebViewRef.current?.injectJavaScript('window.saveSignature(); true;');
+                  }}
+                  buttonColor={BRAND_COLORS.success}
+                  style={styles.footerButton}
+                >
+                  Aceptar
+                </Button>
+              </View>
+            </SafeAreaView>
           </View>
         )}
 
@@ -549,16 +589,20 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'white',
   },
-  signatureFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    padding: SPACING.md,
+  signatureFooterSafeArea: {
     backgroundColor: BRAND_COLORS.surface,
     borderTopWidth: 1,
     borderTopColor: BRAND_COLORS.grayMedium,
   },
+  signatureFooter: {
+    flexDirection: 'row',
+    gap: SPACING.sm,
+    paddingHorizontal: SPACING.md,
+    paddingTop: SPACING.md,
+    paddingBottom: SPACING.sm,
+  },
   footerButton: {
-    minWidth: 120,
+    flex: 1,
   },
 
   buttonSafeArea: { backgroundColor: 'white' },

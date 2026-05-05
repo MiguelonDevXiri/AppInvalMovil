@@ -3,10 +3,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Alert, Image, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { ActivityIndicator, Button, Card, Divider, Paragraph, Text, Title } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BORDER_RADIUS, BRAND_COLORS, SHADOWS, SPACING, TYPOGRAPHY } from '../../constants/Colors';
+import { LazyPhotoGrid } from '../../components/LazyPhotoGrid';
 import {
   getAveriaInspectionById,
   paramsToInspection,
@@ -38,8 +39,13 @@ export default function AveriaReportViewScreen() {
   const loadAndSave = async () => {
     try {
       setLoading(true);
+      const hasFormParams = Object.keys(params).some((key) => key !== 'inspectionId' && key !== 'isEditing');
+      const shouldAutoGenerate = !params.inspectionId || hasFormParams;
+
       let insp: AveriaInspection;
-      if (params.inspectionId && typeof params.inspectionId === 'string') {
+      if (shouldAutoGenerate) {
+        insp = paramsToInspection(params);
+      } else if (params.inspectionId && typeof params.inspectionId === 'string') {
         const loaded = await getAveriaInspectionById(params.inspectionId);
         insp = loaded || paramsToInspection(params);
       } else {
@@ -56,8 +62,7 @@ export default function AveriaReportViewScreen() {
       setInspection(insp);
       setLoading(false);
 
-      // Auto-generar y subir PDF
-      if (!params.inspectionId || params.inspectionId === insp.id) {
+      if (shouldAutoGenerate) {
         await autoGeneratePDF(insp);
       }
     } catch (error) {
@@ -169,7 +174,7 @@ export default function AveriaReportViewScreen() {
             <Divider style={styles.dividerLine} />
             <InfoRow label="Cliente" value={inspection.clientName} />
             <InfoRow label="Matrícula" value={inspection.licensePlate} />
-            <InfoRow label="Fecha" value={`${inspection.avisoDate} ${inspection.avisoTime}`} />
+            <InfoRow label="Fecha" value={inspection.avisoDate} />
             <InfoRow label="Ubicación" value={inspection.location} />
             {inspection.reviewedBy ? <InfoRow label="Revisado por" value={inspection.reviewedBy} /> : null}
           </Card.Content>
@@ -199,11 +204,7 @@ export default function AveriaReportViewScreen() {
                   <Text style={styles.defectLabel}>Avería {idx + 1}</Text>
                   <Paragraph>{defect.description}</Paragraph>
                   {defect.photos && defect.photos.length > 0 && (
-                    <View style={styles.photosRow}>
-                      {defect.photos.map((uri, pIdx) => (
-                        <Image key={pIdx} source={{ uri }} style={styles.photoThumb} />
-                      ))}
-                    </View>
+                    <LazyPhotoGrid title={`Fotos avería ${idx + 1}`} photos={defect.photos} labelPrefix="A" accentColor="#7c3aed" />
                   )}
                   {idx < inspection.defects.length - 1 && <Divider style={{ marginVertical: SPACING.sm }} />}
                 </View>
@@ -220,11 +221,7 @@ export default function AveriaReportViewScreen() {
               <Divider style={styles.dividerLine} />
               <Paragraph>{inspection.solucionDescription}</Paragraph>
               {inspection.solucionPhotos && inspection.solucionPhotos.length > 0 && (
-                <View style={styles.photosRow}>
-                  {inspection.solucionPhotos.map((uri, idx) => (
-                    <Image key={idx} source={{ uri }} style={styles.photoThumb} />
-                  ))}
-                </View>
+                <LazyPhotoGrid title="Fotos solución" photos={inspection.solucionPhotos} labelPrefix="S" accentColor="#7c3aed" />
               )}
             </Card.Content>
           </Card>
@@ -271,11 +268,12 @@ export default function AveriaReportViewScreen() {
             <Card.Content>
               <Title style={styles.sectionTitle}>📸 Fotos Generales</Title>
               <Divider style={styles.dividerLine} />
-              <View style={styles.photosRow}>
-                {[inspection.photoGeneral1, inspection.photoGeneral2, inspection.photoGeneral3, inspection.photoGeneral4].filter(Boolean).map((uri, idx) => (
-                  <Image key={idx} source={{ uri: uri! }} style={styles.photoThumb} />
-                ))}
-              </View>
+              <LazyPhotoGrid
+                title="Fotos generales"
+                photos={[inspection.photoGeneral1, inspection.photoGeneral2, inspection.photoGeneral3, inspection.photoGeneral4].filter(Boolean) as string[]}
+                labelPrefix="G"
+                accentColor="#7c3aed"
+              />
             </Card.Content>
           </Card>
         )}

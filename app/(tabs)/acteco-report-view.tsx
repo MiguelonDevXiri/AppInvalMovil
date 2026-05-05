@@ -1,10 +1,11 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Image, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { ActivityIndicator, Button, Card, Divider, Paragraph, Text, Title } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LazyPhotoGrid } from '../../components/LazyPhotoGrid';
 import { BORDER_RADIUS, BRAND_COLORS, GRADIENTS, SHADOWS, SPACING, TYPOGRAPHY } from '../../constants/Colors';
 import {
     getActecoInspectionById,
@@ -23,6 +24,7 @@ export default function ActecoReportViewScreen() {
   const [inspection, setInspection] = useState<ActecoInspection | null>(null);
   const [loading, setLoading] = useState(true);
   const [pdfGenerated, setPdfGenerated] = useState(false);
+  const autoGenerationStartedRef = useRef(false);
 
   useEffect(() => {
     loadInspection();
@@ -32,11 +34,16 @@ export default function ActecoReportViewScreen() {
     try {
       setLoading(true);
       
-      // Si viene con inspectionId, cargar de storage
-      if (params.inspectionId && typeof params.inspectionId === 'string') {
+      const hasFormParams = Object.keys(params).some((key) => key !== 'inspectionId' && key !== 'isEditing');
+
+      if (hasFormParams || !params.inspectionId) {
+        console.log('📝 Preparando inspección desde parámetros del formulario');
+        const newInspection = paramsToInspection(params);
+        setInspection(newInspection);
+      } else if (params.inspectionId && typeof params.inspectionId === 'string') {
         console.log('📂 Cargando inspección existente:', params.inspectionId);
         const loadedInspection = await getActecoInspectionById(params.inspectionId);
-        
+
         if (loadedInspection) {
           console.log('✅ Inspección cargada:', loadedInspection.clientName);
           setInspection(loadedInspection);
@@ -45,11 +52,6 @@ export default function ActecoReportViewScreen() {
           const newInspection = paramsToInspection(params);
           setInspection(newInspection);
         }
-      } else {
-        // Nueva inspección desde el formulario
-        console.log('📝 Creando nueva inspección');
-        const newInspection = paramsToInspection(params);
-        setInspection(newInspection);
       }
     } catch (error) {
       console.error('❌ Error al cargar inspección:', error);
@@ -59,12 +61,20 @@ export default function ActecoReportViewScreen() {
     }
   };
 
-  // Auto-generar PDF al cargar
+  // Auto-generar PDF solo cuando venimos del formulario / edición
   useEffect(() => {
-    if (!loading && inspection && !pdfGenerated) {
+    const hasFormParams = Object.keys(params).some((key) => key !== 'inspectionId' && key !== 'isEditing');
+    if (
+      !loading &&
+      inspection &&
+      !pdfGenerated &&
+      !autoGenerationStartedRef.current &&
+      (hasFormParams || !params.inspectionId)
+    ) {
+      autoGenerationStartedRef.current = true;
       autoGeneratePDF(inspection);
     }
-  }, [loading, inspection]);
+  }, [loading, inspection, pdfGenerated, params]);
 
   const autoGeneratePDF = async (insp: ActecoInspection) => {
     try {
@@ -97,6 +107,7 @@ export default function ActecoReportViewScreen() {
   };
 
   const buildReportData = (insp: ActecoInspection) => ({
+    id: insp.id,
     clientName: insp.clientName,
     avisoDate: insp.avisoDate,
     avisoTime: insp.avisoTime,
@@ -205,7 +216,7 @@ export default function ActecoReportViewScreen() {
 
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Fecha:</Text>
-              <Text style={styles.infoValue}>{inspection.avisoDate} {inspection.avisoTime}</Text>
+              <Text style={styles.infoValue}>{inspection.avisoDate}</Text>
             </View>
 
             <View style={styles.infoRow}>
@@ -269,20 +280,11 @@ export default function ActecoReportViewScreen() {
             <Card.Content>
               <Title style={styles.sectionTitle}>📸 Fotos Generales</Title>
               <Divider style={styles.divider} />
-              <View style={styles.photosGrid}>
-                {inspection.photoGeneral1 && (
-                  <Image source={{ uri: inspection.photoGeneral1 }} style={styles.photoThumbnail} />
-                )}
-                {inspection.photoGeneral2 && (
-                  <Image source={{ uri: inspection.photoGeneral2 }} style={styles.photoThumbnail} />
-                )}
-                {inspection.photoGeneral3 && (
-                  <Image source={{ uri: inspection.photoGeneral3 }} style={styles.photoThumbnail} />
-                )}
-                {inspection.photoGeneral4 && (
-                  <Image source={{ uri: inspection.photoGeneral4 }} style={styles.photoThumbnail} />
-                )}
-              </View>
+              <LazyPhotoGrid
+                title="Fotos generales"
+                photos={[inspection.photoGeneral1, inspection.photoGeneral2, inspection.photoGeneral3, inspection.photoGeneral4].filter(Boolean) as string[]}
+                labelPrefix="G"
+              />
             </Card.Content>
           </Card>
         )}
@@ -330,11 +332,7 @@ export default function ActecoReportViewScreen() {
                 <Card.Content>
                   <Title style={styles.sectionTitle}>📸 Fotos de Avería</Title>
                   <Divider style={styles.divider} />
-                  <View style={styles.photosGrid}>
-                    {averiaPhotos.map((photo, index) => (
-                      <Image key={index} source={{ uri: photo }} style={styles.photoThumbnail} />
-                    ))}
-                  </View>
+                  <LazyPhotoGrid title="Fotos de avería" photos={averiaPhotos} labelPrefix="A" />
                 </Card.Content>
               </Card>
             )}

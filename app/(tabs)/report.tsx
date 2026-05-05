@@ -226,10 +226,11 @@ export default function ReportScreen() {
                                   {Array.isArray(checklistResults.photos[item.id]) ?
                                     (checklistResults.photos[item.id] as any[]).map((photo, photoIndex) => {
                                       const photoUri = typeof photo === 'string' ? photo : photo.uri;
+                                      const photoComment = typeof photo === 'string' ? '' : (photo.comment || '');
                                       return (
                                         <TouchableOpacity key={`${item.id}_photo_${photoIndex}`} onPress={() => handlePhotoPress(photoUri)} style={styles.photoContainer}>
                                           <Image source={{ uri: photoUri }} style={styles.evidencePhoto} resizeMode="contain" />
-                                          <Text style={styles.photoNumber}>Foto #{photoIndex + 1}</Text>
+                                          <Text style={styles.photoNumber}>{photoComment.trim() || `Foto #${photoIndex + 1}`}</Text>
                                         </TouchableOpacity>
                                       );
                                     }) :
@@ -247,6 +248,9 @@ export default function ReportScreen() {
                                         style={styles.evidencePhoto}
                                         resizeMode="contain"
                                       />
+                                      {typeof checklistResults.photos[item.id] === 'string' ? null : (checklistResults.photos[item.id] as any).comment ? (
+                                        <Text style={styles.photoNumber}>{(checklistResults.photos[item.id] as any).comment}</Text>
+                                      ) : null}
                                     </TouchableOpacity>
                                   }
                                 </View>

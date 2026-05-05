@@ -7,10 +7,11 @@ import { Button, Divider, HelperText, Text, TextInput } from 'react-native-paper
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BORDER_RADIUS, BRAND_COLORS, GRADIENTS, SHADOWS, SPACING, TYPOGRAPHY } from '../../constants/Colors';
 import { getMachineTypeById } from '../../data/machineTypes';
-import { saveMachine } from '../../utils/storage';
+import { getMachineById, saveMachine } from '../../utils/storage';
 
 export default function NewMachineScreen() {
-  const { machineTypeId } = useLocalSearchParams();
+  const { machineTypeId, machineId, isEditing: isEditingParam } = useLocalSearchParams();
+  const isEditing = isEditingParam === 'true';
   const [machineType, setMachineType] = useState(getMachineTypeById(machineTypeId?.toString() || 'otros'));
 
   const [machine, setMachine] = useState({
@@ -37,17 +38,57 @@ export default function NewMachineScreen() {
   });
 
   useEffect(() => {
+    const loadMachineForEdit = async () => {
+      if (!isEditing) return;
+      if (!machineId) {
+        router.replace('/machine-list');
+        return;
+      }
+
+      const existingMachine = await getMachineById(machineId.toString());
+      if (!existingMachine) {
+        alert('No se pudo cargar el renove para editar.');
+        router.replace('/machine-list');
+        return;
+      }
+
+      const nextTypeId = existingMachine.machineType || machineTypeId?.toString() || 'otros';
+      setMachineType(getMachineTypeById(nextTypeId));
+      setMachine({
+        id: existingMachine.id,
+        name: existingMachine.name || getMachineTypeById(nextTypeId).name,
+        machineType: nextTypeId,
+        brand: existingMachine.brand || '',
+        model: existingMachine.model || '',
+        serialNumber: existingMachine.serialNumber || '',
+        licensePlate: existingMachine.licensePlate || '',
+        otNumber: existingMachine.otNumber || '',
+        clientName: existingMachine.clientName || '',
+        clientType: existingMachine.clientType || '',
+        location: existingMachine.location || '',
+        reviewedBy: existingMachine.reviewedBy || '',
+        date: existingMachine.date || new Date().toISOString().split('T')[0],
+        notes: existingMachine.notes || '',
+      });
+    };
+
+    if (isEditing) {
+      loadMachineForEdit();
+      return;
+    }
+
     if (!machineTypeId) {
       router.replace('/machine-type-selection');
     } else {
-      setMachineType(getMachineTypeById(machineTypeId.toString()));
+      const nextMachineType = getMachineTypeById(machineTypeId.toString());
+      setMachineType(nextMachineType);
       setMachine(prev => ({
         ...prev,
         machineType: machineTypeId.toString(),
-        name: getMachineTypeById(machineTypeId.toString()).name
+        name: nextMachineType.name
       }));
     }
-  }, [machineTypeId]);
+  }, [machineTypeId, machineId, isEditing]);
 
   const handleChange = (field: string, value: string) => {
     setMachine({...machine, [field]: value});
@@ -77,11 +118,24 @@ export default function NewMachineScreen() {
       const savedMachine = await saveMachine(machine);
       const savedMachineId = savedMachine.id;
 
-      if (machine.machineType === 'otros') {
-        router.push({ pathname: '/comments', params: { machineId: savedMachineId } });
-      } else {
-        router.push({ pathname: '/checklist', params: { machineId: savedMachineId } });
+      if (isEditing) {
+        router.replace({
+          pathname: '/report',
+          params: { machineId: savedMachineId },
+        });
+        return;
       }
+
+      const nextPath = machine.machineType === 'otros' ? '/comments' : '/checklist';
+
+      router.push({
+        pathname: '/safety-checklist-form',
+        params: {
+          machineId: savedMachineId,
+          module: 'inspection',
+          nextPath,
+        },
+      });
     } catch (error) {
       console.error('Error al guardar la máquina:', error);
       setIsSaving(false);
@@ -109,11 +163,11 @@ export default function NewMachineScreen() {
             <TouchableOpacity onPress={() => router.back()} style={{position:'absolute',left:12,top:12,zIndex:10,width:36,height:36,borderRadius:18,backgroundColor:'rgba(255,255,255,0.2)',justifyContent:'center',alignItems:'center'}}>
               <MaterialCommunityIcons name="arrow-left" size={22} color="white" />
             </TouchableOpacity>
-            <Text style={styles.typeTitle}>Tipo: {machineType.name}</Text>
+            <Text style={styles.typeTitle}>{isEditing ? 'Editar renove' : `Tipo: ${machineType.name}`}</Text>
           </LinearGradient>
 
           <View style={styles.formCard}>
-            <Text style={styles.sectionTitle}>Datos de la Máquina</Text>
+            <Text style={styles.sectionTitle}>{isEditing ? 'Editar datos del Renove' : 'Datos de la Máquina'}</Text>
             <Divider style={styles.divider} />
 
             <TextInput
@@ -242,7 +296,7 @@ export default function NewMachineScreen() {
               contentStyle={{ flexDirection: 'row-reverse' }}
               buttonColor={isSaving ? BRAND_COLORS.grayMedium : BRAND_COLORS.primaryOrange}
             >
-              {isSaving ? 'Guardando...' : 'Continuar'}
+              {isSaving ? 'Guardando...' : isEditing ? 'Guardar cambios' : 'Continuar'}
             </Button>
           </View>
         </SafeAreaView>

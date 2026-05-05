@@ -40,9 +40,10 @@ const ActionCard = React.memo(({ title, subtitle, icon, colors, onPress }: Actio
   </TouchableOpacity>
 ));
 
+ActionCard.displayName = 'ActionCard';
+
 export default function HomeScreen() {
   const [technicianName, setTechnicianName] = useState<string | null>(null);
-  const [technicianRole, setTechnicianRole] = useState<string | null>(null);
 
   const checkAuth = useCallback(async () => {
     try {
@@ -53,7 +54,6 @@ export default function HomeScreen() {
       }
       const technician = JSON.parse(technicianJson);
       setTechnicianName(technician.name);
-      setTechnicianRole(technician.role || null);
 
       // Ejecutar migración si no se ha hecho
       const migrated = await AsyncStorage.getItem('migration_completed');
@@ -113,6 +113,30 @@ export default function HomeScreen() {
     router.push('/instalacion-inspections-list');
   }, []);
 
+  const handleNavReparacionForm = useCallback(() => {
+    router.push('/reparacion-machine-form');
+  }, []);
+
+  const handleNavReparacionList = useCallback(() => {
+    router.push('/reparacion-inspections-list');
+  }, []);
+
+  const handleNavReparacionExitList = useCallback(() => {
+    router.push('/reparacion-exit-list');
+  }, []);
+
+  const handleNavReparacionExitManagement = useCallback(() => {
+    router.push('/reparacion-exit-management');
+  }, []);
+
+  const handleNavMantenimientoForm = useCallback(() => {
+    router.push('/mantenimiento-machine-type-selection' as any);
+  }, []);
+
+  const handleNavMantenimientoList = useCallback(() => {
+    router.push('/mantenimiento-inspections-list' as any);
+  }, []);
+
   const handleLogout = async () => {
     Alert.alert(
       'Cerrar Sesión',
@@ -164,20 +188,20 @@ export default function HomeScreen() {
 
         <View style={styles.sectionHeader}>
           <View style={styles.sectionLine} />
-          <Text style={styles.sectionLabel}>Inspecciones INVAL</Text>
+          <Text style={styles.sectionLabel}>Renoves</Text>
           <View style={styles.sectionLine} />
         </View>
 
         <ActionCard
-          title="Nueva Inspección"
-          subtitle="Iniciar inspección de maquinaria"
+          title="Nuevo renove"
+          subtitle="Iniciar renove de maquinaria"
           icon="plus-circle-outline"
           colors={GRADIENTS.secondary}
           onPress={handleNavNewInspection}
         />
 
         <ActionCard
-          title="Entradas Registradas"
+          title="Renoves registrados"
           subtitle="Ver historial e informes"
           icon="format-list-bulleted-square"
           colors={GRADIENTS.primary}
@@ -185,7 +209,7 @@ export default function HomeScreen() {
         />
 
         <ActionCard
-          title="Inspección de Salida"
+          title="Salida renoves"
           subtitle="Revisar máquinas inspeccionadas"
           icon="clipboard-check-outline"
           colors={['#16a34a', '#4ade80']}
@@ -193,7 +217,7 @@ export default function HomeScreen() {
         />
 
         <ActionCard
-          title="Gestionar Salidas"
+          title="Gestionar salidas renoves"
           subtitle="Editar o eliminar revisiones"
           icon="file-document-edit-outline"
           colors={['#0891b2', '#22d3ee']}
@@ -264,6 +288,66 @@ export default function HomeScreen() {
           icon="file-document-multiple-outline"
           colors={['#115e59', '#14b8a6']}
           onPress={handleNavInstalacionList}
+        />
+
+        <View style={styles.sectionHeader}>
+          <View style={styles.sectionLine} />
+          <Text style={styles.sectionLabel}>Reparaciones Taller</Text>
+          <View style={styles.sectionLine} />
+        </View>
+
+        <ActionCard
+          title="Nueva reparación"
+          subtitle="Abrir parte de reparación de taller"
+          icon="toolbox-outline"
+          colors={['#92400e', '#d97706', '#fbbf24']}
+          onPress={handleNavReparacionForm}
+        />
+
+        <ActionCard
+          title="Reparaciones registradas"
+          subtitle="Consultar, editar y compartir partes"
+          icon="clipboard-text-clock-outline"
+          colors={['#78350f', '#b45309', '#f59e0b']}
+          onPress={handleNavReparacionList}
+        />
+
+        <ActionCard
+          title="Salida reparación"
+          subtitle="Comprobar trabajos y materiales instalados"
+          icon="clipboard-check-outline"
+          colors={['#047857', '#10b981', '#6ee7b7']}
+          onPress={handleNavReparacionExitList}
+        />
+
+        <ActionCard
+          title="Gestionar salidas reparación"
+          subtitle="Editar o borrar salidas ya completadas"
+          icon="file-document-edit-outline"
+          colors={['#0f766e', '#0891b2', '#22d3ee']}
+          onPress={handleNavReparacionExitManagement}
+        />
+
+        <View style={styles.sectionHeader}>
+          <View style={styles.sectionLine} />
+          <Text style={styles.sectionLabel}>Mantenimiento</Text>
+          <View style={styles.sectionLine} />
+        </View>
+
+        <ActionCard
+          title="Nuevo mantenimiento"
+          subtitle="Registrar mantenimiento de maquinaria"
+          icon="tools"
+          colors={['#0f2f57', '#2563eb', '#60a5fa']}
+          onPress={handleNavMantenimientoForm}
+        />
+
+        <ActionCard
+          title="Mantenimientos registrados"
+          subtitle="Consultar, editar y compartir informes"
+          icon="file-document-multiple-outline"
+          colors={['#1e3a8a', '#3b82f6', '#93c5fd']}
+          onPress={handleNavMantenimientoList}
         />
 
         <View style={styles.footer} />

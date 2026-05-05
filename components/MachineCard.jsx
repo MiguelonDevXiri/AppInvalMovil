@@ -19,7 +19,7 @@ const MachineCard = ({
               style={[styles.machineTitle, compact && styles.compactTitle]} 
               numberOfLines={compact ? 1 : 2}
             >
-              {machine.name}
+              {machine.clientName || machine.name}
             </Title>
             
             {onMenuPress && (
@@ -33,16 +33,20 @@ const MachineCard = ({
           </View>
           
           <Paragraph style={styles.paragraph} numberOfLines={compact ? 1 : undefined}>
-            Cliente: {machine.clientName}
+            Tipo de máquina: {machine.name || machine.machineType || 'Sin tipo'}
           </Paragraph>
-          
-          {!compact && machine.model && (
-            <Paragraph style={styles.paragraph}>Modelo: {machine.model}</Paragraph>
-          )}
-          
-          {!compact && machine.serialNumber && (
-            <Paragraph style={styles.paragraph}>N° Serie: {machine.serialNumber}</Paragraph>
-          )}
+          <Paragraph style={styles.paragraph} numberOfLines={compact ? 1 : undefined}>
+            Matrícula: {machine.licensePlate || 'Sin matrícula'}
+          </Paragraph>
+          <Paragraph style={styles.paragraph} numberOfLines={compact ? 1 : undefined}>
+            Ubicación: {machine.location || 'Sin ubicación'}
+          </Paragraph>
+          <Paragraph style={styles.paragraph} numberOfLines={compact ? 1 : undefined}>
+            Marca: {machine.brand || 'Sin marca'}
+          </Paragraph>
+          <Paragraph style={styles.paragraph} numberOfLines={compact ? 1 : undefined}>
+            OT: {machine.otNumber || 'Sin OT'}
+          </Paragraph>
           
           <View style={styles.cardFooter}>
             <Text style={styles.date}>

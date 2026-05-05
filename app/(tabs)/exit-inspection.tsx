@@ -4,21 +4,24 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Image, ScrollView, StyleSheet, TextInput as RNTextInput, TouchableOpacity, View } from 'react-native';
-import { Button, Text } from 'react-native-paper';
+import { Button, Text, TextInput } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BORDER_RADIUS, BRAND_COLORS, GRADIENTS, SHADOWS, SPACING, TYPOGRAPHY } from '../../constants/Colors';
 import { getChecklistByMachineType } from '../../data/machineChecklists';
-import { supabase } from '../../utils/supabase';
 import {
+  ChecklistMaterial,
   ChecklistPhoto,
   ExitCheck,
+  ExitMaterial,
   deleteExitInspection,
   getChecklistByMachineId,
   getExitChecksByMachineId,
+  getExitMaterialsByMachineId,
   getMachineById,
   Machine,
   saveExitChecks,
+  saveExitMaterials,
 } from '../../utils/storage';
 
 interface ReviewItem {
@@ -27,6 +30,67 @@ interface ReviewItem {
   category: string;
   originalStatus: string;
 }
+
+const buildEmptyExitMaterial = (): ExitMaterial => ({
+  id: `exit_material_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+  machineId: '',
+  materialId: null,
+  name: '',
+  quantity: '',
+  reference: '',
+  available: null,
+  checked: false,
+  isExtra: true,
+  sortOrder: 0,
+});
+
+const buildExitMaterialsDraft = (
+  baseMaterials: ChecklistMaterial[] | undefined,
+  existingMaterials: ExitMaterial[]
+): ExitMaterial[] => {
+  const existingByMaterialId = new Map(
+    existingMaterials
+      .filter((material) => material.materialId)
+      .map((material) => [material.materialId as string, material])
+  );
+
+  const defaults = (baseMaterials || []).map((material, index) => {
+    const existing = existingByMaterialId.get(material.id);
+    return {
+      id: existing?.id || `exit_base_${material.id}`,
+      machineId: existing?.machineId || '',
+      materialId: material.id,
+      name: existing?.name || material.name || '',
+      quantity: existing?.quantity || material.quantity || '',
+      reference: existing?.reference || material.reference || '',
+      available: existing?.available ?? material.available ?? null,
+      checked: existing?.checked ?? true,
+      isExtra: false,
+      sortOrder: existing?.sortOrder ?? index,
+    } as ExitMaterial;
+  });
+
+  const extras = existingMaterials
+    .filter((material) => material.isExtra || !material.materialId)
+    .map((material, index) => ({
+      ...material,
+      isExtra: true,
+      sortOrder: defaults.length + index,
+    }));
+
+  return [...defaults, ...extras];
+};
+
+const hasMeaningfulExitMaterial = (material: ExitMaterial): boolean => {
+  if (!material.isExtra) return true;
+  return Boolean(
+    material.name.trim() ||
+    material.quantity.trim() ||
+    material.reference.trim() ||
+    material.available !== null ||
+    material.checked
+  );
+};
 
 export default function ExitInspectionScreen() {
   const { machineId } = useLocalSearchParams();
@@ -43,6 +107,8 @@ export default function ExitInspectionScreen() {
   // Machine comments
   const [machineComments, setMachineComments] = useState<{ id: string; text: string; photoUri?: string }[]>([]);
   const [entryPhotos, setEntryPhotos] = useState<Record<string, ChecklistPhoto>>({});
+  const [exitMaterials, setExitMaterials] = useState<ExitMaterial[]>([]);
+  const [materialsExpanded, setMaterialsExpanded] = useState(false);
   const [userRole, setUserRole] = useState<string>('');
 
   useEffect(() => {
@@ -72,6 +138,8 @@ export default function ExitInspectionScreen() {
 
         // Get checklist results to find failed + cant items
         const checklistData = await getChecklistByMachineId(machineId.toString());
+        const checklistMaterials = checklistData?.materials || [];
+
         if (checklistData) {
           const machineChecklist = getChecklistByMachineType(foundMachine.machineType || 'otros');
 
@@ -98,29 +166,33 @@ export default function ExitInspectionScreen() {
             }
           }
           setReviewItems(items);
-
-          // Store entry photos for display
-          if (checklistData.photos) {
-            setEntryPhotos(checklistData.photos);
-          }
-
-          // Load existing exit checks
-          const existingChecks = await getExitChecksByMachineId(machineId.toString());
-          if (existingChecks.length > 0) {
-            const checksMap: Record<string, { verified: boolean; photoUrl: string | null; comment: string }> = {};
-            for (const ec of existingChecks) {
-              checksMap[ec.itemId] = { verified: ec.verified, photoUrl: ec.photoUrl || null, comment: ec.comment || '' };
-            }
-            setChecks(checksMap);
-
-            // Recover technician name from existing checks
-            const savedTech = existingChecks.find(c => c.verifiedBy);
-            if (savedTech?.verifiedBy) {
-              setTechnicianName(savedTech.verifiedBy);
-              setNameConfirmed(true);
-            }
-          }
+          setEntryPhotos(checklistData.photos || {});
+        } else {
+          setReviewItems([]);
+          setEntryPhotos({});
         }
+
+        // Load existing exit checks
+        const existingChecks = await getExitChecksByMachineId(machineId.toString());
+        if (existingChecks.length > 0) {
+          const checksMap: Record<string, { verified: boolean; photoUrl: string | null; comment: string }> = {};
+          for (const ec of existingChecks) {
+            checksMap[ec.itemId] = { verified: ec.verified, photoUrl: ec.photoUrl || null, comment: ec.comment || '' };
+          }
+          setChecks(checksMap);
+
+          // Recover technician name from existing checks
+          const savedTech = existingChecks.find(c => c.verifiedBy);
+          if (savedTech?.verifiedBy) {
+            setTechnicianName(savedTech.verifiedBy);
+            setNameConfirmed(true);
+          }
+        } else {
+          setChecks({});
+        }
+
+        const existingExitMaterials = await getExitMaterialsByMachineId(machineId.toString());
+        setExitMaterials(buildExitMaterialsDraft(checklistMaterials, existingExitMaterials));
       }
       setLoading(false);
     } catch (error) {
@@ -150,6 +222,31 @@ export default function ExitInspectionScreen() {
         comment,
       },
     }));
+  };
+
+  const updateExitMaterial = (
+    materialId: string,
+    field: keyof ExitMaterial,
+    value: string | boolean | null | number
+  ) => {
+    setExitMaterials((current) => current.map((item) => (
+      item.id === materialId ? { ...item, [field]: value } : item
+    )));
+  };
+
+  const addExitMaterial = () => {
+    setExitMaterials((current) => ([
+      ...current,
+      {
+        ...buildEmptyExitMaterial(),
+        machineId: machineId?.toString() || '',
+        sortOrder: current.length,
+      },
+    ]));
+  };
+
+  const removeExitMaterial = (materialId: string) => {
+    setExitMaterials((current) => current.filter((item) => item.id !== materialId));
   };
 
   const handleTakePhoto = async (itemId: string) => {
@@ -251,6 +348,16 @@ export default function ExitInspectionScreen() {
       ] as ExitCheck[];
 
       await saveExitChecks(machineId.toString(), allItems);
+      await saveExitMaterials(
+        machineId.toString(),
+        exitMaterials
+          .filter(hasMeaningfulExitMaterial)
+          .map((material, index) => ({
+            ...material,
+            machineId: machineId.toString(),
+            sortOrder: index,
+          }))
+      );
       setIsSaving(false);
 
       router.push({
@@ -300,7 +407,7 @@ export default function ExitInspectionScreen() {
             <MaterialCommunityIcons name="arrow-left" size={22} color="white" />
           </TouchableOpacity>
           <MaterialCommunityIcons name="clipboard-check-outline" size={24} color="rgba(255,255,255,0.7)" />
-          <Text style={styles.headerTitle}>Inspección de Salida</Text>
+          <Text style={styles.headerTitle}>Salida renoves</Text>
           <Text style={styles.headerSubtitle}>
             {machine.name} - {machine.brand} {machine.model ? `(${machine.model})` : ''}
           </Text>
@@ -512,6 +619,115 @@ export default function ExitInspectionScreen() {
                     })}
                   </>
                 )}
+
+                <View style={styles.materialsSection}>
+                  <TouchableOpacity
+                    style={styles.materialsHeader}
+                    onPress={() => setMaterialsExpanded((current) => !current)}
+                    activeOpacity={0.8}
+                  >
+                    <View style={styles.materialsTitleRow}>
+                      <MaterialCommunityIcons name={materialsExpanded ? 'chevron-down' : 'chevron-right'} size={22} color={BRAND_COLORS.primaryOrange} />
+                      <MaterialCommunityIcons name="package-variant-closed" size={20} color={BRAND_COLORS.primaryOrange} />
+                      <Text style={styles.materialsTitle}>Materiales de salida</Text>
+                    </View>
+                    <Text style={styles.materialsSubtitle}>
+                      Verifica los materiales de entrada y añade los extras entregados en la salida.
+                    </Text>
+                  </TouchableOpacity>
+
+                  {materialsExpanded ? (
+                    <>
+                      {exitMaterials.length === 0 ? (
+                        <Text style={styles.materialsEmpty}>No hay materiales de entrada. Puedes añadir materiales extra.</Text>
+                      ) : (
+                        exitMaterials.map((material, index) => (
+                          <View key={material.id} style={[styles.materialCard, material.checked && styles.materialCardChecked]}>
+                            <View style={styles.materialCardHeader}>
+                              <View style={{ flex: 1 }}>
+                                <Text style={styles.materialCardTitle}>
+                                  {material.isExtra ? `Material extra #${index + 1}` : material.name || `Material #${index + 1}`}
+                                </Text>
+                                {!material.isExtra && (
+                                  <Text style={styles.materialCardSubtitle}>Material registrado en la entrada</Text>
+                                )}
+                              </View>
+                              <TouchableOpacity
+                                style={[styles.materialCheckButton, material.checked && styles.materialCheckButtonActive]}
+                                onPress={() => updateExitMaterial(material.id, 'checked', !material.checked)}
+                              >
+                                <MaterialCommunityIcons
+                                  name={material.checked ? 'check-circle' : 'circle-outline'}
+                                  size={22}
+                                  color={material.checked ? 'white' : BRAND_COLORS.grayMedium}
+                                />
+                                <Text style={[styles.materialCheckText, material.checked && styles.materialCheckTextActive]}>
+                                  {material.checked ? 'Verificado' : 'Verificar'}
+                                </Text>
+                              </TouchableOpacity>
+                            </View>
+
+                            <View style={styles.materialInputsGrid}>
+                              <TextInput
+                                label="Material"
+                                value={material.name}
+                                onChangeText={(text) => updateExitMaterial(material.id, 'name', text)}
+                                mode="outlined"
+                                style={styles.materialInput}
+                                outlineColor={BRAND_COLORS.grayMedium}
+                                activeOutlineColor={BRAND_COLORS.primaryOrange}
+                              />
+                              <TextInput
+                                label="Cantidad"
+                                value={material.quantity}
+                                onChangeText={(text) => updateExitMaterial(material.id, 'quantity', text)}
+                                mode="outlined"
+                                style={styles.materialInput}
+                                outlineColor={BRAND_COLORS.grayMedium}
+                                activeOutlineColor={BRAND_COLORS.primaryOrange}
+                              />
+                              <TextInput
+                                label="Referencia"
+                                value={material.reference}
+                                onChangeText={(text) => updateExitMaterial(material.id, 'reference', text)}
+                                mode="outlined"
+                                style={styles.materialInput}
+                                outlineColor={BRAND_COLORS.grayMedium}
+                                activeOutlineColor={BRAND_COLORS.primaryOrange}
+                              />
+                            </View>
+
+                            <View style={styles.materialAvailabilityRow}>
+                              <TouchableOpacity
+                                style={[styles.availabilityChip, material.available === true && styles.availabilityChipYes]}
+                                onPress={() => updateExitMaterial(material.id, 'available', material.available === true ? null : true)}
+                              >
+                                <Text style={[styles.availabilityText, material.available === true && styles.availabilityTextActive]}>Hay</Text>
+                              </TouchableOpacity>
+                              <TouchableOpacity
+                                style={[styles.availabilityChip, material.available === false && styles.availabilityChipNo]}
+                                onPress={() => updateExitMaterial(material.id, 'available', material.available === false ? null : false)}
+                              >
+                                <Text style={[styles.availabilityText, material.available === false && styles.availabilityTextActive]}>No hay</Text>
+                              </TouchableOpacity>
+                              {material.isExtra && (
+                                <TouchableOpacity style={styles.removeMaterialButton} onPress={() => removeExitMaterial(material.id)}>
+                                  <MaterialCommunityIcons name="trash-can-outline" size={18} color={BRAND_COLORS.error} />
+                                  <Text style={styles.removeMaterialText}>Quitar</Text>
+                                </TouchableOpacity>
+                              )}
+                            </View>
+                          </View>
+                        ))
+                      )}
+
+                      <TouchableOpacity style={styles.addMaterialButton} onPress={addExitMaterial}>
+                        <MaterialCommunityIcons name="plus-circle-outline" size={20} color="white" />
+                        <Text style={styles.addMaterialText}>Añadir material extra</Text>
+                      </TouchableOpacity>
+                    </>
+                  ) : null}
+                </View>
               </>
             )}
 
@@ -939,6 +1155,161 @@ const styles = StyleSheet.create({
     color: '#334155',
     marginTop: SPACING.xs,
     lineHeight: 20,
+  },
+
+
+  materialsSection: {
+    marginHorizontal: SPACING.md,
+    marginTop: SPACING.lg,
+    padding: SPACING.md,
+    backgroundColor: 'white',
+    borderRadius: BORDER_RADIUS.lg,
+    borderLeftWidth: 4,
+    borderLeftColor: BRAND_COLORS.primaryOrange,
+    ...SHADOWS.soft,
+  },
+  materialsHeader: {
+    marginBottom: SPACING.sm,
+  },
+  materialsTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+  },
+  materialsTitle: {
+    fontSize: TYPOGRAPHY.sizes.md,
+    fontWeight: TYPOGRAPHY.weights.bold as any,
+    color: BRAND_COLORS.primaryBlue,
+  },
+  materialsSubtitle: {
+    marginTop: SPACING.xs,
+    fontSize: TYPOGRAPHY.sizes.xs,
+    color: BRAND_COLORS.grayText,
+    lineHeight: 18,
+  },
+  materialsEmpty: {
+    textAlign: 'center',
+    color: BRAND_COLORS.grayText,
+    fontSize: TYPOGRAPHY.sizes.sm,
+    paddingVertical: SPACING.md,
+  },
+  materialCard: {
+    marginTop: SPACING.sm,
+    padding: SPACING.md,
+    borderRadius: BORDER_RADIUS.lg,
+    backgroundColor: BRAND_COLORS.grayLight,
+    borderWidth: 1,
+    borderColor: BRAND_COLORS.grayMedium,
+  },
+  materialCardChecked: {
+    borderColor: BRAND_COLORS.success,
+    backgroundColor: '#f0fdf4',
+  },
+  materialCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: SPACING.sm,
+    marginBottom: SPACING.sm,
+  },
+  materialCardTitle: {
+    fontSize: TYPOGRAPHY.sizes.sm,
+    fontWeight: TYPOGRAPHY.weights.bold as any,
+    color: '#1e293b',
+  },
+  materialCardSubtitle: {
+    fontSize: TYPOGRAPHY.sizes.xs,
+    color: BRAND_COLORS.grayText,
+    marginTop: 2,
+  },
+  materialCheckButton: {
+    alignItems: 'center',
+    paddingVertical: SPACING.xs,
+    paddingHorizontal: SPACING.sm,
+    borderRadius: BORDER_RADIUS.md,
+    backgroundColor: 'white',
+    borderWidth: 1,
+    borderColor: BRAND_COLORS.grayMedium,
+    minWidth: 86,
+  },
+  materialCheckButtonActive: {
+    backgroundColor: BRAND_COLORS.success,
+    borderColor: BRAND_COLORS.success,
+  },
+  materialCheckText: {
+    marginTop: 2,
+    fontSize: 10,
+    fontWeight: TYPOGRAPHY.weights.bold as any,
+    color: BRAND_COLORS.grayText,
+  },
+  materialCheckTextActive: {
+    color: 'white',
+  },
+  materialInputsGrid: {
+    gap: SPACING.xs,
+  },
+  materialInput: {
+    backgroundColor: 'white',
+    marginBottom: SPACING.xs,
+  },
+  materialAvailabilityRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: SPACING.sm,
+    marginTop: SPACING.xs,
+  },
+  availabilityChip: {
+    paddingVertical: SPACING.xs,
+    paddingHorizontal: SPACING.md,
+    borderRadius: BORDER_RADIUS.full,
+    borderWidth: 1,
+    borderColor: BRAND_COLORS.grayMedium,
+    backgroundColor: 'white',
+  },
+  availabilityChipYes: {
+    backgroundColor: BRAND_COLORS.success,
+    borderColor: BRAND_COLORS.success,
+  },
+  availabilityChipNo: {
+    backgroundColor: BRAND_COLORS.error,
+    borderColor: BRAND_COLORS.error,
+  },
+  availabilityText: {
+    fontSize: TYPOGRAPHY.sizes.xs,
+    fontWeight: TYPOGRAPHY.weights.bold as any,
+    color: BRAND_COLORS.grayText,
+  },
+  availabilityTextActive: {
+    color: 'white',
+  },
+  removeMaterialButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginLeft: 'auto',
+    paddingVertical: SPACING.xs,
+    paddingHorizontal: SPACING.sm,
+  },
+  removeMaterialText: {
+    fontSize: TYPOGRAPHY.sizes.xs,
+    color: BRAND_COLORS.error,
+    fontWeight: TYPOGRAPHY.weights.bold as any,
+  },
+  addMaterialButton: {
+    marginTop: SPACING.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: SPACING.sm,
+    backgroundColor: BRAND_COLORS.primaryOrange,
+    paddingVertical: SPACING.md,
+    borderRadius: BORDER_RADIUS.lg,
+  },
+  addMaterialText: {
+    color: 'white',
+    fontSize: TYPOGRAPHY.sizes.sm,
+    fontWeight: TYPOGRAPHY.weights.bold as any,
   },
 
   // Delete button

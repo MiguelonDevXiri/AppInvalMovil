@@ -1,5 +1,6 @@
 import { deletePhotosInFolder, sanitizePathSegment, uploadPhoto } from './photoUpload';
 import { supabase } from './supabase';
+import { parseSafetyChecklist, type SafetyChecklist } from './safetyChecklist';
 
 export interface InstalacionMaterial {
   id: string;
@@ -23,6 +24,7 @@ export interface InstalacionInspection {
   otNumber?: string;
   workDescription: string;
   notes: string;
+  safetyChecklist?: SafetyChecklist | null;
   materiales: InstalacionMaterial[];
   photoSite1?: string;
   photoSite2?: string;
@@ -126,6 +128,7 @@ const dbRowToInspection = (
     otNumber: row.ot_number || '',
     workDescription: row.work_description || '',
     notes: row.notes || '',
+    safetyChecklist: row.safety_checklist ? parseSafetyChecklist(row.safety_checklist, 'full') : null,
     materiales: (materialsRows || []).map((material: any) => ({
       id: material.id,
       name: material.name || '',
@@ -236,6 +239,7 @@ export const saveInstalacionInspection = async (
       ot_number: inspection.otNumber || null,
       work_description: inspection.workDescription,
       notes: inspection.notes || null,
+      safety_checklist: inspection.safetyChecklist || null,
       machine_works_correctly: inspection.worksCorrectly,
       machine_works_correctly_reason: inspection.worksCorrectlyReason || null,
       machine_stays_running: inspection.staysRunning,
@@ -344,6 +348,9 @@ export const deleteInstalacionInspection = async (id: string): Promise<boolean> 
 
     await deletePhotosInFolder(`instalaciones/${id}`);
 
+    await supabase.from('instalaciones_photos').delete().eq('inspection_id', id);
+    await supabase.from('instalaciones_materials').delete().eq('inspection_id', id);
+
     const { error } = await supabase.from('instalaciones_inspections').delete().eq('id', id);
 
     if (error) {
@@ -393,6 +400,10 @@ export const paramsToInspection = (params: any): InstalacionInspection => {
     }
   }
 
+  const safetyChecklist = params.safetyChecklist
+    ? parseSafetyChecklist(params.safetyChecklist, 'full')
+    : null;
+
   return {
     id: getParamString(params.inspectionId) || `inspection_${Date.now()}`,
     clientName: getParamString(params.clientName),
@@ -408,6 +419,7 @@ export const paramsToInspection = (params: any): InstalacionInspection => {
     otNumber: getParamString(params.otNumber),
     workDescription: getParamString(params.workDescription),
     notes: getParamString(params.notes) || getParamString(params.observaciones),
+    safetyChecklist,
     materiales,
     photoSite1: getParamString(params.photoSite1),
     photoSite2: getParamString(params.photoSite2),
@@ -444,6 +456,7 @@ export const inspectionToParams = (inspection: InstalacionInspection): any => {
     otNumber: inspection.otNumber || '',
     workDescription: inspection.workDescription,
     notes: inspection.notes || '',
+    safetyChecklist: inspection.safetyChecklist ? JSON.stringify(inspection.safetyChecklist) : '',
     materiales: JSON.stringify(inspection.materiales || []),
     photoSite1: inspection.photoSite1 || '',
     photoSite2: inspection.photoSite2 || '',

@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from './supabase';
 import { buildActecoStorageBase, buildLegacyActecoStorageBase, deletePhotosInFolder, uploadPhoto } from './photoUpload';
+import { parseSafetyChecklist, type SafetyChecklist } from './safetyChecklist';
 
 // Tipo para la inspección ACTECO (formato usado en la app)
 export interface ActecoInspection {
@@ -27,6 +28,7 @@ export interface ActecoInspection {
   averiaPhotos: string[];
   tieneSolucion: boolean;
   observaciones: string;
+  safetyChecklist?: SafetyChecklist | null;
   materiales: Array<{ id: string; name: string; quantity: string }>;
   technicianName: string;
   technicianSignature: string;
@@ -190,6 +192,7 @@ const dbRowToInspection = (row: any, photos: any[], materials: any[]): ActecoIns
     averiaPhotos,
     tieneSolucion: row.tiene_solucion || false,
     observaciones: row.observaciones || '',
+    safetyChecklist: row.safety_checklist ? parseSafetyChecklist(row.safety_checklist, 'full') : null,
     materiales: materials.map((m: any) => ({
       id: m.id,
       name: m.name,
@@ -235,6 +238,7 @@ export const saveActecoInspection = async (inspection: ActecoInspection): Promis
       causa_averia: inspection.causaAveria,
       tiene_solucion: inspection.tieneSolucion,
       observaciones: inspection.observaciones,
+      safety_checklist: inspection.safetyChecklist || null,
       technician_name: inspection.technicianName,
       technician_signature: inspection.technicianSignature,
       client_signature_name: inspection.clientSignatureName,
@@ -356,7 +360,9 @@ export const deleteActecoInspection = async (id: string): Promise<boolean> => {
     await deletePhotosInFolder(legacyStorageBase);
     await deletePhotosInFolder(`acteco/${id}`);
 
-    // Borrar de DB (CASCADE borra fotos y materiales)
+    await supabase.from('acteco_photos').delete().eq('inspection_id', id);
+    await supabase.from('acteco_materials').delete().eq('inspection_id', id);
+
     const { error } = await supabase
       .from('acteco_inspections')
       .delete()
@@ -401,6 +407,10 @@ export const paramsToInspection = (params: any): ActecoInspection => {
       console.error('Error al parsear fotos de avería:', e);
     }
   }
+
+  const safetyChecklist = params.safetyChecklist
+    ? parseSafetyChecklist(params.safetyChecklist, 'full')
+    : null;
   
   return {
     id: params.inspectionId || `inspection_${Date.now()}`,
@@ -426,6 +436,7 @@ export const paramsToInspection = (params: any): ActecoInspection => {
     averiaPhotos: averiaPhotos,
     tieneSolucion: params.tieneSolucion === 'true' || params.tieneSolucion === true,
     observaciones: params.observaciones || '',
+    safetyChecklist,
     materiales: materiales,
     technicianName: params.technicianName || '',
     technicianSignature: params.technicianSignature || '',
@@ -462,6 +473,7 @@ export const inspectionToParams = (inspection: ActecoInspection): any => {
     averiaPhotos: JSON.stringify(inspection.averiaPhotos),
     tieneSolucion: inspection.tieneSolucion ? 'true' : 'false',
     observaciones: inspection.observaciones,
+    safetyChecklist: inspection.safetyChecklist ? JSON.stringify(inspection.safetyChecklist) : '',
     materiales: JSON.stringify(inspection.materiales),
     technicianName: inspection.technicianName,
     technicianSignature: inspection.technicianSignature,

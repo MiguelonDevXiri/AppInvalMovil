@@ -6,11 +6,12 @@ import { router } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Modal, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Card, Chip, Divider, Menu, Searchbar, Text } from 'react-native-paper';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BORDER_RADIUS, BRAND_COLORS, SHADOWS, SPACING, TYPOGRAPHY } from '../../constants/Colors';
 import { deleteExitInspection, getMachines, Machine } from '../../utils/storage';
 
 export default function ExitManagementScreen() {
+  const insets = useSafeAreaInsets();
   const [machines, setMachines] = useState<Machine[]>([]);
   const [filteredMachines, setFilteredMachines] = useState<Machine[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -292,7 +293,7 @@ export default function ExitManagementScreen() {
           >
             <MaterialCommunityIcons name="arrow-left" size={22} color="white" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Gestionar Salidas</Text>
+          <Text style={styles.headerTitle}>Gestionar salidas renoves</Text>
         </LinearGradient>
 
         {isSelectionMode && (
@@ -344,7 +345,7 @@ export default function ExitManagementScreen() {
         )}
 
         {isSelectionMode && selectedIds.size > 0 && (
-          <View style={styles.deleteBar}>
+          <View style={[styles.deleteBar, { paddingBottom: insets.bottom + SPACING.md }]}>
             <TouchableOpacity style={styles.deleteButton} onPress={handleDeleteSelected}>
               <MaterialCommunityIcons name="delete" size={20} color="white" />
               <Text style={styles.deleteButtonText}>

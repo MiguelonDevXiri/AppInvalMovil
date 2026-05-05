@@ -164,7 +164,7 @@ export default function CommentsScreen() {
           <Card style={styles.emptyCard}>
             <Card.Content style={styles.emptyContent}>
               <MaterialCommunityIcons name="comment-plus-outline" size={40} color={BRAND_COLORS.grayMedium} />
-              <Text style={styles.emptyText}>No hay comentarios. Pulsa "Añadir" para agregar uno.</Text>
+              <Text style={styles.emptyText}>No hay comentarios. Pulsa Añadir para agregar uno.</Text>
             </Card.Content>
           </Card>
         )}

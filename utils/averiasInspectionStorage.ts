@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { sanitizePathSegment, uploadPhoto, deletePhotosInFolder } from './photoUpload';
+import { parseSafetyChecklist, type SafetyChecklist } from './safetyChecklist';
 
 // ==================== TIPOS ====================
 
@@ -23,6 +24,7 @@ export interface AveriaInspection {
   licensePlate: string;
   otNumber?: string;
   notes: string;
+  safetyChecklist?: SafetyChecklist | null;
   // Averías detectadas (lista dinámica)
   defects: AveriaDefect[];
   // Intervención / Solución
@@ -129,6 +131,7 @@ const dbRowToInspection = (
     licensePlate: row.license_plate || '',
     otNumber: row.ot_number || '',
     notes: row.notes || '',
+    safetyChecklist: row.safety_checklist ? parseSafetyChecklist(row.safety_checklist, 'full') : null,
     defects,
     solucionDescription: row.solucion_description || '',
     solucionPhotos,
@@ -247,6 +250,7 @@ export const saveAveriaInspection = async (inspection: AveriaInspection): Promis
         license_plate: inspection.licensePlate || null,
         ot_number: inspection.otNumber || null,
         notes: inspection.notes || null,
+        safety_checklist: inspection.safetyChecklist || null,
         solucion_description: inspection.solucionDescription,
         created_at: inspection.createdAt || now,
         updated_at: now,
@@ -387,6 +391,11 @@ export const deleteAveriaInspection = async (id: string): Promise<boolean> => {
     }
     await deletePhotosInFolder(`averias/${id}`);
 
+    await supabase.from('averias_defect_photos').delete().eq('inspection_id', id);
+    await supabase.from('averias_defects').delete().eq('inspection_id', id);
+    await supabase.from('averias_photos').delete().eq('inspection_id', id);
+    await supabase.from('averias_materials').delete().eq('inspection_id', id);
+
     const { error } = await supabase
       .from('averias_inspections')
       .delete()
@@ -448,6 +457,10 @@ export const paramsToInspection = (params: any): AveriaInspection => {
     }
   }
 
+  const safetyChecklist = params.safetyChecklist
+    ? parseSafetyChecklist(params.safetyChecklist, 'full')
+    : null;
+
   return {
     id: params.inspectionId || `inspection_${Date.now()}`,
     clientName: params.clientName || '',
@@ -462,6 +475,7 @@ export const paramsToInspection = (params: any): AveriaInspection => {
     licensePlate: params.licensePlate || '',
     otNumber: getParamString(params.otNumber),
     notes: getParamString(params.notes) || getParamString(params.observaciones),
+    safetyChecklist,
     defects,
     solucionDescription: params.solucionDescription || '',
     solucionPhotos,
@@ -490,6 +504,7 @@ export const inspectionToParams = (inspection: AveriaInspection): any => {
     licensePlate: inspection.licensePlate || '',
     otNumber: inspection.otNumber || '',
     notes: inspection.notes || '',
+    safetyChecklist: inspection.safetyChecklist ? JSON.stringify(inspection.safetyChecklist) : '',
     defects: JSON.stringify(inspection.defects),
     solucionDescription: inspection.solucionDescription,
     solucionPhotos: JSON.stringify(inspection.solucionPhotos),

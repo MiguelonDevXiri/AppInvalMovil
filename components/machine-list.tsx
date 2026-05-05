@@ -3,10 +3,10 @@ import { View, StyleSheet, FlatList, TouchableOpacity, Alert } from 'react-nativ
 import { Text, Button, Card, Title, Paragraph, Searchbar, Chip, IconButton, Menu, Divider, TextInput } from 'react-native-paper';
 import { router } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
-import { getMachines, deleteMachine } from '../../utils/storage';
-import { Machine } from '../../utils/storage';
-import MachineCard from '../../components/MachineCard';
-import { BRAND_COLORS } from '../../constants/Colors';
+import { getMachines, deleteMachine } from '../utils/storage';
+import { Machine } from '../utils/storage';
+import MachineCard from './MachineCard';
+import { BRAND_COLORS } from '../constants/Colors';
 
 interface Filters {
   clientType: string | null;
@@ -201,6 +201,7 @@ export default function MachineListScreen() {
       machine={item}
       onPress={() => handleMachinePress(item)}
       onMenuPress={handleMenuOpen}
+      onLongPress={handleMenuOpen}
     />
   );
 

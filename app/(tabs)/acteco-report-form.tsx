@@ -1,14 +1,23 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Button, Card, Divider, Text, TextInput, Title } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BORDER_RADIUS, BRAND_COLORS, GRADIENTS, SHADOWS, SPACING, TYPOGRAPHY } from '../../constants/Colors';
 
+const generateUUID = (): string => {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+};
+
 export default function ActecoReportFormScreen() {
   const params = useLocalSearchParams();
+  const inspectionIdRef = useRef(typeof params.inspectionId === 'string' ? params.inspectionId : generateUUID());
 
   // Datos del cliente
   const [clientName, setClientName] = useState('');
@@ -74,6 +83,7 @@ export default function ActecoReportFormScreen() {
     // Pasar todos los params existentes + los nuevos datos
     const nextParams = {
       ...params, // Mantener inspectionId y otros datos si vienen
+      inspectionId: inspectionIdRef.current,
       clientName,
       avisoDate,
       avisoTime,
@@ -89,8 +99,11 @@ export default function ActecoReportFormScreen() {
     };
 
     router.push({
-      pathname: '/(tabs)/acteco-general-photo' as any,
-      params: nextParams
+      pathname: '/(tabs)/safety-checklist-form' as any,
+      params: {
+        ...nextParams,
+        module: 'urgencia',
+      }
     });
   };
 
@@ -143,22 +156,11 @@ export default function ActecoReportFormScreen() {
                   label="Fecha *"
                   value={avisoDate}
                   onChangeText={setAvisoDate}
-                  style={[styles.input, styles.halfInput]}
+                  style={styles.input}
                   mode="outlined"
                   outlineColor={BRAND_COLORS.grayMedium}
                   activeOutlineColor={BRAND_COLORS.primaryBlue}
                   placeholder="DD/MM/AAAA"
-                />
-
-                <TextInput
-                  label="Hora *"
-                  value={avisoTime}
-                  onChangeText={setAvisoTime}
-                  style={[styles.input, styles.halfInput]}
-                  mode="outlined"
-                  outlineColor={BRAND_COLORS.grayMedium}
-                  activeOutlineColor={BRAND_COLORS.primaryBlue}
-                  placeholder="HH:MM"
                 />
               </View>
 

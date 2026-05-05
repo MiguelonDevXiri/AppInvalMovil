@@ -70,9 +70,10 @@ export default function AveriaMachineFormScreen() {
     }
 
     router.push({
-      pathname: '/(tabs)/averia-defects-form' as any,
+      pathname: '/(tabs)/safety-checklist-form' as any,
       params: {
         ...params,
+        module: 'averia',
         clientName, licensePlate, machineType, brand, model, serialNumber,
         otNumber, location, reviewedBy, avisoDate, avisoTime,
         isEditing: isEditing ? 'true' : 'false',
@@ -110,10 +111,7 @@ export default function AveriaMachineFormScreen() {
 
               <TextInput label="Ubicación" value={location} onChangeText={setLocation} style={styles.input} mode="outlined" outlineColor={BRAND_COLORS.grayMedium} activeOutlineColor="#7c3aed" />
 
-              <View style={styles.row}>
-                <TextInput label="Fecha" value={avisoDate} onChangeText={setAvisoDate} style={[styles.input, styles.halfInput]} mode="outlined" outlineColor={BRAND_COLORS.grayMedium} activeOutlineColor="#7c3aed" />
-                <TextInput label="Hora" value={avisoTime} onChangeText={setAvisoTime} style={[styles.input, styles.halfInput]} mode="outlined" outlineColor={BRAND_COLORS.grayMedium} activeOutlineColor="#7c3aed" />
-              </View>
+              <TextInput label="Fecha" value={avisoDate} onChangeText={setAvisoDate} style={styles.input} mode="outlined" outlineColor={BRAND_COLORS.grayMedium} activeOutlineColor="#7c3aed" />
 
               <TextInput label="Revisado por" value={reviewedBy} onChangeText={setReviewedBy} style={styles.input} mode="outlined" outlineColor={BRAND_COLORS.grayMedium} activeOutlineColor="#7c3aed" />
             </Card.Content>

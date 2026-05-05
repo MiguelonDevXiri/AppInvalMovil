@@ -8,6 +8,10 @@ import {
   sanitizePathSegment,
   uploadPhoto,
 } from './photoUpload';
+import {
+  parseSafetyChecklist,
+  type SafetyChecklist,
+} from './safetyChecklist';
 
 // Interfaces para tipos (sin cambios)
 export interface Machine {
@@ -27,6 +31,7 @@ export interface Machine {
   notes?: string;
   commentsWithPhotos?: CommentWithPhoto[];
   inspectionStatus?: string;
+  safetyChecklist?: SafetyChecklist | null;
 }
 
 export interface CommentWithPhoto {
@@ -80,6 +85,19 @@ export interface ExitCheck {
   verifiedAt?: string;
   photoUrl?: string | null;
   comment?: string;
+}
+
+export interface ExitMaterial {
+  id: string;
+  machineId: string;
+  materialId?: string | null;
+  name: string;
+  quantity: string;
+  reference: string;
+  available: boolean | null;
+  checked: boolean;
+  isExtra: boolean;
+  sortOrder: number;
 }
 
 export interface ExitPhotosData {
@@ -222,6 +240,7 @@ export const getMachines = async (): Promise<Machine[]> => {
       date: row.date || row.created_at || '',
       notes: row.notes || undefined,
       inspectionStatus: row.inspection_status || undefined,
+      safetyChecklist: row.safety_checklist ? parseSafetyChecklist(row.safety_checklist, 'fire-only') : null,
     }));
 
     // Cargar comments con fotos para cada máquina
@@ -286,6 +305,7 @@ export const getMachineById = async (machineId: string): Promise<Machine | null>
       date: data.date || data.created_at || '',
       notes: data.notes || undefined,
       inspectionStatus: data.inspection_status || undefined,
+      safetyChecklist: data.safety_checklist ? parseSafetyChecklist(data.safety_checklist, 'fire-only') : null,
     };
 
     // Cargar comments
@@ -334,6 +354,7 @@ export const saveMachine = async (machineData: Machine): Promise<Machine> => {
       reviewed_by: machineData.reviewedBy || null,
       date: machineData.date,
       notes: machineData.notes || null,
+      safety_checklist: machineData.safetyChecklist || null,
     };
 
     const { data, error } = await supabase
@@ -363,6 +384,34 @@ export const saveMachine = async (machineData: Machine): Promise<Machine> => {
   } catch (error) {
     console.error('Error al guardar máquina:', error);
     throw error;
+  }
+};
+
+export const saveMachineSafetyChecklist = async (
+  machineId: string,
+  safetyChecklist: SafetyChecklist | null
+): Promise<boolean> => {
+  try {
+    if (!machineId) {
+      console.error('ID de máquina no proporcionado al guardar seguridad previa');
+      return false;
+    }
+
+    const { error } = await supabase
+      .from('machines')
+      .update({ safety_checklist: safetyChecklist || null })
+      .eq('id', machineId);
+
+    if (error) {
+      console.error('Error al guardar la seguridad previa de la máquina:', error);
+      return false;
+    }
+
+    invalidateMachinesCache();
+    return true;
+  } catch (error) {
+    console.error('Error al guardar la seguridad previa de la máquina:', error);
+    return false;
   }
 };
 
@@ -432,7 +481,14 @@ export const deleteMachine = async (machineId: string): Promise<boolean> => {
     await deletePhotosInFolder(legacyBasePath);
     await deletePhotosInFolder(`machines/${machineId}`);
 
-    // Borrar máquina (CASCADE borra checklists, photos, comments)
+    await supabase.from('checklist_photos').delete().eq('machine_id', machineId);
+    await supabase.from('checklist_results').delete().eq('machine_id', machineId);
+    await supabase.from('checklist_materials').delete().eq('machine_id', machineId);
+    await supabase.from('machine_comments').delete().eq('machine_id', machineId);
+    await supabase.from('machine_photos').delete().eq('machine_id', machineId);
+    await supabase.from('exit_checks').delete().eq('machine_id', machineId);
+    await supabase.from('exit_photos').delete().eq('machine_id', machineId);
+
     const { error } = await supabase
       .from('machines')
       .delete()
@@ -876,6 +932,94 @@ export const saveExitChecks = async (machineId: string, checks: ExitCheck[]): Pr
   }
 };
 
+export const getExitMaterialsByMachineId = async (machineId: string): Promise<ExitMaterial[]> => {
+  try {
+    if (!machineId) return [];
+
+    const { data, error } = await supabase
+      .from('exit_materials')
+      .select('*')
+      .eq('machine_id', machineId)
+      .order('sort_order');
+
+    if (error || !data) return [];
+
+    return data.map((row: any, index: number) => ({
+      id: row.id,
+      machineId: row.machine_id,
+      materialId: row.material_id || null,
+      name: row.name || '',
+      quantity: row.quantity || '',
+      reference: row.reference || '',
+      available: row.available ?? null,
+      checked: row.checked ?? false,
+      isExtra: row.is_extra ?? false,
+      sortOrder: typeof row.sort_order === 'number' ? row.sort_order : index,
+    }));
+  } catch (error) {
+    console.error('Error al obtener exit materials:', error);
+    return [];
+  }
+};
+
+export const saveExitMaterials = async (machineId: string, materials: ExitMaterial[]): Promise<boolean> => {
+  try {
+    if (!machineId) return false;
+
+    const normalizedMaterials = materials
+      .map((material, index) => ({
+        id: material.id,
+        materialId: material.materialId || null,
+        name: material.name?.trim() || '',
+        quantity: material.quantity?.trim() || '',
+        reference: material.reference?.trim() || '',
+        available: material.available ?? null,
+        checked: material.checked ?? false,
+        isExtra: material.isExtra ?? false,
+        sortOrder: index,
+      }))
+      .filter((material) => {
+        if (!material.isExtra) return true;
+        return Boolean(
+          material.name ||
+          material.quantity ||
+          material.reference ||
+          material.available !== null ||
+          material.checked,
+        );
+      });
+
+    await supabase.from('exit_materials').delete().eq('machine_id', machineId);
+
+    if (normalizedMaterials.length > 0) {
+      const { error } = await supabase.from('exit_materials').insert(
+        normalizedMaterials.map((material) => ({
+          id: isUUID(material.id) ? material.id : generateUUID(),
+          machine_id: machineId,
+          material_id: material.materialId,
+          name: material.name || null,
+          quantity: material.quantity || null,
+          reference: material.reference || null,
+          available: material.available,
+          checked: material.checked,
+          is_extra: material.isExtra,
+          sort_order: material.sortOrder,
+        }))
+      );
+
+      if (error) {
+        throw error;
+      }
+    }
+
+    console.log('Exit materials guardados exitosamente');
+    return true;
+  } catch (error) {
+    console.error('Error al guardar exit materials:', error);
+    return false;
+  }
+};
+
 export const getExitPhotosByMachineId = async (machineId: string): Promise<ExitPhotosData | null> => {
   try {
     if (!machineId) return null;
@@ -957,6 +1101,9 @@ export const deleteExitInspection = async (machineId: string): Promise<boolean> 
     await deletePhotosInFolder(`${basePath}/exit_checks`);
     await supabase.from('exit_checks').delete().eq('machine_id', machineId);
 
+    // Borrar materiales de salida
+    await supabase.from('exit_materials').delete().eq('machine_id', machineId);
+
     // Borrar exit_photos (fotos D1-D4)
     await deletePhotosInFolder(`${basePath}/salida`);
     await supabase.from('exit_photos').delete().eq('machine_id', machineId);
@@ -1033,11 +1180,17 @@ export const clearAllData = async (): Promise<boolean> => {
     } catch (materialsError) {
       console.warn('No se pudieron limpiar los materiales del checklist:', materialsError);
     }
+    try {
+      await supabase.from('exit_materials').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    } catch (exitMaterialsError) {
+      console.warn('No se pudieron limpiar los materiales de salida:', exitMaterialsError);
+    }
     await supabase.from('machine_photos').delete().neq('id', '00000000-0000-0000-0000-000000000000');
     await supabase.from('machine_comments').delete().neq('id', '00000000-0000-0000-0000-000000000000');
     await supabase.from('machines').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    await supabase.from('exit_checks').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    await supabase.from('exit_photos').delete().neq('id', '00000000-0000-0000-0000-000000000000');
 
-    // Limpiar también AsyncStorage legacy
     await AsyncStorage.removeItem(LEGACY_KEYS.MACHINES);
     await AsyncStorage.removeItem(LEGACY_KEYS.CHECKLISTS);
     await AsyncStorage.removeItem(LEGACY_KEYS.GENERAL_PHOTOS);
@@ -1134,6 +1287,8 @@ export default {
   deleteGeneralPhotosByMachineId,
   getExitChecksByMachineId,
   saveExitChecks,
+  getExitMaterialsByMachineId,
+  saveExitMaterials,
   getExitPhotosByMachineId,
   saveExitPhotos,
   updateMachineInspectionStatus,

@@ -6,7 +6,7 @@ import { router } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Modal, Pressable, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Button, Card, Divider, IconButton, Menu, Searchbar, Text, Title } from 'react-native-paper';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BORDER_RADIUS, BRAND_COLORS, GRADIENTS, SHADOWS, SPACING, TYPOGRAPHY } from '../../constants/Colors';
 import {
     ActecoInspection,
@@ -57,9 +57,12 @@ const ActecoInspectionCard = ({ inspection, onPress, onMenuPress, onLongPress, i
               )}
             </View>
             
-            <Text>Fecha: {inspection.avisoDate} {inspection.avisoTime}</Text>
+            <Text>Fecha: {inspection.avisoDate}</Text>
+            <Text>Tipo: {inspection.machineType || 'Sin tipo'}</Text>
+            <Text>Matrícula: {inspection.licensePlate || 'Sin matrícula'}</Text>
             <Text>Ubicación: {inspection.location}</Text>
-            <Text>Máquina: {inspection.machineType}</Text>
+            <Text>Marca: {inspection.machineBrand || 'Sin marca'}</Text>
+            <Text>OT: {inspection.otNumber || 'Sin OT'}</Text>
             
             <View style={styles.cardFooter}>
               <Text style={styles.date}>
@@ -74,6 +77,7 @@ const ActecoInspectionCard = ({ inspection, onPress, onMenuPress, onLongPress, i
 );
 
 export default function ActecoInspectionsListScreen() {
+  const insets = useSafeAreaInsets();
   const [inspections, setInspections] = useState<ActecoInspection[]>([]);
   const [filteredInspections, setFilteredInspections] = useState<ActecoInspection[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -140,6 +144,8 @@ export default function ActecoInspectionsListScreen() {
         inspection.clientName.toLowerCase().includes(searchLower) || 
         inspection.location.toLowerCase().includes(searchLower) ||
         inspection.machineType.toLowerCase().includes(searchLower) ||
+        (inspection.licensePlate && inspection.licensePlate.toLowerCase().includes(searchLower)) ||
+        (inspection.otNumber && inspection.otNumber.toLowerCase().includes(searchLower)) ||
         (inspection.machineBrand && inspection.machineBrand.toLowerCase().includes(searchLower)) ||
         (inspection.machineModel && inspection.machineModel.toLowerCase().includes(searchLower))
       );
@@ -345,7 +351,7 @@ export default function ActecoInspectionsListScreen() {
 
         <View style={styles.searchContainer}>
           <Searchbar
-            placeholder="Buscar por cliente, ubicación o máquina..."
+            placeholder="Buscar por cliente, tipo, matrícula, ubicación, marca u OT..."
             onChangeText={handleSearch}
             value={searchQuery}
             style={styles.searchbar}
@@ -378,7 +384,7 @@ export default function ActecoInspectionsListScreen() {
         )}
         
         {isSelectionMode && selectedIds.size > 0 && (
-          <View style={styles.deleteBar}>
+          <View style={[styles.deleteBar, { paddingBottom: insets.bottom + SPACING.md }]}>
             <TouchableOpacity style={styles.deleteButton} onPress={handleDeleteSelected}>
               <MaterialCommunityIcons name="delete" size={20} color="white" />
               <Text style={styles.deleteButtonText}>Eliminar seleccionados ({selectedIds.size})</Text>
