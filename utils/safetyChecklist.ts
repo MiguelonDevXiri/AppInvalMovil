@@ -56,7 +56,7 @@ export const SAFETY_CHECKLIST_MODULE_CONFIG: Record<SafetyChecklistModuleKey, Sa
     subtitle: 'Checklist rápido de seguridad antes del mantenimiento.',
     accent: '#2563eb',
     gradient: ['#0f2f57', '#2563eb', '#60a5fa'],
-    nextPath: '/(tabs)/mantenimiento-form',
+    nextPath: '/(tabs)/mantenimiento-checklist-form',
   },
 };
 

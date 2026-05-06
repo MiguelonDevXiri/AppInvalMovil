@@ -244,6 +244,16 @@ export const deleteMantenimientoInspection = async (id: string): Promise<boolean
   }
 };
 
+const parseJsonParam = <T>(value: unknown, fallback: T): T => {
+  const text = getParamString(value);
+  if (!text) return fallback;
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    return fallback;
+  }
+};
+
 export const inspectionToParams = (inspection: MantenimientoInspection): any => ({
   inspectionId: inspection.id,
   clientName: inspection.clientName,
@@ -258,21 +268,33 @@ export const inspectionToParams = (inspection: MantenimientoInspection): any => 
   otNumber: inspection.otNumber || '',
   notes: inspection.notes || '',
   safetyChecklist: inspection.safetyChecklist ? JSON.stringify(inspection.safetyChecklist) : '',
+  generalPhotos: JSON.stringify(inspection.generalPhotos || {}),
+  checklist: JSON.stringify(inspection.checklist || []),
+  materials: JSON.stringify(inspection.materials || []),
+  createdAt: inspection.createdAt || '',
 });
 
-export const paramsToInspection = (params: any): MantenimientoInspection => ({
-  ...createEmptyMantenimientoInspection(getParamString(params.machineType) || 'otros'),
-  id: getParamString(params.inspectionId) || generateUUID(),
-  clientName: getParamString(params.clientName),
-  date: getParamString(params.date) || new Date().toISOString().slice(0, 10),
-  location: getParamString(params.location),
-  reviewedBy: getParamString(params.reviewedBy),
-  machineType: getParamString(params.machineType) || 'otros',
-  brand: getParamString(params.brand),
-  model: getParamString(params.model),
-  serialNumber: getParamString(params.serialNumber),
-  licensePlate: getParamString(params.licensePlate),
-  otNumber: getParamString(params.otNumber),
-  notes: getParamString(params.notes),
-  safetyChecklist: params.safetyChecklist ? parseSafetyChecklist(getParamString(params.safetyChecklist), 'full') : null,
-});
+export const paramsToInspection = (params: any): MantenimientoInspection => {
+  const machineType = getParamString(params.machineType) || 'otros';
+  const base = createEmptyMantenimientoInspection(machineType);
+  return {
+    ...base,
+    id: getParamString(params.inspectionId) || generateUUID(),
+    clientName: getParamString(params.clientName),
+    date: getParamString(params.date) || new Date().toISOString().slice(0, 10),
+    location: getParamString(params.location),
+    reviewedBy: getParamString(params.reviewedBy),
+    machineType,
+    brand: getParamString(params.brand),
+    model: getParamString(params.model),
+    serialNumber: getParamString(params.serialNumber),
+    licensePlate: getParamString(params.licensePlate),
+    otNumber: getParamString(params.otNumber),
+    notes: getParamString(params.notes),
+    safetyChecklist: params.safetyChecklist ? parseSafetyChecklist(getParamString(params.safetyChecklist), 'full') : null,
+    checklist: parseJsonParam<MantenimientoChecklistItem[]>(params.checklist, base.checklist),
+    materials: parseJsonParam<MantenimientoMaterial[]>(params.materials, []),
+    generalPhotos: parseJsonParam<Record<string, string>>(params.generalPhotos, {}),
+    createdAt: getParamString(params.createdAt) || base.createdAt,
+  };
+};

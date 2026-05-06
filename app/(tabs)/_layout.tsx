@@ -81,6 +81,9 @@ export default function Layout() {
 
         <Stack.Screen name="mantenimiento-machine-type-selection" />
         <Stack.Screen name="mantenimiento-form" />
+        <Stack.Screen name="mantenimiento-general-photos-form" />
+        <Stack.Screen name="mantenimiento-checklist-form" />
+        <Stack.Screen name="mantenimiento-final-form" />
         <Stack.Screen name="mantenimiento-report-view" />
         <Stack.Screen name="mantenimiento-inspections-list" />
         <Stack.Screen name="login" options={{ headerShown: false }} />
