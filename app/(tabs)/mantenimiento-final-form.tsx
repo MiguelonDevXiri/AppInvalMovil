@@ -5,10 +5,8 @@ import React, { useMemo, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Button, Card, Divider, Text, TextInput } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { BORDER_RADIUS, BRAND_COLORS, SHADOWS, SPACING, TYPOGRAPHY } from '../../constants/Colors';
+import { BORDER_RADIUS, BRAND_COLORS, GRADIENTS, SHADOWS, SPACING, TYPOGRAPHY } from '../../constants/Colors';
 import { generateUUID, inspectionToParams, paramsToInspection, saveMantenimientoInspection, type MantenimientoInspection } from '../../utils/mantenimientoStorage';
-
-const GRADIENT = ['#0f2f57', '#173f73', '#e87a20'] as const;
 
 export default function MantenimientoFinalFormScreen() {
   const params = useLocalSearchParams();
@@ -43,7 +41,7 @@ export default function MantenimientoFinalFormScreen() {
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <View style={styles.container}>
         <ScrollView style={styles.scroll} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          <LinearGradient colors={GRADIENT as any} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.header}>
+          <LinearGradient colors={GRADIENTS.primary as unknown as [string, string, ...string[]]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.header}>
             <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}><MaterialCommunityIcons name="arrow-left" size={22} color="white" /></TouchableOpacity>
             <Text style={styles.headerTitle}>Resumen mantenimiento</Text>
             <Text style={styles.headerSubtitle}>Paso final · Comentarios, materiales y PDF</Text>
@@ -73,10 +71,10 @@ export default function MantenimientoFinalFormScreen() {
             <TextInput label="Observaciones" value={inspection.notes} onChangeText={(v) => setField('notes', v)} mode="outlined" multiline numberOfLines={4} style={styles.input} />
           </Card.Content></Card>
         </ScrollView>
-        <SafeAreaView edges={['bottom']}><View style={styles.actions}><Button mode="outlined" onPress={() => router.push({ pathname: '/(tabs)/mantenimiento-checklist-form' as any, params: inspectionToParams(inspection) })} style={styles.button}>Volver</Button><Button mode="contained" loading={saving} disabled={saving} onPress={handleSave} style={styles.button} icon="file-pdf-box">Guardar/PDF</Button></View></SafeAreaView>
+        <SafeAreaView edges={['bottom']}><View style={styles.actions}><Button mode="outlined" onPress={() => router.push({ pathname: '/(tabs)/mantenimiento-checklist-form' as any, params: inspectionToParams(inspection) })} style={styles.button} textColor={BRAND_COLORS.primaryBlue} icon="arrow-left">Cancelar</Button><Button mode="contained" loading={saving} disabled={saving} onPress={handleSave} style={styles.button} icon="file-pdf-box" buttonColor={BRAND_COLORS.primaryOrange}>Guardar/PDF</Button></View></SafeAreaView>
       </View>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({ safeArea:{flex:1,backgroundColor:'#0f2f57'}, container:{flex:1,backgroundColor:BRAND_COLORS.surface}, scroll:{flex:1}, content:{paddingBottom:SPACING.lg}, header:{padding:SPACING.lg,borderBottomLeftRadius:BORDER_RADIUS.xl,borderBottomRightRadius:BORDER_RADIUS.xl}, backBtn:{width:36,height:36,borderRadius:18,backgroundColor:'rgba(255,255,255,.2)',alignItems:'center',justifyContent:'center'}, headerTitle:{color:'white',fontSize:TYPOGRAPHY.sizes.xl,fontWeight:TYPOGRAPHY.weights.bold as any,marginTop:SPACING.sm}, headerSubtitle:{color:'rgba(255,255,255,.85)',marginTop:4}, summaryRow:{flexDirection:'row',gap:8,paddingHorizontal:SPACING.md,marginTop:SPACING.md}, summaryBox:{flex:1,backgroundColor:'white',borderRadius:BORDER_RADIUS.lg,padding:SPACING.md,alignItems:'center',...SHADOWS.small}, summaryValue:{fontSize:22,fontWeight:'800',color:'#0f2f57'}, summaryLabel:{fontSize:11,color:'#64748b',textAlign:'center'}, card:{margin:SPACING.md,marginBottom:0,borderRadius:BORDER_RADIUS.lg,...SHADOWS.small}, sectionTitle:{fontSize:TYPOGRAPHY.sizes.lg,fontWeight:TYPOGRAPHY.weights.bold as any,color:'#0f2f57'}, divider:{marginVertical:SPACING.sm}, meta:{color:'#475569',marginTop:4}, input:{backgroundColor:'white'}, materialRow:{flexDirection:'row',flexWrap:'wrap',gap:8,marginBottom:10,alignItems:'center'}, materialInput:{flex:1,minWidth:150,backgroundColor:'white'}, qtyInput:{width:86,backgroundColor:'white'}, fullInput:{width:'100%',backgroundColor:'white'}, deleteBtn:{width:42,height:42,alignItems:'center',justifyContent:'center'}, actions:{flexDirection:'row',gap:10,padding:SPACING.md,backgroundColor:'white',borderTopWidth:1,borderTopColor:'#e2e8f0'}, button:{flex:1} });
+const styles = StyleSheet.create({ safeArea:{flex:1,backgroundColor:'#0f2f57'}, container:{flex:1,backgroundColor:BRAND_COLORS.surface}, scroll:{flex:1}, content:{paddingBottom:SPACING.lg}, header:{padding:SPACING.lg,borderBottomLeftRadius:BORDER_RADIUS.xl,borderBottomRightRadius:BORDER_RADIUS.xl}, backBtn:{width:36,height:36,borderRadius:18,backgroundColor:'rgba(255,255,255,.2)',alignItems:'center',justifyContent:'center'}, headerTitle:{color:'white',fontSize:TYPOGRAPHY.sizes.xl,fontWeight:TYPOGRAPHY.weights.bold as any,marginTop:SPACING.sm}, headerSubtitle:{color:'rgba(255,255,255,.85)',marginTop:4}, summaryRow:{flexDirection:'row',gap:8,paddingHorizontal:SPACING.md,marginTop:SPACING.md}, summaryBox:{flex:1,backgroundColor:'white',borderRadius:BORDER_RADIUS.lg,padding:SPACING.md,alignItems:'center',...SHADOWS.small}, summaryValue:{fontSize:22,fontWeight:'800',color:'#0f2f57'}, summaryLabel:{fontSize:11,color:'#64748b',textAlign:'center'}, card:{margin:SPACING.md,marginBottom:0,borderRadius:BORDER_RADIUS.lg,borderLeftWidth:4,borderLeftColor:BRAND_COLORS.primaryOrange,...SHADOWS.small}, sectionTitle:{fontSize:TYPOGRAPHY.sizes.lg,fontWeight:TYPOGRAPHY.weights.bold as any,color:'#0f2f57'}, divider:{marginVertical:SPACING.sm}, meta:{color:'#475569',marginTop:4}, input:{backgroundColor:'white'}, materialRow:{flexDirection:'row',flexWrap:'wrap',gap:8,marginBottom:10,alignItems:'center'}, materialInput:{flex:1,minWidth:150,backgroundColor:'white'}, qtyInput:{width:86,backgroundColor:'white'}, fullInput:{width:'100%',backgroundColor:'white'}, deleteBtn:{width:42,height:42,alignItems:'center',justifyContent:'center'}, actions:{flexDirection:'row',gap:10,padding:SPACING.md,backgroundColor:'white',borderTopWidth:1,borderTopColor:'#e2e8f0'}, button:{flex:1} });

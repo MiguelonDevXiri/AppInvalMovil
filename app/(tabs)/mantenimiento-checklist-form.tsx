@@ -6,10 +6,8 @@ import React, { useMemo, useState } from 'react';
 import { Alert, Image, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Button, Card, Divider, Text, TextInput } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { BORDER_RADIUS, BRAND_COLORS, SHADOWS, SPACING, TYPOGRAPHY } from '../../constants/Colors';
+import { BORDER_RADIUS, BRAND_COLORS, GRADIENTS, SHADOWS, SPACING, TYPOGRAPHY } from '../../constants/Colors';
 import { inspectionToParams, paramsToInspection, type MantenimientoChecklistItem, type MantenimientoInspection } from '../../utils/mantenimientoStorage';
-
-const GRADIENT = ['#0f2f57', '#173f73', '#e87a20'] as const;
 type StatusKey = 'ok' | 'fail' | 'na' | 'cant';
 const STATUS_OPTIONS: { key: StatusKey; label: string; icon: string; color: string }[] = [
   { key: 'ok', label: 'Bien', icon: 'check-circle-outline', color: '#16a34a' },
@@ -146,7 +144,7 @@ export default function MantenimientoChecklistFormScreen() {
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <View style={styles.container}>
         <ScrollView style={styles.scroll} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          <LinearGradient colors={GRADIENT as any} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.header}>
+          <LinearGradient colors={GRADIENTS.primary as unknown as [string, string, ...string[]]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.header}>
             <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}><MaterialCommunityIcons name="arrow-left" size={22} color="white" /></TouchableOpacity>
             <MaterialCommunityIcons name="clipboard-check-outline" size={28} color="rgba(255,255,255,0.85)" />
             <Text style={styles.headerTitle}>Checklist mantenimiento</Text>
@@ -195,7 +193,7 @@ export default function MantenimientoChecklistFormScreen() {
             );
           })}
         </ScrollView>
-        <SafeAreaView edges={['bottom']}><View style={styles.actions}><Button mode="outlined" onPress={() => router.back()} style={styles.button} textColor="#92400e">Volver</Button><Button mode="contained" onPress={goNext} style={styles.button} buttonColor="#b45309" icon="arrow-right">Finalizar</Button></View></SafeAreaView>
+        <SafeAreaView edges={['bottom']}><View style={styles.actions}><Button mode="outlined" onPress={() => router.back()} style={styles.button} textColor={BRAND_COLORS.primaryBlue} icon="arrow-left">Cancelar</Button><Button mode="contained" onPress={goNext} style={styles.button} buttonColor={BRAND_COLORS.primaryOrange} icon="arrow-right" contentStyle={{ flexDirection: 'row-reverse' }}>Continuar</Button></View></SafeAreaView>
       </View>
     </SafeAreaView>
   );
@@ -212,7 +210,7 @@ const styles = StyleSheet.create({
   headerTitle:{color:'white',fontSize:TYPOGRAPHY.sizes.xl,fontWeight:TYPOGRAPHY.weights.bold as any,textAlign:'center'}, headerSubtitle:{color:'rgba(255,255,255,.84)',textAlign:'center',fontSize:TYPOGRAPHY.sizes.sm},
   summaryBanner:{margin:SPACING.md,marginBottom:0,padding:SPACING.md,borderRadius:BORDER_RADIUS.lg,backgroundColor:'#fff7ed',borderWidth:1,borderColor:'#fed7aa',flexDirection:'row',gap:8,alignItems:'center'}, summaryText:{fontWeight:'800',color:'#92400e'},
   summaryRow:{flexDirection:'row',gap:8,paddingHorizontal:SPACING.md,marginTop:SPACING.md}, summaryBox:{flex:1,backgroundColor:'white',borderRadius:BORDER_RADIUS.lg,paddingVertical:SPACING.sm,paddingHorizontal:4,alignItems:'center',...SHADOWS.small}, summaryValue:{fontSize:22,fontWeight:'900'}, summaryLabel:{fontSize:10,color:'#64748b',fontWeight:'700',textAlign:'center'},
-  sectionCard:{margin:SPACING.md,marginBottom:0,borderRadius:BORDER_RADIUS.lg,overflow:'hidden',...SHADOWS.small}, sectionHeader:{padding:SPACING.md,flexDirection:'row',alignItems:'center',justifyContent:'space-between',backgroundColor:'white'}, sectionTitleRow:{flexDirection:'row',alignItems:'center',gap:4,flex:1}, sectionTitle:{fontSize:TYPOGRAPHY.sizes.md,fontWeight:TYPOGRAPHY.weights.bold as any,color:'#0f2f57',flex:1}, sectionCounter:{fontWeight:'900',color:'#92400e'}, sectionContent:{paddingTop:0},
+  sectionCard:{margin:SPACING.md,marginBottom:0,borderRadius:BORDER_RADIUS.lg,overflow:'hidden',borderLeftWidth:4,borderLeftColor:BRAND_COLORS.primaryOrange,...SHADOWS.small}, sectionHeader:{padding:SPACING.md,flexDirection:'row',alignItems:'center',justifyContent:'space-between',backgroundColor:'white'}, sectionTitleRow:{flexDirection:'row',alignItems:'center',gap:4,flex:1}, sectionTitle:{fontSize:TYPOGRAPHY.sizes.md,fontWeight:TYPOGRAPHY.weights.bold as any,color:'#0f2f57',flex:1}, sectionCounter:{fontWeight:'900',color:'#92400e'}, sectionContent:{paddingTop:0},
   checkCard:{paddingVertical:SPACING.md}, cardOk:{}, cardFail:{}, cardCant:{}, checkHeader:{flexDirection:'row',gap:SPACING.sm,alignItems:'flex-start'}, checkInfo:{flex:1}, itemCategory:{fontSize:11,color:'#64748b',textTransform:'uppercase',fontWeight:'800',letterSpacing:.4}, itemText:{fontSize:15,fontWeight:'700',color:'#0f172a',marginTop:4,lineHeight:21}, currentBadge:{borderWidth:1,borderColor:'#e2e8f0',borderRadius:999,paddingHorizontal:8,paddingVertical:5,flexDirection:'row',alignItems:'center',gap:4}, currentBadgeText:{fontSize:11,fontWeight:'800',color:'#64748b'},
   statusGrid:{flexDirection:'row',flexWrap:'wrap',gap:8,marginTop:SPACING.sm}, statusButton:{borderWidth:1,borderColor:'#e2e8f0',borderRadius:999,paddingVertical:8,paddingHorizontal:10,flexDirection:'row',alignItems:'center',gap:5,backgroundColor:'white'}, statusButtonText:{fontSize:12,fontWeight:'800',color:'#334155'}, statusButtonTextActive:{color:'white'},
   evidenceBox:{marginTop:SPACING.sm,borderRadius:BORDER_RADIUS.lg,backgroundColor:'#fff7ed',borderWidth:1,borderColor:'#fed7aa',padding:SPACING.sm}, evidenceTitle:{fontSize:12,fontWeight:'900',color:'#92400e',marginBottom:6,textTransform:'uppercase'}, input:{backgroundColor:'white'}, photoRow:{flexDirection:'row',flexWrap:'wrap',gap:8,marginTop:SPACING.sm}, photoWrap:{width:82}, photo:{width:82,height:82,borderRadius:12,backgroundColor:'#f1f5f9'}, photoLabel:{textAlign:'center',fontSize:11,fontWeight:'800',color:'#92400e',marginTop:3}, addPhotoButton:{width:96,height:82,borderRadius:12,borderWidth:1,borderStyle:'dashed',borderColor:'#fdba74',alignItems:'center',justifyContent:'center',backgroundColor:'white'}, addPhotoText:{fontSize:11,fontWeight:'800',color:'#92400e',marginTop:3}, hint:{fontSize:11,color:'#92400e',marginTop:6},

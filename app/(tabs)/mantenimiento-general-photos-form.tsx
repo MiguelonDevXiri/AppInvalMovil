@@ -4,12 +4,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useMemo, useState } from 'react';
 import { Alert, Image, ScrollView, StyleSheet, TouchableOpacity, View, type AlertButton } from 'react-native';
-import { Button, Card, Divider, Text } from 'react-native-paper';
+import { Button, Divider, Text } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { BORDER_RADIUS, BRAND_COLORS, SHADOWS, SPACING, TYPOGRAPHY } from '../../constants/Colors';
+import { BORDER_RADIUS, BRAND_COLORS, GRADIENTS, SHADOWS, SPACING, TYPOGRAPHY } from '../../constants/Colors';
 import { inspectionToParams, paramsToInspection } from '../../utils/mantenimientoStorage';
 
-const GRADIENT = ['#0f2f57', '#173f73', '#e87a20'] as const;
 const PHOTO_SLOTS = [
   { key: 'front', label: 'A1' },
   { key: 'back', label: 'A2' },
@@ -58,26 +57,78 @@ export default function MantenimientoGeneralPhotosFormScreen() {
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <View style={styles.container}>
-        <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
-          <LinearGradient colors={GRADIENT as any} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.header}>
-            <TouchableOpacity onPress={goData} style={styles.backBtn}><MaterialCommunityIcons name="arrow-left" size={22} color="white" /></TouchableOpacity>
-            <Text style={styles.headerTitle}>Fotos generales</Text>
-            <Text style={styles.headerSubtitle}>Paso 3 · Fotos generales de la máquina</Text>
+        <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollViewContent}>
+          <LinearGradient colors={GRADIENTS.primary as unknown as [string, string, ...string[]]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.headerGradient}>
+            <TouchableOpacity onPress={goData} style={styles.backButton} activeOpacity={0.85}>
+              <MaterialCommunityIcons name="arrow-left" size={22} color="white" />
+            </TouchableOpacity>
+            <Text style={styles.typeTitle}>Fotos generales</Text>
           </LinearGradient>
-          <Card style={styles.card}><Card.Content>
-            <Text style={styles.sectionTitle}>📸 Fotos generales</Text><Divider style={styles.divider} />
-            <Text style={styles.info}>Añade las fotos generales antes del checklist de seguridad.</Text>
-            <View style={styles.grid}>{PHOTO_SLOTS.map((slot) => {
-              const uri = inspection.generalPhotos[slot.key];
-              return <TouchableOpacity key={slot.key} style={styles.photoBox} onPress={() => openOptions(slot.key, slot.label)} activeOpacity={0.85}>{uri ? <Image source={{ uri }} style={styles.photo} /> : <View style={styles.placeholder}><MaterialCommunityIcons name="camera-plus-outline" size={32} color={BRAND_COLORS.grayText} /><Text style={styles.placeholderText}>Añadir</Text></View>}<Text style={styles.photoLabel}>{slot.label}</Text></TouchableOpacity>;
-            })}</View>
-          </Card.Content></Card>
-          <Card style={styles.card}><Card.Content><Text style={styles.info}>Fotos añadidas: {photoCount} de 4</Text></Card.Content></Card>
+
+          <View style={styles.formCard}>
+            <Text style={styles.sectionTitle}>Fotos generales de entrada</Text>
+            <Divider style={styles.divider} />
+            <Text style={styles.infoText}>Añade las fotos generales antes del checklist de seguridad.</Text>
+            <View style={styles.grid}>
+              {PHOTO_SLOTS.map((slot) => {
+                const uri = inspection.generalPhotos[slot.key];
+                return (
+                  <TouchableOpacity key={slot.key} style={styles.photoBox} onPress={() => openOptions(slot.key, slot.label)} activeOpacity={0.85}>
+                    {uri ? (
+                      <Image source={{ uri }} style={styles.photo} />
+                    ) : (
+                      <View style={styles.placeholder}>
+                        <MaterialCommunityIcons name="camera-plus-outline" size={32} color={BRAND_COLORS.primaryBlue} />
+                        <Text style={styles.placeholderText}>Añadir</Text>
+                      </View>
+                    )}
+                    <Text style={styles.photoLabel}>{slot.label}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <View style={styles.counterBox}>
+              <MaterialCommunityIcons name="image-multiple-outline" size={20} color={BRAND_COLORS.primaryOrange} />
+              <Text style={styles.counterText}>Fotos añadidas: {photoCount} de 4</Text>
+            </View>
+          </View>
         </ScrollView>
-        <SafeAreaView edges={['bottom']}><View style={styles.actions}><Button mode="outlined" onPress={goData} style={styles.button}>Volver</Button><Button mode="contained" onPress={goNext} style={styles.button} icon="shield-check">Seguridad</Button></View></SafeAreaView>
+
+        <SafeAreaView style={styles.buttonSafeArea} edges={['bottom']}>
+          <View style={styles.buttonContainer}>
+            <Button mode="outlined" style={styles.cancelButton} onPress={goData} icon="arrow-left" textColor={BRAND_COLORS.primaryBlue}>Cancelar</Button>
+            <Button mode="contained" style={styles.saveButton} onPress={goNext} icon="arrow-right" contentStyle={styles.primaryButtonContent} buttonColor={BRAND_COLORS.primaryOrange}>Continuar</Button>
+          </View>
+        </SafeAreaView>
       </View>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({ safeArea:{flex:1,backgroundColor:'#0f2f57'}, container:{flex:1,backgroundColor:BRAND_COLORS.surface}, scroll:{flex:1}, content:{paddingBottom:SPACING.lg}, header:{padding:SPACING.lg,borderBottomLeftRadius:BORDER_RADIUS.xl,borderBottomRightRadius:BORDER_RADIUS.xl}, backBtn:{width:36,height:36,borderRadius:18,backgroundColor:'rgba(255,255,255,.2)',alignItems:'center',justifyContent:'center'}, headerTitle:{color:'white',fontSize:TYPOGRAPHY.sizes.xl,fontWeight:TYPOGRAPHY.weights.bold as any,marginTop:SPACING.sm}, headerSubtitle:{color:'rgba(255,255,255,.85)',marginTop:4}, card:{margin:SPACING.md,marginBottom:0,borderRadius:BORDER_RADIUS.lg,...SHADOWS.small}, sectionTitle:{fontSize:TYPOGRAPHY.sizes.lg,fontWeight:TYPOGRAPHY.weights.bold as any,color:'#0f2f57'}, divider:{marginVertical:SPACING.sm}, info:{color:'#475569',lineHeight:20}, grid:{flexDirection:'row',flexWrap:'wrap',gap:10,marginTop:SPACING.md}, photoBox:{width:'47%',height:160,borderWidth:1,borderColor:'#dbeafe',borderRadius:14,backgroundColor:'#eff6ff',overflow:'hidden',alignItems:'center'}, photo:{width:'100%',height:125}, placeholder:{height:125,width:'100%',alignItems:'center',justifyContent:'center'}, placeholderText:{color:'#64748b',marginTop:4}, photoLabel:{fontWeight:'800',color:'#0f2f57',marginTop:6}, actions:{flexDirection:'row',gap:10,padding:SPACING.md,backgroundColor:'white',borderTopWidth:1,borderTopColor:'#e2e8f0'}, button:{flex:1} });
+const styles = StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: BRAND_COLORS.primaryBlue },
+  container: { flex: 1, backgroundColor: BRAND_COLORS.surface },
+  scrollView: { flex: 1 },
+  scrollViewContent: { paddingBottom: 112 },
+  headerGradient: { padding: SPACING.xl, alignItems: 'center', paddingTop: SPACING.lg },
+  backButton: { position: 'absolute', left: 12, top: 12, zIndex: 10, width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
+  typeTitle: { fontSize: TYPOGRAPHY.sizes.lg, fontWeight: TYPOGRAPHY.weights.bold as any, color: 'white', letterSpacing: 0.3, textAlign: 'center' },
+  formCard: { margin: SPACING.lg, marginTop: -SPACING.sm, padding: SPACING.lg, backgroundColor: 'white', borderRadius: BORDER_RADIUS.xl, borderLeftWidth: 4, borderLeftColor: BRAND_COLORS.primaryOrange, ...SHADOWS.card },
+  sectionTitle: { fontSize: TYPOGRAPHY.sizes.lg, fontWeight: TYPOGRAPHY.weights.bold as any, color: BRAND_COLORS.primaryBlue, marginBottom: SPACING.sm, letterSpacing: 0.2 },
+  divider: { backgroundColor: BRAND_COLORS.lightOrange, height: 2, marginBottom: SPACING.lg, borderRadius: BORDER_RADIUS.full, opacity: 0.7 },
+  infoText: { color: BRAND_COLORS.grayText, lineHeight: 20, marginBottom: SPACING.md },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  photoBox: { width: '47%', height: 168, borderWidth: 1, borderColor: BRAND_COLORS.grayMedium, borderRadius: BORDER_RADIUS.lg, backgroundColor: 'white', overflow: 'hidden', alignItems: 'center', marginBottom: SPACING.sm },
+  photo: { width: '100%', height: 130, backgroundColor: BRAND_COLORS.grayLight },
+  placeholder: { height: 130, width: '100%', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f8fafc' },
+  placeholderText: { color: BRAND_COLORS.grayText, marginTop: 4, fontWeight: TYPOGRAPHY.weights.semibold as any },
+  photoLabel: { fontWeight: TYPOGRAPHY.weights.bold as any, color: BRAND_COLORS.primaryBlue, marginTop: 7 },
+  counterBox: { marginTop: SPACING.md, borderRadius: BORDER_RADIUS.lg, backgroundColor: BRAND_COLORS.lightOrange, padding: SPACING.md, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  counterText: { color: '#92400e', fontWeight: TYPOGRAPHY.weights.bold as any },
+  buttonSafeArea: { backgroundColor: 'white' },
+  buttonContainer: { flexDirection: 'row', justifyContent: 'space-between', padding: SPACING.md, paddingTop: SPACING.md + 2, backgroundColor: 'white', borderTopWidth: 1, borderTopColor: BRAND_COLORS.grayLight, ...SHADOWS.soft },
+  cancelButton: { flex: 1, marginRight: SPACING.sm, borderColor: BRAND_COLORS.primaryBlue, borderRadius: BORDER_RADIUS.lg },
+  saveButton: { flex: 1, marginLeft: SPACING.sm, borderRadius: BORDER_RADIUS.lg },
+  primaryButtonContent: { flexDirection: 'row-reverse' },
+});
