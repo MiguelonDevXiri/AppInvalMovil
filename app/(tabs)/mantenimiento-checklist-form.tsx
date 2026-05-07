@@ -2,217 +2,334 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
-import React, { useMemo, useState } from 'react';
-import { Alert, Image, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { Button, Card, Divider, Text, TextInput } from 'react-native-paper';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Alert, Image, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { Button, Divider, ProgressBar, Text } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BORDER_RADIUS, BRAND_COLORS, GRADIENTS, SHADOWS, SPACING, TYPOGRAPHY } from '../../constants/Colors';
 import { inspectionToParams, paramsToInspection, type MantenimientoChecklistItem, type MantenimientoInspection } from '../../utils/mantenimientoStorage';
+
 type StatusKey = 'ok' | 'fail' | 'na' | 'cant';
-const STATUS_OPTIONS: { key: StatusKey; label: string; icon: string; color: string }[] = [
-  { key: 'ok', label: 'Bien', icon: 'check-circle-outline', color: '#16a34a' },
-  { key: 'fail', label: 'Mal', icon: 'close-circle-outline', color: '#e87a20' },
-  { key: 'na', label: 'N/A', icon: 'minus-circle-outline', color: '#64748b' },
-  { key: 'cant', label: 'No se puede', icon: 'alert-circle-outline', color: '#7c3aed' },
-];
+
+const STATUS_LABELS: Record<StatusKey, string> = {
+  ok: 'Bien',
+  fail: 'Mal',
+  na: 'N/A',
+  cant: 'No se puede',
+};
+
+const STATUS_COLORS: Record<StatusKey, string> = {
+  ok: BRAND_COLORS.success,
+  fail: BRAND_COLORS.error,
+  na: BRAND_COLORS.grayDark,
+  cant: '#7c3aed',
+};
 
 const normalizeCategory = (value: string) => value.trim() || 'Checklist';
-const statusLabel = (status: string) => STATUS_OPTIONS.find((option) => option.key === status)?.label || 'Sin revisar';
-const needsEvidence = (status: string) => status === 'fail' || status === 'cant';
-
-function ChecklistItemCard({
-  item,
-  index,
-  updateChecklist,
-  pickPhoto,
-}: {
-  item: MantenimientoChecklistItem;
-  index: number;
-  updateChecklist: (index: number, patch: Partial<MantenimientoChecklistItem>) => void;
-  pickPhoto: (index: number) => void;
-}) {
-  const isOpen = needsEvidence(item.status);
-  const activeOption = STATUS_OPTIONS.find((option) => option.key === item.status);
-
-  return (
-    <View style={[styles.checkCard, item.status === 'ok' && styles.cardOk, item.status === 'fail' && styles.cardFail, item.status === 'cant' && styles.cardCant]}>
-      <View style={styles.checkHeader}>
-        <View style={styles.checkInfo}>
-          <Text style={styles.itemCategory}>{normalizeCategory(item.category)}</Text>
-          <Text style={styles.itemText}>{item.text}</Text>
-        </View>
-        <View style={[styles.currentBadge, activeOption ? { backgroundColor: `${activeOption.color}18`, borderColor: `${activeOption.color}55` } : null]}>
-          <MaterialCommunityIcons name={(activeOption?.icon || 'circle-outline') as any} size={16} color={activeOption?.color || '#64748b'} />
-          <Text style={[styles.currentBadgeText, activeOption ? { color: activeOption.color } : null]}>{statusLabel(item.status)}</Text>
-        </View>
-      </View>
-
-      <View style={styles.statusGrid}>
-        {STATUS_OPTIONS.map((option) => {
-          const active = item.status === option.key;
-          return (
-            <TouchableOpacity
-              key={option.key}
-              onPress={() => updateChecklist(index, { status: option.key, ...(!needsEvidence(option.key) ? { comment: '', photos: [] } : {}) })}
-              style={[styles.statusButton, active && { backgroundColor: option.color, borderColor: option.color }]}
-              activeOpacity={0.82}
-            >
-              <MaterialCommunityIcons name={option.icon as any} size={17} color={active ? 'white' : option.color} />
-              <Text style={[styles.statusButtonText, active && styles.statusButtonTextActive]}>{option.label}</Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-
-      {isOpen ? (
-        <View style={styles.evidenceBox}>
-          <Text style={styles.evidenceTitle}>{item.status === 'cant' ? 'Motivo' : 'Comentario de revisión'}</Text>
-          <TextInput
-            label={item.status === 'cant' ? 'Explica por qué no se puede revisar' : 'Comentario de revisión'}
-            value={item.comment || ''}
-            onChangeText={(value) => updateChecklist(index, { comment: value })}
-            mode="outlined"
-            multiline
-            numberOfLines={3}
-            style={styles.input}
-            outlineColor="#fed7aa"
-            activeOutlineColor="#e87a20"
-          />
-          <View style={styles.photoRow}>
-            {(item.photos || []).map((uri, photoIndex) => (
-              <TouchableOpacity
-                key={`${uri}-${photoIndex}`}
-                onLongPress={() => updateChecklist(index, { photos: item.photos.filter((_, idx) => idx !== photoIndex) })}
-                style={styles.photoWrap}
-                activeOpacity={0.85}
-              >
-                <Image source={{ uri }} style={styles.photo} />
-                <Text style={styles.photoLabel}>D{photoIndex + 1}</Text>
-              </TouchableOpacity>
-            ))}
-            <TouchableOpacity style={styles.addPhotoButton} onPress={() => pickPhoto(index)} activeOpacity={0.82}>
-              <MaterialCommunityIcons name="camera-plus-outline" size={24} color="#e87a20" />
-              <Text style={styles.addPhotoText}>Evidencia</Text>
-            </TouchableOpacity>
-          </View>
-          <Text style={styles.hint}>Mantén pulsada una foto para quitarla.</Text>
-        </View>
-      ) : null}
-    </View>
-  );
-}
+const needsEvidence = (status?: string) => status === 'fail' || status === 'cant';
 
 export default function MantenimientoChecklistFormScreen() {
   const params = useLocalSearchParams();
   const [inspection, setInspection] = useState<MantenimientoInspection>(() => paramsToInspection(params));
-  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
+  const [currentCategory, setCurrentCategory] = useState(0);
+  const [commentDialogVisible, setCommentDialogVisible] = useState(false);
+  const [commentItemIndex, setCommentItemIndex] = useState<number | null>(null);
+  const [commentText, setCommentText] = useState('');
 
-  const grouped = useMemo(() => inspection.checklist.reduce<Record<string, { item: MantenimientoChecklistItem; index: number }[]>>((acc, item, index) => {
-    const category = normalizeCategory(item.category);
-    acc[category] = acc[category] || [];
-    acc[category].push({ item, index });
-    return acc;
-  }, {}), [inspection.checklist]);
+  const categories = useMemo(() => {
+    const grouped: { category: string; rows: { item: MantenimientoChecklistItem; index: number }[] }[] = [];
+    inspection.checklist.forEach((item, index) => {
+      const categoryName = normalizeCategory(item.category);
+      let group = grouped.find((entry) => entry.category === categoryName);
+      if (!group) {
+        group = { category: categoryName, rows: [] };
+        grouped.push(group);
+      }
+      group.rows.push({ item, index });
+    });
+    return grouped;
+  }, [inspection.checklist]);
 
-  const counts = useMemo(() => ({
-    ok: inspection.checklist.filter((item) => item.status === 'ok').length,
-    fail: inspection.checklist.filter((item) => item.status === 'fail').length,
-    cant: inspection.checklist.filter((item) => item.status === 'cant').length,
-    na: inspection.checklist.filter((item) => item.status === 'na').length,
-    done: inspection.checklist.filter((item) => item.status).length,
-    total: inspection.checklist.length,
-  }), [inspection.checklist]);
+  useEffect(() => {
+    if (currentCategory > Math.max(categories.length - 1, 0)) setCurrentCategory(0);
+  }, [categories.length, currentCategory]);
 
-  const updateChecklist = (index: number, patch: Partial<MantenimientoChecklistItem>) => setInspection((prev) => ({
-    ...prev,
-    checklist: prev.checklist.map((item, idx) => idx === index ? { ...item, ...patch } : item),
-  }));
+  const completedItems = inspection.checklist.filter((item) => item.status).length;
+  const progress = inspection.checklist.length > 0 ? completedItems / inspection.checklist.length : 0;
+  const currentCategoryData = categories[currentCategory];
 
-  const pickPhoto = async (index: number) => {
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    if (status !== 'granted') { Alert.alert('Permisos requeridos', 'Se necesitan permisos de cámara.'); return; }
-    const result = await ImagePicker.launchCameraAsync({ allowsEditing: false, quality: 0.7 });
-    if (!result.canceled && result.assets?.[0]?.uri) {
-      const item = inspection.checklist[index];
-      updateChecklist(index, { photos: [...(item.photos || []), result.assets[0].uri] });
+  const updateChecklist = (index: number, patch: Partial<MantenimientoChecklistItem>) => {
+    setInspection((prev) => ({
+      ...prev,
+      checklist: prev.checklist.map((item, idx) => (idx === index ? { ...item, ...patch } : item)),
+    }));
+  };
+
+  const handleStatusChange = (index: number, status: StatusKey) => {
+    const shouldKeepEvidence = needsEvidence(status);
+    updateChecklist(index, {
+      status,
+      ...(!shouldKeepEvidence ? { comment: '', photos: [] } : {}),
+    });
+  };
+
+  const handleAddPhoto = async (index: number) => {
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permisos requeridos', 'Se necesitan permisos para usar la cámara.');
+        return;
+      }
+      const result = await ImagePicker.launchCameraAsync({ allowsEditing: false, aspect: [4, 3], quality: 0.7 });
+      if (!result.canceled && result.assets?.[0]?.uri) {
+        const item = inspection.checklist[index];
+        updateChecklist(index, { photos: [...(item.photos || []), result.assets[0].uri] });
+      }
+    } catch (error) {
+      console.error('Error al tomar la foto:', error);
+      Alert.alert('Error', 'No se pudo tomar la foto. Inténtalo de nuevo.');
     }
   };
 
-  const goNext = () => router.push({ pathname: '/(tabs)/mantenimiento-final-form' as any, params: inspectionToParams(inspection) });
+  const handleChooseFromGallery = async (index: number) => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permisos requeridos', 'Se necesitan permisos para acceder a la galería.');
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: false, aspect: [4, 3], quality: 0.7, allowsMultipleSelection: true, selectionLimit: 5 });
+      if (!result.canceled && result.assets?.length) {
+        const item = inspection.checklist[index];
+        const nextPhotos = [...(item.photos || [])];
+        result.assets.forEach((asset) => {
+          if (asset.uri && !nextPhotos.includes(asset.uri)) nextPhotos.push(asset.uri);
+        });
+        updateChecklist(index, { photos: nextPhotos });
+      }
+    } catch (error) {
+      console.error('Error al seleccionar imágenes:', error);
+      Alert.alert('Error', 'No se pudieron seleccionar las imágenes. Inténtalo de nuevo.');
+    }
+  };
+
+  const handleRemovePhoto = (index: number, photoIndex: number) => {
+    Alert.alert('Eliminar foto', '¿Quieres eliminar esta evidencia?', [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Eliminar',
+        style: 'destructive',
+        onPress: () => {
+          const item = inspection.checklist[index];
+          updateChecklist(index, { photos: (item.photos || []).filter((_, idx) => idx !== photoIndex) });
+        },
+      },
+    ]);
+  };
+
+  const openCommentDialog = (index: number) => {
+    setCommentItemIndex(index);
+    setCommentText(inspection.checklist[index]?.comment || '');
+    setCommentDialogVisible(true);
+  };
+
+  const handleSaveComment = () => {
+    if (commentItemIndex === null) return;
+    const item = inspection.checklist[commentItemIndex];
+    if (item.status === 'cant' && !commentText.trim()) {
+      Alert.alert('Comentario requerido', 'Debes indicar por qué no se puede revisar este punto.');
+      return;
+    }
+    updateChecklist(commentItemIndex, { comment: commentText.trim() });
+    setCommentDialogVisible(false);
+    setCommentItemIndex(null);
+    setCommentText('');
+  };
+
+  const handlePrevCategory = () => {
+    if (currentCategory > 0) setCurrentCategory((value) => value - 1);
+  };
+
+  const handleNextCategory = () => {
+    if (currentCategory < categories.length - 1) setCurrentCategory((value) => value + 1);
+  };
+
+  const goNext = () => {
+    if (completedItems < inspection.checklist.length) {
+      Alert.alert('Checklist incompleto', '¿Quieres continuar? Aún hay puntos sin revisar.', [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Continuar', onPress: () => router.push({ pathname: '/(tabs)/mantenimiento-final-form' as any, params: inspectionToParams(inspection) }) },
+      ]);
+      return;
+    }
+    router.push({ pathname: '/(tabs)/mantenimiento-final-form' as any, params: inspectionToParams(inspection) });
+  };
+
+  if (!currentCategoryData) {
+    return (
+      <SafeAreaView style={styles.loadingContainer} edges={['top', 'bottom']}>
+        <Text style={styles.loadingText}>No hay checklist configurado para este mantenimiento.</Text>
+        <Button mode="contained" onPress={goNext} buttonColor={BRAND_COLORS.primaryOrange} style={styles.returnButton}>Continuar</Button>
+      </SafeAreaView>
+    );
+  }
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <View style={styles.container}>
-        <ScrollView style={styles.scroll} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          <LinearGradient colors={GRADIENTS.primary as unknown as [string, string, ...string[]]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.header}>
-            <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}><MaterialCommunityIcons name="arrow-left" size={22} color="white" /></TouchableOpacity>
-            <MaterialCommunityIcons name="clipboard-check-outline" size={28} color="rgba(255,255,255,0.85)" />
-            <Text style={styles.headerTitle}>Checklist mantenimiento</Text>
-            <Text style={styles.headerSubtitle}>Paso 5 · Misma dinámica que Renoves: marca estado y añade evidencia solo si hace falta</Text>
-          </LinearGradient>
-
-          <View style={styles.summaryBanner}>
-            <MaterialCommunityIcons name="progress-check" size={20} color="#e87a20" />
-            <Text style={styles.summaryText}>{counts.done}/{counts.total} puntos revisados</Text>
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+        <LinearGradient colors={GRADIENTS.primary as unknown as [string, string, ...string[]]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <MaterialCommunityIcons name="arrow-left" size={22} color="white" />
+          </TouchableOpacity>
+          <Text style={styles.machineTitle}>{inspection.brand || inspection.machineType || 'Mantenimiento'}</Text>
+          <Text style={styles.clientName}>Cliente: {inspection.clientName || 'Sin cliente'} · Matrícula: {inspection.licensePlate || '—'}</Text>
+          <View style={styles.progressContainer}>
+            <Text style={styles.progressText}>Progreso: {Math.round(progress * 100)}%</Text>
+            <ProgressBar progress={progress} color={BRAND_COLORS.primaryOrange} style={styles.progressBar} />
           </View>
+        </LinearGradient>
 
-          <View style={styles.summaryRow}>
-            <SummaryBox label="Bien" value={counts.ok} color="#16a34a" />
-            <SummaryBox label="Mal" value={counts.fail} color="#e87a20" />
-            <SummaryBox label="N/A" value={counts.na} color="#64748b" />
-            <SummaryBox label="No se puede" value={counts.cant} color="#7c3aed" />
+        <View style={styles.categoryHeader}>
+          <Text style={styles.categoryTitle}>{currentCategoryData.category}</Text>
+          <View style={styles.categoryBadge}>
+            <Text style={styles.categoryCount}>{currentCategory + 1}/{categories.length}</Text>
           </View>
+        </View>
 
-          {Object.entries(grouped).map(([category, rows], sectionIndex) => {
-            const expanded = expandedSections[category] ?? sectionIndex === 0;
-            const done = rows.filter(({ item }) => item.status).length;
+        <View style={styles.checklistItems}>
+          {currentCategoryData.rows.map(({ item, index }) => {
+            const status = item.status as StatusKey | '';
+            const photos = item.photos || [];
             return (
-              <Card key={category} style={styles.sectionCard}>
-                <TouchableOpacity
-                  style={styles.sectionHeader}
-                  onPress={() => setExpandedSections((current) => ({ ...current, [category]: !expanded }))}
-                  activeOpacity={0.82}
-                >
-                  <View style={styles.sectionTitleRow}>
-                    <MaterialCommunityIcons name={expanded ? 'chevron-down' : 'chevron-right'} size={24} color="#e87a20" />
-                    <Text style={styles.sectionTitle}>{category}</Text>
+              <View key={`${item.id}-${index}`} style={styles.itemContainer}>
+                <Text style={styles.itemText}>{item.text}</Text>
+                <View style={styles.statusButtons}>
+                  {(['ok', 'fail', 'na'] as const).map((key) => {
+                    const isActive = status === key;
+                    return (
+                      <TouchableOpacity key={key} style={[styles.statusButton, isActive ? { backgroundColor: STATUS_COLORS[key] } : styles.statusButtonOutline]} onPress={() => handleStatusChange(index, key)}>
+                        <Text style={isActive ? styles.statusButtonTextActive : styles.statusButtonText}>{STATUS_LABELS[key]}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                  <TouchableOpacity style={[styles.statusButton, status === 'cant' ? { backgroundColor: STATUS_COLORS.cant } : styles.statusButtonOutline]} onPress={() => { handleStatusChange(index, 'cant'); openCommentDialog(index); }}>
+                    <Text style={status === 'cant' ? styles.statusButtonTextActive : styles.statusButtonText}>No se puede</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {needsEvidence(status) ? (
+                  <View style={styles.photoSection}>
+                    {item.comment ? (
+                      <View style={status === 'cant' ? styles.cantCommentBox : styles.commentBox}>
+                        <Text style={status === 'cant' ? styles.cantCommentText : styles.commentText}>{status === 'cant' ? 'Motivo' : 'Comentario'}: {item.comment}</Text>
+                      </View>
+                    ) : null}
+
+                    {photos.length > 0 ? (
+                      <>
+                        <Text style={styles.photosTitle}>Evidencias ({photos.length})</Text>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photosScrollView}>
+                          {photos.map((uri, photoIndex) => (
+                            <View key={`${item.id}_photo_${photoIndex}`} style={styles.photoContainer}>
+                              <Image source={{ uri }} style={styles.photo} resizeMode="cover" />
+                              <TouchableOpacity style={styles.deleteButton} onPress={() => handleRemovePhoto(index, photoIndex)}>
+                                <MaterialCommunityIcons name="close" size={14} color="white" />
+                              </TouchableOpacity>
+                            </View>
+                          ))}
+                        </ScrollView>
+                      </>
+                    ) : null}
+
+                    <View style={styles.photoActions}>
+                      <Button mode="outlined" onPress={() => handleAddPhoto(index)} icon="camera" style={styles.actionButton} textColor={BRAND_COLORS.primaryBlue} compact>Cámara</Button>
+                      <Button mode="outlined" onPress={() => handleChooseFromGallery(index)} icon="image-multiple" style={styles.actionButton} textColor={BRAND_COLORS.primaryBlue} compact>Galería</Button>
+                      <Button mode="outlined" onPress={() => openCommentDialog(index)} icon="pencil" style={styles.actionButton} textColor={BRAND_COLORS.primaryBlue} compact>Nota</Button>
+                    </View>
                   </View>
-                  <Text style={styles.sectionCounter}>{done}/{rows.length}</Text>
-                </TouchableOpacity>
-                {expanded ? (
-                  <Card.Content style={styles.sectionContent}>
-                    {rows.map(({ item, index }, rowIndex) => (
-                      <React.Fragment key={`${item.id}-${index}`}>
-                        <ChecklistItemCard item={item} index={index} updateChecklist={updateChecklist} pickPhoto={pickPhoto} />
-                        {rowIndex < rows.length - 1 ? <Divider style={styles.innerDivider} /> : null}
-                      </React.Fragment>
-                    ))}
-                  </Card.Content>
                 ) : null}
-              </Card>
+
+                <Divider style={styles.itemDivider} />
+              </View>
             );
           })}
-        </ScrollView>
-        <SafeAreaView edges={['bottom']}><View style={styles.actions}><Button mode="outlined" onPress={() => router.back()} style={styles.button} textColor={BRAND_COLORS.primaryBlue} icon="arrow-left">Cancelar</Button><Button mode="contained" onPress={goNext} style={styles.button} buttonColor={BRAND_COLORS.primaryOrange} icon="arrow-right" contentStyle={{ flexDirection: 'row-reverse' }}>Continuar</Button></View></SafeAreaView>
-      </View>
+        </View>
+      </ScrollView>
+
+      <SafeAreaView style={styles.buttonSafeArea} edges={['bottom']}>
+        <View style={styles.buttonsContainer}>
+          <Button mode="outlined" onPress={handlePrevCategory} disabled={currentCategory === 0} style={styles.navButton} icon="arrow-left" textColor={BRAND_COLORS.primaryBlue}>Anterior</Button>
+          {currentCategory < categories.length - 1 ? (
+            <Button mode="contained" onPress={handleNextCategory} style={styles.navButton} icon="arrow-right" contentStyle={{ flexDirection: 'row-reverse' }} buttonColor={BRAND_COLORS.primaryBlue}>Siguiente</Button>
+          ) : (
+            <Button mode="contained" onPress={goNext} style={styles.navButton} icon="check" contentStyle={{ flexDirection: 'row-reverse' }} buttonColor={BRAND_COLORS.primaryOrange}>Finalizar</Button>
+          )}
+        </View>
+      </SafeAreaView>
+
+      {commentDialogVisible ? (
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={[styles.modalTitle, inspection.checklist[commentItemIndex ?? -1]?.status === 'cant' && { color: STATUS_COLORS.cant }]}>
+              {inspection.checklist[commentItemIndex ?? -1]?.status === 'cant' ? '¿Por qué no se puede?' : 'Comentario'}
+            </Text>
+            <TextInput style={styles.commentInput} multiline numberOfLines={4} value={commentText} onChangeText={setCommentText} placeholder="Añade observaciones o motivo" autoFocus />
+            <View style={styles.modalButtons}>
+              <Button onPress={() => setCommentDialogVisible(false)} textColor={BRAND_COLORS.grayDark}>Cancelar</Button>
+              <Button onPress={handleSaveComment} textColor={inspection.checklist[commentItemIndex ?? -1]?.status === 'cant' ? STATUS_COLORS.cant : BRAND_COLORS.primaryBlue}>Guardar</Button>
+            </View>
+          </View>
+        </View>
+      ) : null}
     </SafeAreaView>
   );
 }
 
-function SummaryBox({ label, value, color }: { label: string; value: number; color: string }) {
-  return <View style={styles.summaryBox}><Text style={[styles.summaryValue, { color }]}>{value}</Text><Text style={styles.summaryLabel}>{label}</Text></View>;
-}
-
 const styles = StyleSheet.create({
-  safeArea:{flex:1,backgroundColor:'#0f2f57'}, container:{flex:1,backgroundColor:BRAND_COLORS.surface}, scroll:{flex:1}, content:{paddingBottom:SPACING.lg},
-  header:{paddingTop:SPACING.md,paddingBottom:SPACING.xl,paddingHorizontal:SPACING.lg,alignItems:'center',gap:SPACING.xs},
-  backBtn:{position:'absolute',left:SPACING.md,top:SPACING.md,zIndex:10,width:38,height:38,borderRadius:19,backgroundColor:'rgba(255,255,255,.16)',alignItems:'center',justifyContent:'center'},
-  headerTitle:{color:'white',fontSize:TYPOGRAPHY.sizes.xl,fontWeight:TYPOGRAPHY.weights.bold as any,textAlign:'center'}, headerSubtitle:{color:'rgba(255,255,255,.84)',textAlign:'center',fontSize:TYPOGRAPHY.sizes.sm},
-  summaryBanner:{margin:SPACING.md,marginBottom:0,padding:SPACING.md,borderRadius:BORDER_RADIUS.lg,backgroundColor:'#fff7ed',borderWidth:1,borderColor:'#fed7aa',flexDirection:'row',gap:8,alignItems:'center'}, summaryText:{fontWeight:'800',color:'#92400e'},
-  summaryRow:{flexDirection:'row',gap:8,paddingHorizontal:SPACING.md,marginTop:SPACING.md}, summaryBox:{flex:1,backgroundColor:'white',borderRadius:BORDER_RADIUS.lg,paddingVertical:SPACING.sm,paddingHorizontal:4,alignItems:'center',...SHADOWS.small}, summaryValue:{fontSize:22,fontWeight:'900'}, summaryLabel:{fontSize:10,color:'#64748b',fontWeight:'700',textAlign:'center'},
-  sectionCard:{margin:SPACING.md,marginBottom:0,borderRadius:BORDER_RADIUS.lg,overflow:'hidden',borderLeftWidth:4,borderLeftColor:BRAND_COLORS.primaryOrange,...SHADOWS.small}, sectionHeader:{padding:SPACING.md,flexDirection:'row',alignItems:'center',justifyContent:'space-between',backgroundColor:'white'}, sectionTitleRow:{flexDirection:'row',alignItems:'center',gap:4,flex:1}, sectionTitle:{fontSize:TYPOGRAPHY.sizes.md,fontWeight:TYPOGRAPHY.weights.bold as any,color:'#0f2f57',flex:1}, sectionCounter:{fontWeight:'900',color:'#92400e'}, sectionContent:{paddingTop:0},
-  checkCard:{paddingVertical:SPACING.md}, cardOk:{}, cardFail:{}, cardCant:{}, checkHeader:{flexDirection:'row',gap:SPACING.sm,alignItems:'flex-start'}, checkInfo:{flex:1}, itemCategory:{fontSize:11,color:'#64748b',textTransform:'uppercase',fontWeight:'800',letterSpacing:.4}, itemText:{fontSize:15,fontWeight:'700',color:'#0f172a',marginTop:4,lineHeight:21}, currentBadge:{borderWidth:1,borderColor:'#e2e8f0',borderRadius:999,paddingHorizontal:8,paddingVertical:5,flexDirection:'row',alignItems:'center',gap:4}, currentBadgeText:{fontSize:11,fontWeight:'800',color:'#64748b'},
-  statusGrid:{flexDirection:'row',flexWrap:'wrap',gap:8,marginTop:SPACING.sm}, statusButton:{borderWidth:1,borderColor:'#e2e8f0',borderRadius:999,paddingVertical:8,paddingHorizontal:10,flexDirection:'row',alignItems:'center',gap:5,backgroundColor:'white'}, statusButtonText:{fontSize:12,fontWeight:'800',color:'#334155'}, statusButtonTextActive:{color:'white'},
-  evidenceBox:{marginTop:SPACING.sm,borderRadius:BORDER_RADIUS.lg,backgroundColor:'#fff7ed',borderWidth:1,borderColor:'#fed7aa',padding:SPACING.sm}, evidenceTitle:{fontSize:12,fontWeight:'900',color:'#92400e',marginBottom:6,textTransform:'uppercase'}, input:{backgroundColor:'white'}, photoRow:{flexDirection:'row',flexWrap:'wrap',gap:8,marginTop:SPACING.sm}, photoWrap:{width:82}, photo:{width:82,height:82,borderRadius:12,backgroundColor:'#f1f5f9'}, photoLabel:{textAlign:'center',fontSize:11,fontWeight:'800',color:'#92400e',marginTop:3}, addPhotoButton:{width:96,height:82,borderRadius:12,borderWidth:1,borderStyle:'dashed',borderColor:'#fdba74',alignItems:'center',justifyContent:'center',backgroundColor:'white'}, addPhotoText:{fontSize:11,fontWeight:'800',color:'#92400e',marginTop:3}, hint:{fontSize:11,color:'#92400e',marginTop:6},
-  innerDivider:{backgroundColor:'#e2e8f0'}, actions:{flexDirection:'row',gap:10,padding:SPACING.md,backgroundColor:'white',borderTopWidth:1,borderTopColor:'#e2e8f0'}, button:{flex:1},
+  container: { flex: 1, backgroundColor: BRAND_COLORS.surface },
+  scrollView: { flex: 1 },
+  scrollContent: { paddingBottom: SPACING.md },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: BRAND_COLORS.surface, padding: SPACING.lg },
+  loadingText: { color: BRAND_COLORS.grayText, fontSize: TYPOGRAPHY.sizes.md, textAlign: 'center' },
+  returnButton: { marginTop: SPACING.md, borderRadius: BORDER_RADIUS.md },
+  header: { padding: SPACING.lg, paddingBottom: SPACING.xl, paddingTop: SPACING.md },
+  backButton: { position: 'absolute', left: 12, top: 12, zIndex: 10, width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
+  machineTitle: { fontSize: TYPOGRAPHY.sizes.xxl, fontWeight: TYPOGRAPHY.weights.bold as any, color: 'white', letterSpacing: 0.2, paddingLeft: 46 },
+  clientName: { fontSize: TYPOGRAPHY.sizes.sm, color: 'rgba(255,255,255,0.75)', marginTop: SPACING.xs, paddingLeft: 46 },
+  progressContainer: { marginTop: SPACING.lg },
+  progressText: { marginBottom: SPACING.sm, fontSize: TYPOGRAPHY.sizes.sm, color: 'rgba(255,255,255,0.9)', fontWeight: TYPOGRAPHY.weights.semibold as any },
+  progressBar: { height: 6, borderRadius: BORDER_RADIUS.full, backgroundColor: 'rgba(255,255,255,0.15)' },
+  categoryHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: SPACING.md, paddingHorizontal: SPACING.lg, backgroundColor: BRAND_COLORS.tertiaryBlue, borderLeftWidth: 4, borderLeftColor: BRAND_COLORS.primaryOrange },
+  categoryTitle: { fontSize: TYPOGRAPHY.sizes.lg, fontWeight: TYPOGRAPHY.weights.bold as any, color: BRAND_COLORS.primaryBlue, flex: 1 },
+  categoryBadge: { backgroundColor: BRAND_COLORS.primaryBlue, paddingHorizontal: SPACING.sm + 4, paddingVertical: SPACING.xs + 2, borderRadius: BORDER_RADIUS.full },
+  categoryCount: { fontSize: TYPOGRAPHY.sizes.xs, color: 'white', fontWeight: TYPOGRAPHY.weights.bold as any },
+  checklistItems: { padding: SPACING.lg },
+  itemContainer: { marginBottom: SPACING.md, backgroundColor: 'white', borderRadius: BORDER_RADIUS.lg, padding: SPACING.md, ...SHADOWS.soft },
+  itemText: { fontSize: TYPOGRAPHY.sizes.md, marginBottom: SPACING.sm + 2, color: '#1e293b', fontWeight: TYPOGRAPHY.weights.medium as any, lineHeight: 22 },
+  statusButtons: { flexDirection: 'row', gap: SPACING.sm },
+  statusButton: { flex: 1, padding: SPACING.sm + 2, borderRadius: BORDER_RADIUS.lg, alignItems: 'center', minHeight: 44, justifyContent: 'center' },
+  statusButtonOutline: { borderWidth: 1.5, borderColor: BRAND_COLORS.grayMedium, backgroundColor: BRAND_COLORS.grayLight },
+  statusButtonText: { color: BRAND_COLORS.grayDark, fontWeight: TYPOGRAPHY.weights.medium as any, fontSize: TYPOGRAPHY.sizes.sm, textAlign: 'center' },
+  statusButtonTextActive: { color: 'white', fontWeight: TYPOGRAPHY.weights.bold as any, fontSize: TYPOGRAPHY.sizes.sm, textAlign: 'center' },
+  photoSection: { marginTop: SPACING.sm, backgroundColor: BRAND_COLORS.errorLight, padding: SPACING.sm, borderRadius: BORDER_RADIUS.md },
+  commentBox: { backgroundColor: 'white', padding: SPACING.sm, borderRadius: BORDER_RADIUS.md, marginBottom: SPACING.sm, borderLeftWidth: 3, borderLeftColor: BRAND_COLORS.primaryOrange },
+  commentText: { fontSize: TYPOGRAPHY.sizes.xs, color: BRAND_COLORS.primaryBlue, fontWeight: TYPOGRAPHY.weights.semibold as any },
+  cantCommentBox: { backgroundColor: '#f3f0ff', padding: SPACING.sm, borderRadius: BORDER_RADIUS.md, marginBottom: SPACING.sm, borderLeftWidth: 3, borderLeftColor: '#7c3aed' },
+  cantCommentText: { fontSize: TYPOGRAPHY.sizes.xs, color: '#5b21b6', fontWeight: TYPOGRAPHY.weights.semibold as any },
+  photosTitle: { fontSize: TYPOGRAPHY.sizes.sm, fontWeight: TYPOGRAPHY.weights.bold as any, color: BRAND_COLORS.primaryBlue, marginBottom: SPACING.sm },
+  photosScrollView: { marginBottom: SPACING.sm },
+  photoContainer: { position: 'relative', marginRight: SPACING.sm, borderRadius: BORDER_RADIUS.md, overflow: 'hidden', width: 110 },
+  photo: { width: 110, height: 110, borderRadius: BORDER_RADIUS.md },
+  deleteButton: { position: 'absolute', top: 4, right: 4, width: 24, height: 24, borderRadius: BORDER_RADIUS.full, backgroundColor: 'rgba(220, 38, 38, 0.85)', justifyContent: 'center', alignItems: 'center' },
+  photoActions: { flexDirection: 'row', gap: SPACING.sm },
+  actionButton: { flex: 1, borderColor: BRAND_COLORS.primaryBlue, borderRadius: BORDER_RADIUS.md },
+  itemDivider: { marginTop: 0, height: 0 },
+  buttonSafeArea: { backgroundColor: 'white' },
+  buttonsContainer: { flexDirection: 'row', justifyContent: 'space-between', padding: SPACING.md, paddingTop: SPACING.md + 2, backgroundColor: 'white', borderTopWidth: 1, borderTopColor: BRAND_COLORS.grayLight, ...SHADOWS.soft },
+  navButton: { flex: 1, marginHorizontal: SPACING.sm, borderRadius: BORDER_RADIUS.lg },
+  modalOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15,23,42,0.5)', justifyContent: 'center', alignItems: 'center', zIndex: 1000 },
+  modalContent: { backgroundColor: 'white', borderRadius: BORDER_RADIUS.xl + 4, padding: SPACING.xl, width: '88%', maxWidth: 400, ...SHADOWS.large },
+  modalTitle: { fontSize: TYPOGRAPHY.sizes.xl, fontWeight: TYPOGRAPHY.weights.bold as any, marginBottom: SPACING.md, color: BRAND_COLORS.primaryBlue },
+  commentInput: { borderWidth: 1.5, borderColor: BRAND_COLORS.grayMedium, borderRadius: BORDER_RADIUS.lg, padding: SPACING.md, backgroundColor: BRAND_COLORS.grayLight, textAlignVertical: 'top', minHeight: 90, fontSize: TYPOGRAPHY.sizes.md },
+  modalButtons: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: SPACING.lg, gap: SPACING.sm },
 });

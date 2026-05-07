@@ -8,6 +8,7 @@ export interface MantenimientoMaterial {
   name: string;
   quantity: string;
   reference: string;
+  available: boolean | null;
 }
 
 export interface MantenimientoChecklistItem {
@@ -107,7 +108,13 @@ const dbRowToInspection = (row: any, checklistRows: any[], photoRows: any[], mat
     notes: row.notes || '',
     safetyChecklist: row.safety_checklist ? parseSafetyChecklist(row.safety_checklist, 'full') : null,
     checklist,
-    materials: (materialRows || []).map((material: any) => ({ id: material.id, name: material.name || '', quantity: material.quantity || '', reference: material.reference || '' })),
+    materials: (materialRows || []).map((material: any) => ({
+      id: material.id,
+      name: material.name || '',
+      quantity: material.quantity || '',
+      reference: material.reference || '',
+      available: typeof material.available === 'boolean' ? material.available : null,
+    })),
     generalPhotos,
     createdAt: row.created_at || '',
     updatedAt: row.updated_at || '',
@@ -218,7 +225,15 @@ export const saveMantenimientoInspection = async (inspection: MantenimientoInspe
   }
 
   if (saved.materials.length > 0) {
-    await supabase.from('mantenimiento_materials').insert(saved.materials.map((material, index) => ({ id: isUUID(material.id) ? material.id : generateUUID(), inspection_id: inspectionId, name: material.name, quantity: material.quantity, reference: material.reference || null, sort_order: index })));
+    await supabase.from('mantenimiento_materials').insert(saved.materials.map((material, index) => ({
+      id: isUUID(material.id) ? material.id : generateUUID(),
+      inspection_id: inspectionId,
+      name: material.name,
+      quantity: material.quantity,
+      reference: material.reference || null,
+      available: material.available,
+      sort_order: index,
+    })));
   }
 
   invalidateMantenimientoCache();

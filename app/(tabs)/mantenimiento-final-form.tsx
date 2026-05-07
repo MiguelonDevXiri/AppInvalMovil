@@ -2,32 +2,46 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useMemo, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { Button, Card, Divider, Text, TextInput } from 'react-native-paper';
+import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Button, Card, Divider, IconButton, Text, TextInput } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BORDER_RADIUS, BRAND_COLORS, GRADIENTS, SHADOWS, SPACING, TYPOGRAPHY } from '../../constants/Colors';
-import { generateUUID, inspectionToParams, paramsToInspection, saveMantenimientoInspection, type MantenimientoInspection } from '../../utils/mantenimientoStorage';
+import { generateUUID, inspectionToParams, paramsToInspection, saveMantenimientoInspection, type MantenimientoInspection, type MantenimientoMaterial } from '../../utils/mantenimientoStorage';
+
+const buildEmptyMaterial = (): MantenimientoMaterial => ({
+  id: generateUUID(),
+  name: '',
+  quantity: '',
+  reference: '',
+  available: null,
+});
 
 export default function MantenimientoFinalFormScreen() {
   const params = useLocalSearchParams();
-  const [inspection, setInspection] = useState<MantenimientoInspection>(() => paramsToInspection(params));
+  const [inspection, setInspection] = useState<MantenimientoInspection>(() => {
+    const current = paramsToInspection(params);
+    return { ...current, materials: current.materials.length > 0 ? current.materials : [buildEmptyMaterial()] };
+  });
   const [saving, setSaving] = useState(false);
+
   const checkedCount = useMemo(() => inspection.checklist.filter((item) => item.status).length, [inspection.checklist]);
   const photoCount = useMemo(() => Object.values(inspection.generalPhotos).filter(Boolean).length, [inspection.generalPhotos]);
+  const validMaterialCount = useMemo(() => inspection.materials.filter((material) => material.name.trim() || material.quantity.trim() || material.reference.trim()).length, [inspection.materials]);
 
   const setField = (field: keyof MantenimientoInspection, value: string) => setInspection((prev) => ({ ...prev, [field]: value }));
-  const addMaterial = () => setInspection((prev) => ({ ...prev, materials: [...prev.materials, { id: generateUUID(), name: '', quantity: '', reference: '' }] }));
-  const updateMaterial = (index: number, field: 'name' | 'quantity' | 'reference', value: string) => setInspection((prev) => ({ ...prev, materials: prev.materials.map((m, idx) => idx === index ? { ...m, [field]: value } : m) }));
-  const removeMaterial = (index: number) => setInspection((prev) => ({ ...prev, materials: prev.materials.filter((_, idx) => idx !== index) }));
+  const addMaterial = () => setInspection((prev) => ({ ...prev, materials: [...prev.materials, buildEmptyMaterial()] }));
+  const updateMaterial = <K extends keyof MantenimientoMaterial>(id: string, field: K, value: MantenimientoMaterial[K]) => setInspection((prev) => ({ ...prev, materials: prev.materials.map((material) => material.id === id ? { ...material, [field]: value } : material) }));
+  const removeMaterial = (id: string) => setInspection((prev) => ({ ...prev, materials: prev.materials.length === 1 ? [buildEmptyMaterial()] : prev.materials.filter((material) => material.id !== id) }));
 
   const handleSave = async () => {
-    if (!inspection.clientName.trim() || !inspection.location.trim() || !inspection.reviewedBy.trim()) {
-      Alert.alert('Campos obligatorios', 'Cliente, ubicación y técnico son obligatorios.');
+    if (!inspection.brand.trim() || !inspection.clientName.trim() || !inspection.licensePlate.trim()) {
+      Alert.alert('Campos obligatorios', 'Marca, cliente y matrícula son obligatorios.');
       return;
     }
     try {
       setSaving(true);
-      const saved = await saveMantenimientoInspection(inspection);
+      const validMaterials = inspection.materials.filter((material) => material.name.trim() || material.quantity.trim() || material.reference.trim());
+      const saved = await saveMantenimientoInspection({ ...inspection, materials: validMaterials });
       router.replace({ pathname: '/mantenimiento-report-view' as any, params: { inspectionId: saved.id } });
     } catch (error) {
       console.error('Error al guardar mantenimiento:', error);
@@ -39,42 +53,137 @@ export default function MantenimientoFinalFormScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <View style={styles.container}>
-        <ScrollView style={styles.scroll} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          <LinearGradient colors={GRADIENTS.primary as unknown as [string, string, ...string[]]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.header}>
-            <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}><MaterialCommunityIcons name="arrow-left" size={22} color="white" /></TouchableOpacity>
-            <Text style={styles.headerTitle}>Resumen mantenimiento</Text>
-            <Text style={styles.headerSubtitle}>Paso final · Comentarios, materiales y PDF</Text>
+      <KeyboardAvoidingView style={styles.keyboardView} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+          <LinearGradient colors={GRADIENTS.primary as unknown as [string, string, ...string[]]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.headerGradient}>
+            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+              <MaterialCommunityIcons name="arrow-left" size={22} color="white" />
+            </TouchableOpacity>
+            <MaterialCommunityIcons name="toolbox-outline" size={26} color="rgba(255,255,255,0.7)" />
+            <Text style={styles.headerTitle}>Materiales y observaciones</Text>
+            <Text style={styles.headerSubtitle}>Último paso antes de guardar y generar el PDF</Text>
           </LinearGradient>
 
-          <View style={styles.summaryRow}>
-            <View style={styles.summaryBox}><Text style={styles.summaryValue}>{checkedCount}</Text><Text style={styles.summaryLabel}>Revisados</Text></View>
-            <View style={styles.summaryBox}><Text style={styles.summaryValue}>{photoCount}</Text><Text style={styles.summaryLabel}>Fotos generales</Text></View>
-            <View style={styles.summaryBox}><Text style={styles.summaryValue}>{inspection.materials.length}</Text><Text style={styles.summaryLabel}>Materiales</Text></View>
-          </View>
+          <Card style={styles.infoCard}>
+            <Card.Content style={styles.infoContent}>
+              <MaterialCommunityIcons name="clipboard-check-outline" size={20} color={BRAND_COLORS.primaryBlue} />
+              <View style={styles.infoTextContainer}>
+                <Text style={styles.infoName}>{inspection.brand || inspection.machineType || 'Mantenimiento'}</Text>
+                <Text style={styles.infoDetail}>Cliente: {inspection.clientName || '—'} · Matrícula: {inspection.licensePlate || '—'}</Text>
+                <Text style={styles.infoDetail}>{checkedCount}/{inspection.checklist.length} revisados · {photoCount} fotos generales · {validMaterialCount} materiales</Text>
+              </View>
+            </Card.Content>
+          </Card>
 
-          <Card style={styles.card}><Card.Content>
-            <Text style={styles.sectionTitle}>Datos principales</Text><Divider style={styles.divider} />
-            <Text style={styles.meta}>{inspection.clientName} · {inspection.location}</Text>
-            <Text style={styles.meta}>{inspection.brand || 'Sin marca'} {inspection.model || ''} · {inspection.licensePlate || inspection.serialNumber || 'Sin matrícula/serie'}</Text>
-            <Text style={styles.meta}>Técnico: {inspection.reviewedBy}</Text>
-          </Card.Content></Card>
+          <Card style={styles.materialesCard}>
+            <Card.Content>
+              <View style={styles.materialesHeader}>
+                <Text style={styles.sectionTitle}>🧰 Materiales</Text>
+                <Button mode="contained" onPress={addMaterial} icon="plus" compact style={styles.addButton} buttonColor={BRAND_COLORS.primaryBlue}>Añadir</Button>
+              </View>
+              <Divider style={styles.divider} />
 
-          <Card style={styles.card}><Card.Content>
-            <Text style={styles.sectionTitle}>Materiales opcionales</Text><Divider style={styles.divider} />
-            {inspection.materials.map((material, index) => <View key={material.id} style={styles.materialRow}><TextInput label="Material" value={material.name} onChangeText={(v) => updateMaterial(index, 'name', v)} mode="outlined" style={styles.materialInput} /><TextInput label="Cant." value={material.quantity} onChangeText={(v) => updateMaterial(index, 'quantity', v)} mode="outlined" style={styles.qtyInput} /><TouchableOpacity onPress={() => removeMaterial(index)} style={styles.deleteBtn}><MaterialCommunityIcons name="delete" size={22} color="#ef4444" /></TouchableOpacity><TextInput label="Referencia" value={material.reference} onChangeText={(v) => updateMaterial(index, 'reference', v)} mode="outlined" style={styles.fullInput} /></View>)}
-            <Button mode="outlined" onPress={addMaterial} icon="plus">Añadir material</Button>
-          </Card.Content></Card>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <View style={styles.tableContainer}>
+                  <View style={styles.tableHeader}>
+                    <Text style={[styles.tableHeaderText, styles.materialColumn]}>Material</Text>
+                    <Text style={[styles.tableHeaderText, styles.quantityColumn]}>Cant.</Text>
+                    <Text style={[styles.tableHeaderText, styles.referenceColumn]}>Ref.</Text>
+                    <Text style={[styles.tableHeaderText, styles.availableColumn]}>¿Hay?</Text>
+                    <View style={styles.actionColumn} />
+                  </View>
 
-          <Card style={styles.card}><Card.Content>
-            <Text style={styles.sectionTitle}>Comentarios</Text><Divider style={styles.divider} />
-            <TextInput label="Observaciones" value={inspection.notes} onChangeText={(v) => setField('notes', v)} mode="outlined" multiline numberOfLines={4} style={styles.input} />
-          </Card.Content></Card>
+                  {inspection.materials.map((material) => (
+                    <View key={material.id} style={styles.tableRow}>
+                      <TextInput value={material.name} onChangeText={(text) => updateMaterial(material.id, 'name', text)} style={[styles.tableInput, styles.materialColumn]} mode="outlined" dense placeholder="Material" outlineColor={BRAND_COLORS.grayMedium} activeOutlineColor={BRAND_COLORS.primaryBlue} />
+                      <TextInput value={material.quantity} onChangeText={(text) => updateMaterial(material.id, 'quantity', text)} style={[styles.tableInput, styles.quantityColumn]} mode="outlined" dense placeholder="Cant." outlineColor={BRAND_COLORS.grayMedium} activeOutlineColor={BRAND_COLORS.primaryBlue} />
+                      <TextInput value={material.reference} onChangeText={(text) => updateMaterial(material.id, 'reference', text)} style={[styles.tableInput, styles.referenceColumn]} mode="outlined" dense placeholder="Referencia" outlineColor={BRAND_COLORS.grayMedium} activeOutlineColor={BRAND_COLORS.primaryBlue} />
+                      <View style={styles.availableColumn}>
+                        <View style={styles.availableToggle}>
+                          <TouchableOpacity
+                            onPress={() => updateMaterial(material.id, 'available', material.available === true ? null : true)}
+                            style={[styles.availableOption, material.available === true && styles.availableYes]}
+                          >
+                            <Text style={[styles.availableOptionText, material.available === true && styles.availableOptionTextActive]}>Sí</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            onPress={() => updateMaterial(material.id, 'available', material.available === false ? null : false)}
+                            style={[styles.availableOption, material.available === false && styles.availableNo]}
+                          >
+                            <Text style={[styles.availableOptionText, material.available === false && styles.availableOptionTextActive]}>No</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                      <IconButton icon="delete" size={20} onPress={() => removeMaterial(material.id)} iconColor={BRAND_COLORS.error} style={styles.deleteButton} />
+                    </View>
+                  ))}
+                </View>
+              </ScrollView>
+
+              <Text style={styles.helpText}>Puedes dejar este apartado vacío si no hay materiales que añadir.</Text>
+            </Card.Content>
+          </Card>
+
+          <Card style={styles.notesCard}>
+            <Card.Content>
+              <Text style={styles.sectionTitle}>Notas y observaciones</Text>
+              <Divider style={styles.divider} />
+              <TextInput label="Observaciones" value={inspection.notes} onChangeText={(value) => setField('notes', value)} mode="outlined" multiline numberOfLines={5} style={styles.notesInput} outlineColor={BRAND_COLORS.grayMedium} activeOutlineColor={BRAND_COLORS.primaryBlue} />
+            </Card.Content>
+          </Card>
         </ScrollView>
-        <SafeAreaView edges={['bottom']}><View style={styles.actions}><Button mode="outlined" onPress={() => router.push({ pathname: '/(tabs)/mantenimiento-checklist-form' as any, params: inspectionToParams(inspection) })} style={styles.button} textColor={BRAND_COLORS.primaryBlue} icon="arrow-left">Cancelar</Button><Button mode="contained" loading={saving} disabled={saving} onPress={handleSave} style={styles.button} icon="file-pdf-box" buttonColor={BRAND_COLORS.primaryOrange}>Guardar/PDF</Button></View></SafeAreaView>
-      </View>
+
+        <SafeAreaView style={styles.buttonSafeArea} edges={['bottom']}>
+          <View style={styles.buttonContainer}>
+            <Button mode="outlined" onPress={() => router.push({ pathname: '/(tabs)/mantenimiento-checklist-form' as any, params: inspectionToParams(inspection) })} disabled={saving} style={styles.navButton} icon="arrow-left" textColor={BRAND_COLORS.primaryBlue}>Volver</Button>
+            <Button mode="contained" onPress={handleSave} disabled={saving} loading={saving} style={styles.navButton} icon="file-pdf-box" contentStyle={{ flexDirection: 'row-reverse' }} buttonColor={BRAND_COLORS.primaryOrange}>{saving ? 'Guardando...' : 'Guardar/PDF'}</Button>
+          </View>
+        </SafeAreaView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({ safeArea:{flex:1,backgroundColor:'#0f2f57'}, container:{flex:1,backgroundColor:BRAND_COLORS.surface}, scroll:{flex:1}, content:{paddingBottom:SPACING.lg}, header:{padding:SPACING.lg,borderBottomLeftRadius:BORDER_RADIUS.xl,borderBottomRightRadius:BORDER_RADIUS.xl}, backBtn:{width:36,height:36,borderRadius:18,backgroundColor:'rgba(255,255,255,.2)',alignItems:'center',justifyContent:'center'}, headerTitle:{color:'white',fontSize:TYPOGRAPHY.sizes.xl,fontWeight:TYPOGRAPHY.weights.bold as any,marginTop:SPACING.sm}, headerSubtitle:{color:'rgba(255,255,255,.85)',marginTop:4}, summaryRow:{flexDirection:'row',gap:8,paddingHorizontal:SPACING.md,marginTop:SPACING.md}, summaryBox:{flex:1,backgroundColor:'white',borderRadius:BORDER_RADIUS.lg,padding:SPACING.md,alignItems:'center',...SHADOWS.small}, summaryValue:{fontSize:22,fontWeight:'800',color:'#0f2f57'}, summaryLabel:{fontSize:11,color:'#64748b',textAlign:'center'}, card:{margin:SPACING.md,marginBottom:0,borderRadius:BORDER_RADIUS.lg,borderLeftWidth:4,borderLeftColor:BRAND_COLORS.primaryOrange,...SHADOWS.small}, sectionTitle:{fontSize:TYPOGRAPHY.sizes.lg,fontWeight:TYPOGRAPHY.weights.bold as any,color:'#0f2f57'}, divider:{marginVertical:SPACING.sm}, meta:{color:'#475569',marginTop:4}, input:{backgroundColor:'white'}, materialRow:{flexDirection:'row',flexWrap:'wrap',gap:8,marginBottom:10,alignItems:'center'}, materialInput:{flex:1,minWidth:150,backgroundColor:'white'}, qtyInput:{width:86,backgroundColor:'white'}, fullInput:{width:'100%',backgroundColor:'white'}, deleteBtn:{width:42,height:42,alignItems:'center',justifyContent:'center'}, actions:{flexDirection:'row',gap:10,padding:SPACING.md,backgroundColor:'white',borderTopWidth:1,borderTopColor:'#e2e8f0'}, button:{flex:1} });
+const styles = StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: BRAND_COLORS.primaryBlue },
+  keyboardView: { flex: 1, backgroundColor: BRAND_COLORS.surface },
+  scrollView: { flex: 1 },
+  scrollContent: { paddingBottom: 100 },
+  headerGradient: { padding: SPACING.lg, alignItems: 'center' },
+  backButton: { position: 'absolute', left: 12, top: 12, zIndex: 10, width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
+  headerTitle: { color: 'white', fontSize: TYPOGRAPHY.sizes.xl, fontWeight: TYPOGRAPHY.weights.bold as any, marginTop: SPACING.sm },
+  headerSubtitle: { color: 'rgba(255,255,255,0.8)', fontSize: TYPOGRAPHY.sizes.sm, textAlign: 'center', marginTop: SPACING.xs },
+  infoCard: { margin: SPACING.md, marginBottom: SPACING.sm, borderRadius: BORDER_RADIUS.lg, ...SHADOWS.small },
+  infoContent: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md },
+  infoTextContainer: { flex: 1 },
+  infoName: { fontSize: TYPOGRAPHY.sizes.md, fontWeight: TYPOGRAPHY.weights.bold as any, color: BRAND_COLORS.primaryBlue },
+  infoDetail: { fontSize: TYPOGRAPHY.sizes.sm, color: BRAND_COLORS.grayText, marginTop: 2 },
+  materialesCard: { marginHorizontal: SPACING.md, borderRadius: BORDER_RADIUS.lg, borderLeftWidth: 3, borderLeftColor: BRAND_COLORS.primaryOrange, ...SHADOWS.small },
+  notesCard: { margin: SPACING.md, borderRadius: BORDER_RADIUS.lg, borderLeftWidth: 3, borderLeftColor: BRAND_COLORS.primaryOrange, ...SHADOWS.small },
+  materialesHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: SPACING.sm },
+  sectionTitle: { fontSize: TYPOGRAPHY.sizes.md, fontWeight: TYPOGRAPHY.weights.bold as any, color: BRAND_COLORS.primaryBlue },
+  addButton: { borderRadius: BORDER_RADIUS.md },
+  divider: { backgroundColor: BRAND_COLORS.lightOrange, height: 1, marginBottom: SPACING.md, marginTop: SPACING.sm },
+  tableContainer: { minWidth: 660 },
+  tableHeader: { flexDirection: 'row', marginBottom: SPACING.sm, paddingHorizontal: SPACING.xs },
+  tableHeaderText: { fontWeight: TYPOGRAPHY.weights.bold as any, color: BRAND_COLORS.primaryBlue, fontSize: TYPOGRAPHY.sizes.sm },
+  tableRow: { flexDirection: 'row', alignItems: 'center', marginBottom: SPACING.sm },
+  tableInput: { backgroundColor: 'white', marginRight: SPACING.xs },
+  materialColumn: { flex: 2 },
+  quantityColumn: { flex: 1 },
+  referenceColumn: { flex: 1.5 },
+  availableColumn: { width: 92, marginRight: SPACING.xs },
+  actionColumn: { width: 44 },
+  availableToggle: { flexDirection: 'row', borderWidth: 1, borderColor: BRAND_COLORS.grayMedium, borderRadius: BORDER_RADIUS.md, overflow: 'hidden', height: 40, backgroundColor: 'white' },
+  availableOption: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6 },
+  availableYes: { backgroundColor: BRAND_COLORS.success },
+  availableNo: { backgroundColor: BRAND_COLORS.error },
+  availableOptionText: { fontSize: 12, fontWeight: TYPOGRAPHY.weights.bold as any, color: BRAND_COLORS.grayDark },
+  availableOptionTextActive: { color: 'white' },
+  deleteButton: { margin: 0 },
+  helpText: { fontSize: TYPOGRAPHY.sizes.xs, color: BRAND_COLORS.grayText, fontStyle: 'italic', marginTop: SPACING.sm },
+  notesInput: { backgroundColor: 'white' },
+  buttonSafeArea: { backgroundColor: 'white' },
+  buttonContainer: { flexDirection: 'row', justifyContent: 'space-between', padding: SPACING.md, backgroundColor: 'white', borderTopWidth: 1, borderTopColor: BRAND_COLORS.grayMedium, ...SHADOWS.medium },
+  navButton: { flex: 1, marginHorizontal: SPACING.xs, borderRadius: BORDER_RADIUS.md },
+});

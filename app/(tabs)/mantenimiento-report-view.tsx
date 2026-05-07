@@ -221,12 +221,26 @@ export default function MantenimientoReportViewScreen() {
 
         <Card style={styles.card}><Card.Content>
           <Title style={styles.sectionTitle}>🧰 Materiales</Title><Divider style={styles.divider} />
-          {inspection.materials.length > 0 ? inspection.materials.map((material, index) => (
-            <View key={material.id} style={styles.materialRow}>
-              <View style={styles.materialNumber}><Text style={styles.materialNumberText}>{index + 1}</Text></View>
-              <View style={{ flex: 1 }}><Text style={styles.materialName}>{material.name || 'Material sin nombre'}</Text><Text style={styles.materialMeta}>Cantidad: {material.quantity || '—'} · Ref: {material.reference || '—'}</Text></View>
-            </View>
-          )) : <Text style={styles.emptyText}>Sin materiales asociados.</Text>}
+          {inspection.materials.length > 0 ? (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View style={styles.materialsTable}>
+                <View style={styles.materialsHeaderRow}>
+                  <Text style={[styles.materialsHeaderText, { flex: 2 }]}>Material</Text>
+                  <Text style={[styles.materialsHeaderText, { flex: 1 }]}>Cant.</Text>
+                  <Text style={[styles.materialsHeaderText, { flex: 1.4 }]}>Ref.</Text>
+                  <Text style={[styles.materialsHeaderText, { flex: 0.9 }]}>¿Hay?</Text>
+                </View>
+                {inspection.materials.map((material, index) => (
+                  <View key={material.id} style={[styles.materialsRow, index % 2 === 0 ? styles.materialsRowEven : styles.materialsRowOdd]}>
+                    <Text style={[styles.materialsCell, { flex: 2 }]}>{material.name || '—'}</Text>
+                    <Text style={[styles.materialsCell, { flex: 1 }]}>{material.quantity || '—'}</Text>
+                    <Text style={[styles.materialsCell, { flex: 1.4 }]}>{material.reference || '—'}</Text>
+                    <Text style={[styles.materialsCell, { flex: 0.9 }]}>{material.available === true ? 'Sí' : material.available === false ? 'No' : '—'}</Text>
+                  </View>
+                ))}
+              </View>
+            </ScrollView>
+          ) : <Text style={styles.emptyText}>Sin materiales asociados.</Text>}
         </Card.Content></Card>
 
         <Card style={styles.card}><Card.Content>
@@ -258,7 +272,7 @@ const styles = StyleSheet.create({
   summaryRow:{flexDirection:'row',gap:8,paddingHorizontal:SPACING.md,marginTop:SPACING.md}, summaryBox:{flex:1,backgroundColor:'white',borderRadius:BORDER_RADIUS.lg,paddingVertical:SPACING.sm,paddingHorizontal:4,alignItems:'center',...SHADOWS.small}, summaryValue:{fontSize:22,fontWeight:'900'}, summaryLabel:{fontSize:10,color:'#64748b',fontWeight:'700',textAlign:'center'},
   safetyBlock:{paddingVertical:SPACING.xs}, safetyHeader:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:SPACING.sm}, safetyTitle:{flex:1,fontWeight:'800',color:'#0f172a'}, safetyBadge:{borderRadius:999,paddingHorizontal:8,paddingVertical:4}, badgeSafe:{backgroundColor:'#dcfce7'}, badgeWarning:{backgroundColor:'#fff7ed'}, badgeNeutral:{backgroundColor:'#f1f5f9'}, safetyBadgeText:{fontSize:10,fontWeight:'900',color:'#334155'}, safetySummary:{color:'#475569',marginTop:6}, safetyDetails:{backgroundColor:'#f8fafc',borderRadius:12,padding:SPACING.sm,marginTop:6}, safetyDetailText:{color:'#475569',fontSize:12,lineHeight:18}, innerDivider:{marginVertical:SPACING.sm,backgroundColor:'#e2e8f0'},
   checkSection:{borderWidth:1,borderColor:'#e2e8f0',borderRadius:14,overflow:'hidden',marginTop:SPACING.sm}, categoryBanner:{backgroundColor:'#0f2f57',color:'white',fontWeight:'900',paddingVertical:8,paddingHorizontal:12,textTransform:'uppercase',letterSpacing:.4}, checkRow:{padding:SPACING.sm,borderTopWidth:1,borderTopColor:'#e2e8f0',backgroundColor:'white'}, checkTop:{flexDirection:'row',alignItems:'flex-start',gap:SPACING.sm}, checkCategory:{fontSize:10,color:'#64748b',textTransform:'uppercase',fontWeight:'800'}, checkText:{fontSize:14,color:'#0f172a',fontWeight:'700',lineHeight:20,marginTop:2}, statusBadge:{borderWidth:1,borderRadius:999,paddingVertical:5,paddingHorizontal:8}, statusBadgeText:{fontSize:11,fontWeight:'900'}, commentBox:{marginTop:8,borderRadius:12,padding:10,fontSize:12,lineHeight:18}, commentFail:{backgroundColor:'#fff7ed',color:'#92400e'}, commentCant:{backgroundColor:'#f5f3ff',color:'#5b21b6'}, commentStrong:{fontWeight:'900'}, inlinePhotos:{flexDirection:'row',flexWrap:'wrap',gap:8,marginTop:8}, inlinePhotoBox:{width:82}, inlinePhoto:{width:82,height:82,borderRadius:12,backgroundColor:'#f1f5f9'}, inlinePhotoLabel:{textAlign:'center',fontSize:11,fontWeight:'800',color:'#92400e',marginTop:3},
-  materialRow:{flexDirection:'row',alignItems:'center',gap:SPACING.sm,paddingVertical:8,borderBottomWidth:1,borderBottomColor:'#eef2f7'}, materialNumber:{width:28,height:28,borderRadius:14,backgroundColor:'#fff7ed',alignItems:'center',justifyContent:'center'}, materialNumberText:{color:'#b45309',fontWeight:'900'}, materialName:{fontSize:14,fontWeight:'800',color:'#0f172a'}, materialMeta:{fontSize:12,color:'#64748b',marginTop:2}, notesText:{color:'#475569',lineHeight:21}, emptyText:{color:'#64748b',fontStyle:'italic'},
+  materialsTable:{minWidth:620,borderWidth:1,borderColor:'#e2e8f0',borderRadius:12,overflow:'hidden'}, materialsHeaderRow:{flexDirection:'row',backgroundColor:'#0f2f57',borderBottomWidth:3,borderBottomColor:'#e87a20'}, materialsHeaderText:{color:'white',fontSize:11,fontWeight:'900',textTransform:'uppercase',letterSpacing:.5,paddingVertical:9,paddingHorizontal:8}, materialsRow:{flexDirection:'row',borderBottomWidth:1,borderBottomColor:'#e2e8f0'}, materialsRowEven:{backgroundColor:'#f8fafc'}, materialsRowOdd:{backgroundColor:'white'}, materialsCell:{fontSize:12,color:'#334155',fontWeight:'700',paddingVertical:9,paddingHorizontal:8}, notesText:{color:'#475569',lineHeight:21}, emptyText:{color:'#64748b',fontStyle:'italic'},
   photoSection:{marginTop:SPACING.xs}, photoToggle:{flexDirection:'row',alignItems:'center',gap:SPACING.sm,padding:SPACING.sm,borderRadius:14,backgroundColor:'#fff7ed',borderWidth:1,borderColor:'#fed7aa'}, photoToggleTextBox:{flex:1}, photoToggleTitle:{fontWeight:'900',color:'#92400e'}, photoToggleSubtitle:{fontSize:11,color:'#b45309',marginTop:2}, photoCountPill:{minWidth:30,height:30,borderRadius:15,backgroundColor:'#e87a20',alignItems:'center',justifyContent:'center'}, photoCountText:{color:'white',fontWeight:'900'}, photosGrid:{flexDirection:'row',flexWrap:'wrap',gap:10,marginTop:SPACING.sm}, photoItem:{width:'47%',borderRadius:14,backgroundColor:'#f8fafc',borderWidth:1,borderColor:'#e2e8f0',overflow:'hidden'}, photoThumb:{width:'100%',height:130}, photoLabel:{textAlign:'center',fontWeight:'900',color:'#0f2f57',paddingVertical:6},
   bottomActions:{position:'absolute',left:0,right:0,bottom:0,flexDirection:'row',gap:10,paddingHorizontal:SPACING.md,paddingTop:SPACING.md,backgroundColor:'white',borderTopWidth:1,borderTopColor:'#e2e8f0',...SHADOWS.medium}, actionButton:{flex:1},
 });

@@ -36,8 +36,8 @@ export default function MantenimientoFormScreen() {
   const setField = (field: keyof MantenimientoInspection, value: string) => setInspection((prev) => ({ ...prev, [field]: value }));
 
   const handleContinue = () => {
-    if (!inspection.clientName.trim() || !inspection.location.trim() || !inspection.reviewedBy.trim()) {
-      Alert.alert('Campos obligatorios', 'Cliente, ubicación y técnico son obligatorios.');
+    if (!inspection.brand.trim() || !inspection.clientName.trim() || !inspection.licensePlate.trim()) {
+      Alert.alert('Campos obligatorios', 'Marca, cliente y matrícula son obligatorios.');
       return;
     }
     if (isSaving) return;
@@ -83,7 +83,7 @@ export default function MantenimientoFormScreen() {
             <Divider style={styles.divider} />
 
             <TextInput
-              label="Marca"
+              label="Marca *"
               value={inspection.brand}
               onChangeText={(value) => setField('brand', value)}
               style={styles.input}
@@ -113,7 +113,7 @@ export default function MantenimientoFormScreen() {
               outlineStyle={styles.inputOutline}
             />
             <TextInput
-              label="Matrícula"
+              label="Matrícula *"
               value={inspection.licensePlate}
               onChangeText={(value) => setField('licensePlate', value)}
               style={styles.input}
@@ -122,17 +122,6 @@ export default function MantenimientoFormScreen() {
               activeOutlineColor={BRAND_COLORS.primaryBlue}
               outlineStyle={styles.inputOutline}
             />
-            <TextInput
-              label="Nº OT"
-              value={inspection.otNumber || ''}
-              onChangeText={(value) => setField('otNumber', value)}
-              style={styles.input}
-              mode="outlined"
-              outlineColor={BRAND_COLORS.grayMedium}
-              activeOutlineColor={BRAND_COLORS.primaryBlue}
-              outlineStyle={styles.inputOutline}
-            />
-
             <Text style={[styles.sectionTitle, styles.clientSection]}>Datos del Cliente</Text>
             <Divider style={styles.divider} />
 
@@ -140,36 +129,6 @@ export default function MantenimientoFormScreen() {
               label="Cliente *"
               value={inspection.clientName}
               onChangeText={(value) => setField('clientName', value)}
-              style={styles.input}
-              mode="outlined"
-              outlineColor={BRAND_COLORS.grayMedium}
-              activeOutlineColor={BRAND_COLORS.primaryBlue}
-              outlineStyle={styles.inputOutline}
-            />
-            <TextInput
-              label="Ubicación *"
-              value={inspection.location}
-              onChangeText={(value) => setField('location', value)}
-              style={styles.input}
-              mode="outlined"
-              outlineColor={BRAND_COLORS.grayMedium}
-              activeOutlineColor={BRAND_COLORS.primaryBlue}
-              outlineStyle={styles.inputOutline}
-            />
-            <TextInput
-              label="Fecha"
-              value={inspection.date}
-              onChangeText={(value) => setField('date', value)}
-              style={styles.input}
-              mode="outlined"
-              outlineColor={BRAND_COLORS.grayMedium}
-              activeOutlineColor={BRAND_COLORS.primaryBlue}
-              outlineStyle={styles.inputOutline}
-            />
-            <TextInput
-              label="Revisado por *"
-              value={inspection.reviewedBy}
-              onChangeText={(value) => setField('reviewedBy', value)}
               style={styles.input}
               mode="outlined"
               outlineColor={BRAND_COLORS.grayMedium}
