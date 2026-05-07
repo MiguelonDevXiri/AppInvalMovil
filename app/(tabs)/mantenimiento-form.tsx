@@ -9,7 +9,7 @@ import { BORDER_RADIUS, BRAND_COLORS, SHADOWS, SPACING, TYPOGRAPHY } from '../..
 import { getMantenimientoInspectionById, inspectionToParams, paramsToInspection, type MantenimientoInspection } from '../../utils/mantenimientoStorage';
 
 const getParamString = (value: unknown): string => Array.isArray(value) ? (typeof value[0] === 'string' ? value[0] : '') : (typeof value === 'string' ? value : '');
-const GRADIENT = ['#0f2f57', '#2563eb', '#60a5fa'] as const;
+const GRADIENT = ['#0f2f57', '#173f73', '#e87a20'] as const;
 
 export default function MantenimientoFormScreen() {
   const params = useLocalSearchParams();
@@ -41,7 +41,7 @@ export default function MantenimientoFormScreen() {
     router.push({ pathname: '/(tabs)/mantenimiento-general-photos-form' as any, params: inspectionToParams(inspection) });
   };
 
-  if (loading) return <SafeAreaView style={styles.center}><ActivityIndicator size="large" color={BRAND_COLORS.primaryBlue} /><Text>Cargando mantenimiento...</Text></SafeAreaView>;
+  if (loading) return <SafeAreaView style={styles.center}><ActivityIndicator size="large" color="#e87a20" /><Text>Cargando mantenimiento...</Text></SafeAreaView>;
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -80,4 +80,4 @@ export default function MantenimientoFormScreen() {
   );
 }
 
-const styles = StyleSheet.create({ safeArea:{flex:1,backgroundColor:BRAND_COLORS.primaryBlue}, keyboard:{flex:1}, center:{flex:1,alignItems:'center',justifyContent:'center'}, scroll:{flex:1,backgroundColor:BRAND_COLORS.surface}, content:{paddingBottom:SPACING.xl}, header:{padding:SPACING.lg,borderBottomLeftRadius:BORDER_RADIUS.xl,borderBottomRightRadius:BORDER_RADIUS.xl}, backBtn:{width:36,height:36,borderRadius:18,backgroundColor:'rgba(255,255,255,.2)',alignItems:'center',justifyContent:'center'}, headerTitle:{color:'white',fontSize:TYPOGRAPHY.sizes.xl,fontWeight:TYPOGRAPHY.weights.bold as any,marginTop:SPACING.sm}, headerSubtitle:{color:'rgba(255,255,255,.85)',marginTop:4}, card:{margin:SPACING.md,marginBottom:0,borderRadius:BORDER_RADIUS.lg,...SHADOWS.small}, sectionTitle:{fontSize:TYPOGRAPHY.sizes.lg,fontWeight:TYPOGRAPHY.weights.bold as any,color:'#0f2f57'}, divider:{marginVertical:SPACING.sm}, input:{marginBottom:SPACING.sm,backgroundColor:'white'}, actions:{flexDirection:'row',gap:10,padding:SPACING.md}, button:{flex:1} });
+const styles = StyleSheet.create({ safeArea:{flex:1,backgroundColor:'#0f2f57'}, keyboard:{flex:1}, center:{flex:1,alignItems:'center',justifyContent:'center'}, scroll:{flex:1,backgroundColor:BRAND_COLORS.surface}, content:{paddingBottom:SPACING.xl}, header:{padding:SPACING.lg,borderBottomLeftRadius:BORDER_RADIUS.xl,borderBottomRightRadius:BORDER_RADIUS.xl}, backBtn:{width:36,height:36,borderRadius:18,backgroundColor:'rgba(255,255,255,.2)',alignItems:'center',justifyContent:'center'}, headerTitle:{color:'white',fontSize:TYPOGRAPHY.sizes.xl,fontWeight:TYPOGRAPHY.weights.bold as any,marginTop:SPACING.sm}, headerSubtitle:{color:'rgba(255,255,255,.85)',marginTop:4}, card:{margin:SPACING.md,marginBottom:0,borderRadius:BORDER_RADIUS.lg,...SHADOWS.small}, sectionTitle:{fontSize:TYPOGRAPHY.sizes.lg,fontWeight:TYPOGRAPHY.weights.bold as any,color:'#0f2f57'}, divider:{marginVertical:SPACING.sm}, input:{marginBottom:SPACING.sm,backgroundColor:'white'}, actions:{flexDirection:'row',gap:10,padding:SPACING.md}, button:{flex:1} });

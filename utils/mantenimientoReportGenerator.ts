@@ -106,8 +106,8 @@ const generateMantenimientoHTML = async (inspection: MantenimientoInspection): P
         <div class="section-header">
           <div class="section-icon">01</div>
           <div class="section-header-text">
-            <div class="section-title">Fotografías generales</div>
-            <div class="section-subtitle">Vista general de la máquina revisada en mantenimiento</div>
+            <div class="section-title">Fotos generales de entrada</div>
+            <div class="section-subtitle">Vista general de la máquina antes de la revisión de mantenimiento</div>
           </div>
         </div>
         <div class="photos-grid">
@@ -121,8 +121,10 @@ const generateMantenimientoHTML = async (inspection: MantenimientoInspection): P
       </div>` : '';
 
   const checked = inspection.checklist.filter((item) => item.status).length;
+  const ok = inspection.checklist.filter((item) => item.status === 'ok').length;
   const fails = inspection.checklist.filter((item) => item.status === 'fail').length;
   const notApplicable = inspection.checklist.filter((item) => item.status === 'na').length;
+  const cant = inspection.checklist.filter((item) => item.status === 'cant').length;
 
   const photoUris: string[] = [];
   const photoIndexMap: { itemId: string; startIdx: number; count: number }[] = [];
@@ -160,7 +162,7 @@ const generateMantenimientoHTML = async (inspection: MantenimientoInspection): P
           <td class="item-text">${esc(item.text)}</td>
           <td class="status-cell"><span class="status-pill ${itemStatusClass}"><span class="status-dot ${itemStatusClass}"></span>${statusText(item.status)}</span></td>
         </tr>`;
-        if (item.comment) row += `<tr><td colspan="2" style="padding:4px 8px;"><div class="item-comment"><strong>Comentario:</strong> ${esc(item.comment)}</div></td></tr>`;
+        if (item.comment) row += `<tr><td colspan="2" style="padding:4px 8px;"><div class="item-comment ${item.status === 'cant' ? 'cant' : ''}"><strong>${item.status === 'cant' ? 'Motivo' : 'Comentario'}:</strong> ${esc(item.comment)}</div></td></tr>`;
         if (photoHtmlByItemId[item.id]) row += `<tr><td colspan="2" class="photo-cell"><div class="evidence-photos-grid">${photoHtmlByItemId[item.id]}</div></td></tr>`;
         return row;
       }).join('')}</tbody>
@@ -176,9 +178,11 @@ const generateMantenimientoHTML = async (inspection: MantenimientoInspection): P
       </div>
     </div>
     <div class="summary-strip">
-      <div class="summary-card summary-ok"><div class="summary-value">${checked}</div><div class="summary-label">Revisados</div></div>
-      <div class="summary-card summary-fail"><div class="summary-value">${fails}</div><div class="summary-label">Incidencias</div></div>
+      <div class="summary-card summary-ok"><div class="summary-value">${ok}</div><div class="summary-label">Bien</div></div>
+      <div class="summary-card summary-fail"><div class="summary-value">${fails}</div><div class="summary-label">Mal</div></div>
       <div class="summary-card summary-na"><div class="summary-value">${notApplicable}</div><div class="summary-label">N/A</div></div>
+      <div class="summary-card summary-cant"><div class="summary-value">${cant}</div><div class="summary-label">No se puede</div></div>
+      <div class="summary-card summary-total"><div class="summary-value">${checked}</div><div class="summary-label">Revisados</div></div>
     </div>
     ${Object.entries(grouped).map(([category, items]) => {
       const [leftItems, rightItems] = splitBalanced(items);
@@ -215,8 +219,8 @@ const generateMantenimientoHTML = async (inspection: MantenimientoInspection): P
       <div class="section-header">
         <div class="section-icon">${validMaterials.length ? '04' : '03'}</div>
         <div class="section-header-text">
-          <div class="section-title">Comentarios específicos</div>
-          <div class="section-subtitle">Observaciones adicionales del técnico</div>
+          <div class="section-title">Observaciones</div>
+          <div class="section-subtitle">Notas adicionales del mantenimiento</div>
         </div>
       </div>
       <div class="comments-content"><div>${esc(inspection.notes).replace(/\n/g, '<br />')}</div></div>
@@ -265,7 +269,7 @@ const generateMantenimientoHTML = async (inspection: MantenimientoInspection): P
       .section-subtitle { font-size: 9px; color: #6b7280; }
       .summary-strip { display: table; width: 100%; table-layout: fixed; border-spacing: 8px 0; margin: 0 -8px 12px -8px; }
       .summary-card { display: table-cell; text-align: center; padding: 6px 4px; border-radius: 10px; color: white; font-weight: bold; }
-      .summary-ok { background: #16a34a; } .summary-fail { background: #e87a20; } .summary-na { background: #6b7280; }
+      .summary-ok { background: #16a34a; } .summary-fail { background: #e87a20; } .summary-na { background: #6b7280; } .summary-cant { background: #7c3aed; } .summary-total { background: #0f2f57; }
       .summary-value { font-size: 18px; line-height: 1; margin-bottom: 4px; }
       .summary-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.8px; }
       .photos-grid { display: table; width: 100%; table-layout: fixed; border-spacing: 10px 10px; margin: 0 -10px; }
@@ -290,6 +294,7 @@ const generateMantenimientoHTML = async (inspection: MantenimientoInspection): P
       .status-dot { display: inline-block; width: 5px; height: 5px; border-radius: 50%; margin-right: 4px; }
       .status-dot.ok { background: #16a34a; } .status-dot.fail { background: #e87a20; } .status-dot.na, .status-dot.pending { background: #6b7280; } .status-dot.cant { background: #7c3aed; }
       .item-comment { background: #fff7ed; border-left: 3px solid #e87a20; padding: 4px 8px; border-radius: 4px; font-size: 9px; color: #9a3412; }
+      .item-comment.cant { background: #f5f3ff; border-left-color: #7c3aed; color: #5b21b6; }
       .photo-cell { padding: 6px 8px !important; background: #fafbfd; }
       .evidence-photos-grid { display: block; }
       .evidence-photo-container { display: table; width: 100%; margin-bottom: 6px; page-break-inside: avoid; }

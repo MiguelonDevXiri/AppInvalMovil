@@ -28,9 +28,9 @@ export default function MantenimientoInspectionsListScreen() {
         <Text style={styles.headerTitle}>Mantenimientos registrados</Text>
         <Text style={styles.headerSubtitle}>Listado, ver, editar o borrar</Text>
       </LinearGradient>
-      {loading ? <View style={styles.center}><ActivityIndicator size="large" color={BRAND_COLORS.primaryBlue} /></View> : (
+      {loading ? <View style={styles.center}><ActivityIndicator size="large" color="#e87a20" /></View> : (
         <FlatList data={items} keyExtractor={(item) => item.id} contentContainerStyle={styles.list} ListEmptyComponent={<View style={styles.empty}><MaterialCommunityIcons name="tools" size={48} color="#94a3b8" /><Text style={styles.emptyText}>No hay mantenimientos registrados</Text><Button mode="contained" onPress={() => router.push('/mantenimiento-machine-type-selection' as any)}>Crear mantenimiento</Button></View>} renderItem={({ item }) => <Card style={styles.card}><Card.Content>
-          <View style={styles.row}><View style={{ flex: 1 }}><Text style={styles.title}>{item.clientName || 'Sin cliente'}</Text><Text style={styles.subtitle}>{getMachineTypeById(item.machineType).name} · {item.date}</Text><Text style={styles.meta}>{item.location || 'Sin ubicación'} · {item.reviewedBy || 'Sin técnico'}</Text></View><MaterialCommunityIcons name="tools" size={28} color={BRAND_COLORS.primaryBlue} /></View>
+          <View style={styles.row}><View style={{ flex: 1 }}><Text style={styles.title}>{item.clientName || 'Sin cliente'}</Text><Text style={styles.subtitle}>{getMachineTypeById(item.machineType).name} · {item.date}</Text><Text style={styles.meta}>{item.location || 'Sin ubicación'} · {item.reviewedBy || 'Sin técnico'}</Text></View><MaterialCommunityIcons name="tools" size={28} color="#e87a20" /></View>
           <View style={styles.actions}><Button compact mode="outlined" onPress={() => router.push({ pathname: '/mantenimiento-report-view' as any, params: { inspectionId: item.id } })}>Ver</Button><Button compact mode="outlined" onPress={() => router.push({ pathname: '/mantenimiento-form' as any, params: { inspectionId: item.id } })}>Editar</Button><Button compact textColor="#ef4444" onPress={() => handleDelete(item)}>Borrar</Button></View>
         </Card.Content></Card>} />
       )}
