@@ -88,8 +88,7 @@ export default function MantenimientoFinalFormScreen() {
                   <View style={styles.tableHeader}>
                     <Text style={[styles.tableHeaderText, styles.materialColumn]}>Material</Text>
                     <Text style={[styles.tableHeaderText, styles.quantityColumn]}>Cant.</Text>
-                    <Text style={[styles.tableHeaderText, styles.referenceColumn]}>Ref.</Text>
-                    <Text style={[styles.tableHeaderText, styles.availableColumn]}>¿Hay?</Text>
+                    <Text style={[styles.tableHeaderText, styles.referenceColumn]}>Referencia</Text>
                     <View style={styles.actionColumn} />
                   </View>
 
@@ -98,22 +97,6 @@ export default function MantenimientoFinalFormScreen() {
                       <TextInput value={material.name} onChangeText={(text) => updateMaterial(material.id, 'name', text)} style={[styles.tableInput, styles.materialColumn]} mode="outlined" dense placeholder="Material" outlineColor={BRAND_COLORS.grayMedium} activeOutlineColor={BRAND_COLORS.primaryBlue} />
                       <TextInput value={material.quantity} onChangeText={(text) => updateMaterial(material.id, 'quantity', text)} style={[styles.tableInput, styles.quantityColumn]} mode="outlined" dense placeholder="Cant." outlineColor={BRAND_COLORS.grayMedium} activeOutlineColor={BRAND_COLORS.primaryBlue} />
                       <TextInput value={material.reference} onChangeText={(text) => updateMaterial(material.id, 'reference', text)} style={[styles.tableInput, styles.referenceColumn]} mode="outlined" dense placeholder="Referencia" outlineColor={BRAND_COLORS.grayMedium} activeOutlineColor={BRAND_COLORS.primaryBlue} />
-                      <View style={styles.availableColumn}>
-                        <View style={styles.availableToggle}>
-                          <TouchableOpacity
-                            onPress={() => updateMaterial(material.id, 'available', material.available === true ? null : true)}
-                            style={[styles.availableOption, material.available === true && styles.availableYes]}
-                          >
-                            <Text style={[styles.availableOptionText, material.available === true && styles.availableOptionTextActive]}>Sí</Text>
-                          </TouchableOpacity>
-                          <TouchableOpacity
-                            onPress={() => updateMaterial(material.id, 'available', material.available === false ? null : false)}
-                            style={[styles.availableOption, material.available === false && styles.availableNo]}
-                          >
-                            <Text style={[styles.availableOptionText, material.available === false && styles.availableOptionTextActive]}>No</Text>
-                          </TouchableOpacity>
-                        </View>
-                      </View>
                       <IconButton icon="delete" size={20} onPress={() => removeMaterial(material.id)} iconColor={BRAND_COLORS.error} style={styles.deleteButton} />
                     </View>
                   ))}
@@ -164,7 +147,7 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: TYPOGRAPHY.sizes.md, fontWeight: TYPOGRAPHY.weights.bold as any, color: BRAND_COLORS.primaryBlue },
   addButton: { borderRadius: BORDER_RADIUS.md },
   divider: { backgroundColor: BRAND_COLORS.lightOrange, height: 1, marginBottom: SPACING.md, marginTop: SPACING.sm },
-  tableContainer: { minWidth: 660 },
+  tableContainer: { minWidth: 560 },
   tableHeader: { flexDirection: 'row', marginBottom: SPACING.sm, paddingHorizontal: SPACING.xs },
   tableHeaderText: { fontWeight: TYPOGRAPHY.weights.bold as any, color: BRAND_COLORS.primaryBlue, fontSize: TYPOGRAPHY.sizes.sm },
   tableRow: { flexDirection: 'row', alignItems: 'center', marginBottom: SPACING.sm },
@@ -172,14 +155,7 @@ const styles = StyleSheet.create({
   materialColumn: { flex: 2 },
   quantityColumn: { flex: 1 },
   referenceColumn: { flex: 1.5 },
-  availableColumn: { width: 92, marginRight: SPACING.xs },
   actionColumn: { width: 44 },
-  availableToggle: { flexDirection: 'row', borderWidth: 1, borderColor: BRAND_COLORS.grayMedium, borderRadius: BORDER_RADIUS.md, overflow: 'hidden', height: 40, backgroundColor: 'white' },
-  availableOption: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6 },
-  availableYes: { backgroundColor: BRAND_COLORS.success },
-  availableNo: { backgroundColor: BRAND_COLORS.error },
-  availableOptionText: { fontSize: 12, fontWeight: TYPOGRAPHY.weights.bold as any, color: BRAND_COLORS.grayDark },
-  availableOptionTextActive: { color: 'white' },
   deleteButton: { margin: 0 },
   helpText: { fontSize: TYPOGRAPHY.sizes.xs, color: BRAND_COLORS.grayText, fontStyle: 'italic', marginTop: SPACING.sm },
   notesInput: { backgroundColor: 'white' },

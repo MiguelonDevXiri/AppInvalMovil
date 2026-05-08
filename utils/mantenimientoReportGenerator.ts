@@ -210,8 +210,8 @@ const generateMantenimientoHTML = async (inspection: MantenimientoInspection): P
       </div>
       <div class="materials-section">
         <table class="materials-table">
-          <thead><tr><th style="width: 44%;">Material</th><th style="width: 16%; text-align:center;">Cantidad</th><th style="width: 25%;">Referencia</th><th style="width: 15%; text-align:center;">¿Hay?</th></tr></thead>
-          <tbody>${validMaterials.map((material) => `<tr><td>${esc(material.name) || '-'}</td><td style="text-align:center;">${esc(material.quantity) || '-'}</td><td>${esc(material.reference) || '-'}</td><td style="text-align:center; font-weight:bold;">${material.available === true ? 'Sí' : material.available === false ? 'No' : '-'}</td></tr>`).join('')}</tbody>
+          <thead><tr><th style="width: 52%;">Material</th><th style="width: 18%; text-align:center;">Cantidad</th><th style="width: 30%;">Referencia</th></tr></thead>
+          <tbody>${validMaterials.map((material) => `<tr><td>${esc(material.name) || '-'}</td><td style="text-align:center;">${esc(material.quantity) || '-'}</td><td>${esc(material.reference) || '-'}</td></tr>`).join('')}</tbody>
         </table>
       </div>
     </div>` : '';

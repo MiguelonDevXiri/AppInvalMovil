@@ -2,7 +2,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Image, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Alert, Image, Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { ActivityIndicator, Button, Card, Divider, Paragraph, Text, Title } from 'react-native-paper';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BORDER_RADIUS, BRAND_COLORS, SHADOWS, SPACING, TYPOGRAPHY } from '../../constants/Colors';
@@ -39,11 +39,13 @@ function CollapsiblePhotoGrid({
   photos,
   expanded,
   onToggle,
+  onOpenPhoto,
 }: {
   title: string;
   photos: { uri: string; label: string }[];
   expanded: boolean;
   onToggle: () => void;
+  onOpenPhoto: (uri: string) => void;
 }) {
   if (photos.length === 0) return <Text style={styles.emptyText}>Sin fotos adjuntas.</Text>;
   return (
@@ -60,7 +62,9 @@ function CollapsiblePhotoGrid({
         <View style={styles.photosGrid}>
           {photos.map((photo, index) => (
             <View key={`${photo.uri}_${index}`} style={styles.photoItem}>
-              <Image source={{ uri: photo.uri }} style={styles.photoThumb} resizeMode="cover" />
+              <TouchableOpacity onPress={() => onOpenPhoto(photo.uri)} activeOpacity={0.85}>
+                <Image source={{ uri: photo.uri }} style={styles.photoThumb} resizeMode="cover" />
+              </TouchableOpacity>
               <Text style={styles.photoLabel}>{photo.label}</Text>
             </View>
           ))}
@@ -70,7 +74,7 @@ function CollapsiblePhotoGrid({
   );
 }
 
-function ChecklistRow({ item, index }: { item: MantenimientoChecklistItem; index: number }) {
+function ChecklistRow({ item, index, onOpenPhoto }: { item: MantenimientoChecklistItem; index: number; onOpenPhoto: (uri: string) => void }) {
   const color = statusColor(item.status);
   const evidencePhotos = (item.photos || []).map((uri, photoIndex) => ({ uri, label: `D${index + 1}.${photoIndex + 1}` }));
   return (
@@ -85,7 +89,7 @@ function ChecklistRow({ item, index }: { item: MantenimientoChecklistItem; index
         </View>
       </View>
       {item.comment ? <Text style={[styles.commentBox, item.status === 'cant' ? styles.commentCant : styles.commentFail]}><Text style={styles.commentStrong}>{item.status === 'cant' ? 'Motivo: ' : 'Comentario: '}</Text>{item.comment}</Text> : null}
-      {evidencePhotos.length > 0 ? <View style={styles.inlinePhotos}>{evidencePhotos.map((photo) => <View key={photo.uri} style={styles.inlinePhotoBox}><Image source={{ uri: photo.uri }} style={styles.inlinePhoto} /><Text style={styles.inlinePhotoLabel}>{photo.label}</Text></View>)}</View> : null}
+      {evidencePhotos.length > 0 ? <View style={styles.inlinePhotos}>{evidencePhotos.map((photo) => <TouchableOpacity key={photo.uri} style={styles.inlinePhotoBox} onPress={() => onOpenPhoto(photo.uri)} activeOpacity={0.85}><Image source={{ uri: photo.uri }} style={styles.inlinePhoto} /><Text style={styles.inlinePhotoLabel}>{photo.label}</Text></TouchableOpacity>)}</View> : null}
     </View>
   );
 }
@@ -98,6 +102,7 @@ export default function MantenimientoReportViewScreen() {
   const [loading, setLoading] = useState(true);
   const [sharing, setSharing] = useState(false);
   const [expandedPhotoSections, setExpandedPhotoSections] = useState<Record<string, boolean>>({});
+  const [selectedPhotoUri, setSelectedPhotoUri] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -214,7 +219,7 @@ export default function MantenimientoReportViewScreen() {
           {groupedChecklist.map(([category, items]) => (
             <View key={category} style={styles.checkSection}>
               <Text style={styles.categoryBanner}>{category}</Text>
-              {items.map((item, index) => <ChecklistRow key={`${item.id}-${index}`} item={item} index={index} />)}
+              {items.map((item, index) => <ChecklistRow key={`${item.id}-${index}`} item={item} index={index} onOpenPhoto={setSelectedPhotoUri} />)}
             </View>
           ))}
         </Card.Content></Card>
@@ -251,7 +256,7 @@ export default function MantenimientoReportViewScreen() {
         {generalPhotos.length > 0 ? (
           <Card style={styles.card}><Card.Content>
             <Title style={styles.sectionTitle}>📸 Fotos generales de entrada</Title><Divider style={styles.divider} />
-            <CollapsiblePhotoGrid title="Ver fotos generales de entrada" photos={generalPhotos} expanded={Boolean(expandedPhotoSections.general)} onToggle={() => togglePhotoSection('general')} />
+            <CollapsiblePhotoGrid title="Ver fotos generales de entrada" photos={generalPhotos} expanded={Boolean(expandedPhotoSections.general)} onToggle={() => togglePhotoSection('general')} onOpenPhoto={setSelectedPhotoUri} />
           </Card.Content></Card>
         ) : null}
       </ScrollView>
@@ -260,6 +265,15 @@ export default function MantenimientoReportViewScreen() {
         <Button mode="outlined" onPress={() => router.push({ pathname: '/mantenimiento-form' as any, params: { inspectionId: inspection.id } })} style={styles.actionButton} textColor="#92400e" icon="pencil" disabled={sharing}>Editar</Button>
         <Button mode="contained" onPress={share} style={styles.actionButton} buttonColor="#b45309" loading={sharing} disabled={sharing} icon="share-variant">{sharing ? 'Generando...' : 'Compartir PDF'}</Button>
       </SafeAreaView>
+
+      <Modal visible={Boolean(selectedPhotoUri)} transparent animationType="fade" onRequestClose={() => setSelectedPhotoUri(null)}>
+        <View style={styles.modalContainer}>
+          <TouchableOpacity style={styles.modalCloseButton} onPress={() => setSelectedPhotoUri(null)}>
+            <MaterialCommunityIcons name="close" size={22} color="white" />
+          </TouchableOpacity>
+          {selectedPhotoUri ? <Image source={{ uri: selectedPhotoUri }} style={styles.modalImage} resizeMode="contain" /> : null}
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -275,4 +289,6 @@ const styles = StyleSheet.create({
   materialsTable:{minWidth:620,borderWidth:1,borderColor:'#e2e8f0',borderRadius:12,overflow:'hidden'}, materialsHeaderRow:{flexDirection:'row',backgroundColor:'#0f2f57',borderBottomWidth:3,borderBottomColor:'#e87a20'}, materialsHeaderText:{color:'white',fontSize:11,fontWeight:'900',textTransform:'uppercase',letterSpacing:.5,paddingVertical:9,paddingHorizontal:8}, materialsRow:{flexDirection:'row',borderBottomWidth:1,borderBottomColor:'#e2e8f0'}, materialsRowEven:{backgroundColor:'#f8fafc'}, materialsRowOdd:{backgroundColor:'white'}, materialsCell:{fontSize:12,color:'#334155',fontWeight:'700',paddingVertical:9,paddingHorizontal:8}, notesText:{color:'#475569',lineHeight:21}, emptyText:{color:'#64748b',fontStyle:'italic'},
   photoSection:{marginTop:SPACING.xs}, photoToggle:{flexDirection:'row',alignItems:'center',gap:SPACING.sm,padding:SPACING.sm,borderRadius:14,backgroundColor:'#fff7ed',borderWidth:1,borderColor:'#fed7aa'}, photoToggleTextBox:{flex:1}, photoToggleTitle:{fontWeight:'900',color:'#92400e'}, photoToggleSubtitle:{fontSize:11,color:'#b45309',marginTop:2}, photoCountPill:{minWidth:30,height:30,borderRadius:15,backgroundColor:'#e87a20',alignItems:'center',justifyContent:'center'}, photoCountText:{color:'white',fontWeight:'900'}, photosGrid:{flexDirection:'row',flexWrap:'wrap',gap:10,marginTop:SPACING.sm}, photoItem:{width:'47%',borderRadius:14,backgroundColor:'#f8fafc',borderWidth:1,borderColor:'#e2e8f0',overflow:'hidden'}, photoThumb:{width:'100%',height:130}, photoLabel:{textAlign:'center',fontWeight:'900',color:'#0f2f57',paddingVertical:6},
   bottomActions:{position:'absolute',left:0,right:0,bottom:0,flexDirection:'row',gap:10,paddingHorizontal:SPACING.md,paddingTop:SPACING.md,backgroundColor:'white',borderTopWidth:1,borderTopColor:'#e2e8f0',...SHADOWS.medium}, actionButton:{flex:1},
+  modalContainer:{flex:1,backgroundColor:'rgba(0,0,0,0.92)',alignItems:'center',justifyContent:'center',padding:SPACING.md}, modalCloseButton:{position:'absolute',top:48,right:24,zIndex:10,width:42,height:42,borderRadius:21,backgroundColor:'rgba(255,255,255,0.16)',alignItems:'center',justifyContent:'center'}, modalImage:{width:'100%',height:'82%'},
 });
+

@@ -2,8 +2,8 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { Button, Divider, Text, TextInput } from 'react-native-paper';
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Button, Divider, HelperText, Text, TextInput } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BORDER_RADIUS, BRAND_COLORS, GRADIENTS, SHADOWS, SPACING, TYPOGRAPHY } from '../../constants/Colors';
 import { getMachineTypeById } from '../../data/machineTypes';
@@ -19,6 +19,7 @@ export default function MantenimientoFormScreen() {
   const [inspection, setInspection] = useState<MantenimientoInspection>(() => paramsToInspection({ ...params, machineType }));
   const [loading, setLoading] = useState(Boolean(inspectionId) && !getParamString(params.clientName));
   const [isSaving, setIsSaving] = useState(false);
+  const [errors, setErrors] = useState({ brand: false, clientName: false, licensePlate: false });
 
   useEffect(() => {
     let active = true;
@@ -33,10 +34,25 @@ export default function MantenimientoFormScreen() {
     return () => { active = false; };
   }, [inspectionId, params.clientName]);
 
-  const setField = (field: keyof MantenimientoInspection, value: string) => setInspection((prev) => ({ ...prev, [field]: value }));
+  const setField = (field: keyof MantenimientoInspection, value: string) => {
+    setInspection((prev) => ({ ...prev, [field]: value }));
+    if (field === 'brand' || field === 'clientName' || field === 'licensePlate') {
+      setErrors((current) => ({ ...current, [field]: false }));
+    }
+  };
+
+  const validateForm = () => {
+    const nextErrors = {
+      brand: !inspection.brand.trim(),
+      clientName: !inspection.clientName.trim(),
+      licensePlate: !inspection.licensePlate.trim(),
+    };
+    setErrors(nextErrors);
+    return !nextErrors.brand && !nextErrors.clientName && !nextErrors.licensePlate;
+  };
 
   const handleContinue = () => {
-    if (!inspection.brand.trim() || !inspection.clientName.trim() || !inspection.licensePlate.trim()) {
+    if (!validateForm()) {
       Alert.alert('Campos obligatorios', 'Marca, cliente y matrícula son obligatorios.');
       return;
     }
@@ -88,10 +104,12 @@ export default function MantenimientoFormScreen() {
               onChangeText={(value) => setField('brand', value)}
               style={styles.input}
               mode="outlined"
+              error={errors.brand}
               outlineColor={BRAND_COLORS.grayMedium}
               activeOutlineColor={BRAND_COLORS.primaryBlue}
               outlineStyle={styles.inputOutline}
             />
+            {errors.brand ? <HelperText type="error">La marca es obligatoria</HelperText> : null}
             <TextInput
               label="Modelo"
               value={inspection.model}
@@ -118,6 +136,18 @@ export default function MantenimientoFormScreen() {
               onChangeText={(value) => setField('licensePlate', value)}
               style={styles.input}
               mode="outlined"
+              error={errors.licensePlate}
+              outlineColor={BRAND_COLORS.grayMedium}
+              activeOutlineColor={BRAND_COLORS.primaryBlue}
+              outlineStyle={styles.inputOutline}
+            />
+            {errors.licensePlate ? <HelperText type="error">La matrícula es obligatoria</HelperText> : null}
+            <TextInput
+              label="Nº OT"
+              value={inspection.otNumber || ''}
+              onChangeText={(value) => setField('otNumber', value)}
+              style={styles.input}
+              mode="outlined"
               outlineColor={BRAND_COLORS.grayMedium}
               activeOutlineColor={BRAND_COLORS.primaryBlue}
               outlineStyle={styles.inputOutline}
@@ -129,6 +159,28 @@ export default function MantenimientoFormScreen() {
               label="Cliente *"
               value={inspection.clientName}
               onChangeText={(value) => setField('clientName', value)}
+              style={styles.input}
+              mode="outlined"
+              error={errors.clientName}
+              outlineColor={BRAND_COLORS.grayMedium}
+              activeOutlineColor={BRAND_COLORS.primaryBlue}
+              outlineStyle={styles.inputOutline}
+            />
+            {errors.clientName ? <HelperText type="error">El nombre del cliente es obligatorio</HelperText> : null}
+            <TextInput
+              label="Ubicación"
+              value={inspection.location}
+              onChangeText={(value) => setField('location', value)}
+              style={styles.input}
+              mode="outlined"
+              outlineColor={BRAND_COLORS.grayMedium}
+              activeOutlineColor={BRAND_COLORS.primaryBlue}
+              outlineStyle={styles.inputOutline}
+            />
+            <TextInput
+              label="Revisión realizada por"
+              value={inspection.reviewedBy}
+              onChangeText={(value) => setField('reviewedBy', value)}
               style={styles.input}
               mode="outlined"
               outlineColor={BRAND_COLORS.grayMedium}
@@ -163,6 +215,18 @@ export default function MantenimientoFormScreen() {
           </View>
         </SafeAreaView>
       </KeyboardAvoidingView>
+
+      {isSaving ? (
+        <Modal visible transparent animationType="fade">
+          <View style={styles.savingOverlay}>
+            <View style={styles.savingModal}>
+              <ActivityIndicator size="large" color={BRAND_COLORS.primaryBlue} />
+              <Text style={styles.savingTitle}>Preparando mantenimiento...</Text>
+              <Text style={styles.savingSubtitle}>Pasando a fotos generales</Text>
+            </View>
+          </View>
+        </Modal>
+      ) : null}
     </SafeAreaView>
   );
 }
@@ -278,4 +342,33 @@ const styles = StyleSheet.create({
   primaryButtonContent: {
     flexDirection: 'row-reverse',
   },
+  savingOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  savingModal: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 32,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  savingTitle: {
+    marginTop: 16,
+    fontSize: 16,
+    fontWeight: TYPOGRAPHY.weights.semibold as any,
+    color: BRAND_COLORS.primaryBlue,
+  },
+  savingSubtitle: {
+    marginTop: 8,
+    fontSize: 13,
+    color: BRAND_COLORS.grayText,
+  },
 });
+
