@@ -3,11 +3,11 @@ import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useMemo, useState } from 'react';
-import { Alert, Image, ScrollView, StyleSheet, TouchableOpacity, View, type AlertButton } from 'react-native';
+import { ActivityIndicator, Alert, Image, ScrollView, StyleSheet, TouchableOpacity, View, type AlertButton } from 'react-native';
 import { Button, Divider, Text } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BORDER_RADIUS, BRAND_COLORS, GRADIENTS, SHADOWS, SPACING, TYPOGRAPHY } from '../../constants/Colors';
-import { inspectionToParams, paramsToInspection } from '../../utils/mantenimientoStorage';
+import { inspectionToParams, paramsToInspection, saveMantenimientoInspection } from '../../utils/mantenimientoStorage';
 
 const PHOTO_SLOTS = [
   { key: 'front', label: 'A1' },
@@ -19,6 +19,8 @@ const PHOTO_SLOTS = [
 export default function MantenimientoGeneralPhotosFormScreen() {
   const params = useLocalSearchParams();
   const [inspection, setInspection] = useState(() => paramsToInspection(params));
+  const [saving, setSaving] = useState(false);
+  const [savingText, setSavingText] = useState('Guardando fotos generales...');
   const photoCount = useMemo(() => Object.values(inspection.generalPhotos).filter(Boolean).length, [inspection.generalPhotos]);
 
   const setPhoto = (key: string, uri: string | null) => setInspection((prev) => {
@@ -51,31 +53,65 @@ export default function MantenimientoGeneralPhotosFormScreen() {
     Alert.alert(`Foto ${label}`, 'Selecciona una opción', actions);
   };
 
-  const goData = () => router.replace({ pathname: '/(tabs)/mantenimiento-form' as any, params: inspectionToParams(inspection) });
-  const goNext = () => router.push({ pathname: '/(tabs)/safety-checklist-form' as any, params: { ...inspectionToParams(inspection), module: 'mantenimiento' } });
+  const goBack = () => router.back();
+
+  const handleSaveAndFinish = async () => {
+    if (photoCount < 4) {
+      Alert.alert('Fotos incompletas', 'No has tomado todas las fotos. ¿Continuar?', [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Continuar', onPress: () => doSave() },
+      ]);
+      return;
+    }
+    doSave();
+  };
+
+  const doSave = async () => {
+    try {
+      setSaving(true);
+      setSavingText('Guardando mantenimiento...');
+      const saved = await saveMantenimientoInspection(inspection);
+      setSavingText('Preparando informe...');
+      router.replace({ pathname: '/mantenimiento-report-view' as any, params: { inspectionId: saved.id } });
+    } catch (error) {
+      console.error('Error al guardar mantenimiento:', error);
+      Alert.alert('Error', 'No se pudo guardar el mantenimiento. Revisa las tablas SQL.');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <View style={styles.container}>
         <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollViewContent}>
           <LinearGradient colors={GRADIENTS.primary as unknown as [string, string, ...string[]]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.headerGradient}>
-            <TouchableOpacity onPress={goData} style={styles.backButton} activeOpacity={0.85}>
+            <TouchableOpacity onPress={goBack} style={styles.backButton} activeOpacity={0.85}>
               <MaterialCommunityIcons name="arrow-left" size={22} color="white" />
             </TouchableOpacity>
-            <Text style={styles.typeTitle}>Fotos generales</Text>
+            <MaterialCommunityIcons name="camera-outline" size={24} color="rgba(255,255,255,0.7)" />
+            <Text style={styles.headerTitle}>Fotos Generales</Text>
+            <Text style={styles.headerSubtitle}>
+              {inspection.brand || inspection.machineType} — {inspection.clientName || 'Sin cliente'}
+            </Text>
           </LinearGradient>
 
           <View style={styles.formCard}>
             <Text style={styles.sectionTitle}>Fotos generales de entrada</Text>
             <Divider style={styles.divider} />
-            <Text style={styles.infoText}>Añade las fotos generales antes del checklist de seguridad.</Text>
+            <Text style={styles.infoText}>Añade las fotos generales de la máquina antes de guardar el informe.</Text>
             <View style={styles.grid}>
               {PHOTO_SLOTS.map((slot) => {
                 const uri = inspection.generalPhotos[slot.key];
                 return (
                   <TouchableOpacity key={slot.key} style={styles.photoBox} onPress={() => openOptions(slot.key, slot.label)} activeOpacity={0.85}>
                     {uri ? (
-                      <Image source={{ uri }} style={styles.photo} />
+                      <>
+                        <Image source={{ uri }} style={styles.photo} />
+                        <View style={styles.checkBadge}>
+                          <MaterialCommunityIcons name="check-circle" size={20} color={BRAND_COLORS.success} />
+                        </View>
+                      </>
                     ) : (
                       <View style={styles.placeholder}>
                         <MaterialCommunityIcons name="camera-plus-outline" size={32} color={BRAND_COLORS.primaryBlue} />
@@ -89,19 +125,37 @@ export default function MantenimientoGeneralPhotosFormScreen() {
             </View>
 
             <View style={styles.counterBox}>
-              <MaterialCommunityIcons name="image-multiple-outline" size={20} color={BRAND_COLORS.primaryOrange} />
-              <Text style={styles.counterText}>Fotos añadidas: {photoCount} de 4</Text>
+              <MaterialCommunityIcons
+                name={photoCount === 4 ? 'check-circle' : 'image-multiple-outline'}
+                size={20}
+                color={photoCount === 4 ? BRAND_COLORS.success : BRAND_COLORS.primaryOrange}
+              />
+              <Text style={[styles.counterText, photoCount === 4 && { color: BRAND_COLORS.success }]}>
+                Fotos completadas: {photoCount} de 4
+              </Text>
             </View>
           </View>
         </ScrollView>
 
         <SafeAreaView style={styles.buttonSafeArea} edges={['bottom']}>
           <View style={styles.buttonContainer}>
-            <Button mode="outlined" style={styles.cancelButton} onPress={goData} icon="arrow-left" textColor={BRAND_COLORS.primaryBlue}>Cancelar</Button>
-            <Button mode="contained" style={styles.saveButton} onPress={goNext} icon="arrow-right" contentStyle={styles.primaryButtonContent} buttonColor={BRAND_COLORS.primaryOrange}>Continuar</Button>
+            <Button mode="outlined" style={styles.cancelButton} onPress={goBack} icon="arrow-left" textColor={BRAND_COLORS.primaryBlue} disabled={saving}>Volver</Button>
+            <Button mode="contained" style={styles.saveButton} onPress={handleSaveAndFinish} icon="check" contentStyle={styles.primaryButtonContent} buttonColor={BRAND_COLORS.primaryOrange} disabled={saving} loading={saving}>
+              {saving ? 'Guardando...' : 'Guardar'}
+            </Button>
           </View>
         </SafeAreaView>
       </View>
+
+      {saving && (
+        <View style={styles.savingOverlay}>
+          <View style={styles.savingCard}>
+            <ActivityIndicator size="large" color={BRAND_COLORS.primaryBlue} />
+            <Text style={styles.savingTitle}>{savingText}</Text>
+            <Text style={styles.savingSubtitle}>Espera un momento, estamos preparando el informe.</Text>
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -111,19 +165,21 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: BRAND_COLORS.surface },
   scrollView: { flex: 1 },
   scrollViewContent: { paddingBottom: 112 },
-  headerGradient: { padding: SPACING.xl, alignItems: 'center', paddingTop: SPACING.lg },
+  headerGradient: { padding: SPACING.lg, paddingTop: SPACING.md, alignItems: 'center' },
   backButton: { position: 'absolute', left: 12, top: 12, zIndex: 10, width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
-  typeTitle: { fontSize: TYPOGRAPHY.sizes.lg, fontWeight: TYPOGRAPHY.weights.bold as any, color: 'white', letterSpacing: 0.3, textAlign: 'center' },
+  headerTitle: { color: 'white', fontWeight: TYPOGRAPHY.weights.bold as any, fontSize: TYPOGRAPHY.sizes.xl, marginTop: SPACING.sm },
+  headerSubtitle: { color: 'rgba(255,255,255,0.8)', fontSize: TYPOGRAPHY.sizes.sm, marginTop: SPACING.xs },
   formCard: { margin: SPACING.lg, marginTop: -SPACING.sm, padding: SPACING.lg, backgroundColor: 'white', borderRadius: BORDER_RADIUS.xl, borderLeftWidth: 4, borderLeftColor: BRAND_COLORS.primaryOrange, ...SHADOWS.card },
   sectionTitle: { fontSize: TYPOGRAPHY.sizes.lg, fontWeight: TYPOGRAPHY.weights.bold as any, color: BRAND_COLORS.primaryBlue, marginBottom: SPACING.sm, letterSpacing: 0.2 },
   divider: { backgroundColor: BRAND_COLORS.lightOrange, height: 2, marginBottom: SPACING.lg, borderRadius: BORDER_RADIUS.full, opacity: 0.7 },
   infoText: { color: BRAND_COLORS.grayText, lineHeight: 20, marginBottom: SPACING.md },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  photoBox: { width: '47%', height: 168, borderWidth: 1, borderColor: BRAND_COLORS.grayMedium, borderRadius: BORDER_RADIUS.lg, backgroundColor: 'white', overflow: 'hidden', alignItems: 'center', marginBottom: SPACING.sm },
+  photoBox: { width: '47%', height: 168, borderWidth: 1, borderColor: BRAND_COLORS.grayMedium, borderRadius: BORDER_RADIUS.lg, backgroundColor: 'white', overflow: 'hidden', alignItems: 'center', marginBottom: SPACING.sm, position: 'relative' },
   photo: { width: '100%', height: 130, backgroundColor: BRAND_COLORS.grayLight },
   placeholder: { height: 130, width: '100%', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f8fafc' },
   placeholderText: { color: BRAND_COLORS.grayText, marginTop: 4, fontWeight: TYPOGRAPHY.weights.semibold as any },
   photoLabel: { fontWeight: TYPOGRAPHY.weights.bold as any, color: BRAND_COLORS.primaryBlue, marginTop: 7 },
+  checkBadge: { position: 'absolute', top: 4, right: 4 },
   counterBox: { marginTop: SPACING.md, borderRadius: BORDER_RADIUS.lg, backgroundColor: BRAND_COLORS.lightOrange, padding: SPACING.md, flexDirection: 'row', alignItems: 'center', gap: 8 },
   counterText: { color: '#92400e', fontWeight: TYPOGRAPHY.weights.bold as any },
   buttonSafeArea: { backgroundColor: 'white' },
@@ -131,4 +187,8 @@ const styles = StyleSheet.create({
   cancelButton: { flex: 1, marginRight: SPACING.sm, borderColor: BRAND_COLORS.primaryBlue, borderRadius: BORDER_RADIUS.lg },
   saveButton: { flex: 1, marginLeft: SPACING.sm, borderRadius: BORDER_RADIUS.lg },
   primaryButtonContent: { flexDirection: 'row-reverse' },
+  savingOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', zIndex: 1100 },
+  savingCard: { backgroundColor: 'white', borderRadius: BORDER_RADIUS.xl, padding: SPACING.xl, alignItems: 'center', width: '80%', maxWidth: 320, ...SHADOWS.large },
+  savingTitle: { marginTop: SPACING.md, fontSize: TYPOGRAPHY.sizes.lg, fontWeight: TYPOGRAPHY.weights.bold as any, color: BRAND_COLORS.primaryBlue, textAlign: 'center' },
+  savingSubtitle: { marginTop: SPACING.sm, fontSize: TYPOGRAPHY.sizes.sm, color: BRAND_COLORS.grayText, textAlign: 'center' },
 });

@@ -58,7 +58,7 @@ export default function MantenimientoFormScreen() {
     }
     if (isSaving) return;
     setIsSaving(true);
-    router.push({ pathname: '/(tabs)/mantenimiento-general-photos-form' as any, params: inspectionToParams(inspection) });
+    router.push({ pathname: '/(tabs)/safety-checklist-form' as any, params: { ...inspectionToParams(inspection), module: 'mantenimiento' } });
     setIsSaving(false);
   };
 

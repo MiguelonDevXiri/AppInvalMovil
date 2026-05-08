@@ -6,7 +6,7 @@ import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Touchabl
 import { Button, Card, Divider, IconButton, Text, TextInput } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BORDER_RADIUS, BRAND_COLORS, GRADIENTS, SHADOWS, SPACING, TYPOGRAPHY } from '../../constants/Colors';
-import { generateUUID, inspectionToParams, paramsToInspection, saveMantenimientoInspection, type MantenimientoInspection, type MantenimientoMaterial } from '../../utils/mantenimientoStorage';
+import { generateUUID, inspectionToParams, paramsToInspection, type MantenimientoInspection, type MantenimientoMaterial } from '../../utils/mantenimientoStorage';
 
 const buildEmptyMaterial = (): MantenimientoMaterial => ({
   id: generateUUID(),
@@ -22,7 +22,7 @@ export default function MantenimientoFinalFormScreen() {
     const current = paramsToInspection(params);
     return { ...current, materials: current.materials.length > 0 ? current.materials : [buildEmptyMaterial()] };
   });
-  const [saving, setSaving] = useState(false);
+  const saving = false;
 
   const checkedCount = useMemo(() => inspection.checklist.filter((item) => item.status).length, [inspection.checklist]);
   const photoCount = useMemo(() => Object.values(inspection.generalPhotos).filter(Boolean).length, [inspection.generalPhotos]);
@@ -33,22 +33,14 @@ export default function MantenimientoFinalFormScreen() {
   const updateMaterial = <K extends keyof MantenimientoMaterial>(id: string, field: K, value: MantenimientoMaterial[K]) => setInspection((prev) => ({ ...prev, materials: prev.materials.map((material) => material.id === id ? { ...material, [field]: value } : material) }));
   const removeMaterial = (id: string) => setInspection((prev) => ({ ...prev, materials: prev.materials.length === 1 ? [buildEmptyMaterial()] : prev.materials.filter((material) => material.id !== id) }));
 
-  const handleSave = async () => {
+  const handleSave = () => {
     if (!inspection.brand.trim() || !inspection.clientName.trim() || !inspection.licensePlate.trim()) {
       Alert.alert('Campos obligatorios', 'Marca, cliente y matrícula son obligatorios.');
       return;
     }
-    try {
-      setSaving(true);
-      const validMaterials = inspection.materials.filter((material) => material.name.trim() || material.quantity.trim() || material.reference.trim());
-      const saved = await saveMantenimientoInspection({ ...inspection, materials: validMaterials });
-      router.replace({ pathname: '/mantenimiento-report-view' as any, params: { inspectionId: saved.id } });
-    } catch (error) {
-      console.error('Error al guardar mantenimiento:', error);
-      Alert.alert('Error', 'No se pudo guardar el mantenimiento. Revisa las tablas SQL.');
-    } finally {
-      setSaving(false);
-    }
+    const validMaterials = inspection.materials.filter((material) => material.name.trim() || material.quantity.trim() || material.reference.trim());
+    const next = { ...inspection, materials: validMaterials };
+    router.push({ pathname: '/(tabs)/mantenimiento-general-photos-form' as any, params: inspectionToParams(next) });
   };
 
   return (
@@ -61,7 +53,7 @@ export default function MantenimientoFinalFormScreen() {
             </TouchableOpacity>
             <MaterialCommunityIcons name="toolbox-outline" size={26} color="rgba(255,255,255,0.7)" />
             <Text style={styles.headerTitle}>Materiales y observaciones</Text>
-            <Text style={styles.headerSubtitle}>Último paso antes de guardar y generar el PDF</Text>
+            <Text style={styles.headerSubtitle}>Añade materiales y observaciones</Text>
           </LinearGradient>
 
           <Card style={styles.infoCard}>
@@ -119,7 +111,7 @@ export default function MantenimientoFinalFormScreen() {
         <SafeAreaView style={styles.buttonSafeArea} edges={['bottom']}>
           <View style={styles.buttonContainer}>
             <Button mode="outlined" onPress={() => router.push({ pathname: '/(tabs)/mantenimiento-checklist-form' as any, params: inspectionToParams(inspection) })} disabled={saving} style={styles.navButton} icon="arrow-left" textColor={BRAND_COLORS.primaryBlue}>Volver</Button>
-            <Button mode="contained" onPress={handleSave} disabled={saving} loading={saving} style={styles.navButton} icon="file-pdf-box" contentStyle={{ flexDirection: 'row-reverse' }} buttonColor={BRAND_COLORS.primaryOrange}>{saving ? 'Guardando...' : 'Guardar/PDF'}</Button>
+            <Button mode="contained" onPress={handleSave} style={styles.navButton} icon="arrow-right" contentStyle={{ flexDirection: 'row-reverse' }} buttonColor={BRAND_COLORS.primaryOrange}>Continuar</Button>
           </View>
         </SafeAreaView>
       </KeyboardAvoidingView>

@@ -168,14 +168,26 @@ export default function MantenimientoChecklistFormScreen() {
   };
 
   const goNext = () => {
+    // Validar que items "mal" tengan foto y "no se puede" tengan comentario
+    const failWithoutPhoto = inspection.checklist.filter((item) => item.status === 'fail' && (!item.photos || item.photos.length === 0));
+    if (failWithoutPhoto.length > 0) {
+      Alert.alert('Fotos requeridas', `Hay ${failWithoutPhoto.length} punto(s) marcados como "Mal" sin foto. Debes añadir al menos una foto de evidencia.`);
+      return;
+    }
+    const cantWithoutComment = inspection.checklist.filter((item) => item.status === 'cant' && !item.comment?.trim());
+    if (cantWithoutComment.length > 0) {
+      Alert.alert('Comentarios requeridos', `Hay ${cantWithoutComment.length} punto(s) marcados como "No se puede" sin comentario.`);
+      return;
+    }
+    const navigate = () => router.push({ pathname: '/(tabs)/mantenimiento-final-form' as any, params: inspectionToParams(inspection) });
     if (completedItems < inspection.checklist.length) {
       Alert.alert('Checklist incompleto', '¿Quieres continuar? Aún hay puntos sin revisar.', [
         { text: 'Cancelar', style: 'cancel' },
-        { text: 'Continuar', onPress: () => router.push({ pathname: '/(tabs)/mantenimiento-final-form' as any, params: inspectionToParams(inspection) }) },
+        { text: 'Continuar', onPress: navigate },
       ]);
       return;
     }
-    router.push({ pathname: '/(tabs)/mantenimiento-final-form' as any, params: inspectionToParams(inspection) });
+    navigate();
   };
 
   if (categories.length === 0) {
@@ -284,7 +296,7 @@ export default function MantenimientoChecklistFormScreen() {
       <SafeAreaView style={styles.buttonSafeArea} edges={['bottom']}>
         <View style={styles.buttonsContainer}>
           <Button mode="outlined" onPress={() => router.back()} style={styles.navButton} icon="arrow-left" textColor={BRAND_COLORS.primaryBlue}>Volver</Button>
-          <Button mode="contained" onPress={goNext} style={styles.navButton} icon="check" contentStyle={{ flexDirection: 'row-reverse' }} buttonColor={BRAND_COLORS.primaryOrange}>Finalizar</Button>
+          <Button mode="contained" onPress={goNext} style={styles.navButton} icon="arrow-right" contentStyle={{ flexDirection: 'row-reverse' }} buttonColor={BRAND_COLORS.primaryOrange}>Continuar</Button>
         </View>
       </SafeAreaView>
 
