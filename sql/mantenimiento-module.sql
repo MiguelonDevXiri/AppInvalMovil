@@ -16,6 +16,7 @@ create table if not exists public.mantenimiento_inspections (
   license_plate text,
   ot_number text,
   notes text,
+  pdf_url text,
   safety_checklist jsonb,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -53,6 +54,8 @@ create table if not exists public.mantenimiento_materials (
   sort_order integer not null default 0,
   created_at timestamptz not null default now()
 );
+
+alter table public.mantenimiento_inspections add column if not exists pdf_url text;
 
 create index if not exists idx_mantenimiento_inspections_created_at on public.mantenimiento_inspections(created_at desc);
 create index if not exists idx_mantenimiento_inspections_machine_type on public.mantenimiento_inspections(machine_type);

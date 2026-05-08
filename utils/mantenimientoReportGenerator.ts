@@ -2,11 +2,13 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as ImageManipulator from 'expo-image-manipulator';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
+import { decode } from 'base64-arraybuffer';
 import { Alert } from 'react-native';
 import { getMachineTypeById } from '../data/machineTypes';
 import { renderSafetySummaryHTML } from './safetyChecklist';
 import type { MantenimientoChecklistItem, MantenimientoInspection } from './mantenimientoStorage';
 import { getLogoBase64, getMachineTypeAbbreviation } from './reportGenerator';
+import { supabase } from './supabase';
 
 const esc = (value?: string | null): string => String(value || '').replace(/[&<>"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[char] || char));
 
@@ -365,10 +367,46 @@ const generateMantenimientoHTML = async (inspection: MantenimientoInspection): P
   </html>`;
 };
 
+const buildMantenimientoPdfStoragePath = (inspection: MantenimientoInspection): string => {
+  const client = cleanFileName(inspection.clientName || 'cliente');
+  const identifier = cleanFileName(inspection.licensePlate || inspection.serialNumber || 'sin_identificar');
+  const recordId = cleanFileName((inspection.id || inspection.date || '').slice(0, 12));
+  return `mantenimiento/${client}_${identifier}_${recordId}/informe_mantenimiento_${client}_${identifier}.pdf`;
+};
+
+const uploadMantenimientoPdf = async (inspection: MantenimientoInspection, pdfBase64: string): Promise<string | null> => {
+  const storagePath = buildMantenimientoPdfStoragePath(inspection);
+  const { error: uploadError } = await supabase.storage.from('inspection-photos').upload(storagePath, decode(pdfBase64), {
+    contentType: 'application/pdf',
+    upsert: true,
+  });
+  if (uploadError) throw uploadError;
+
+  const { data: urlData } = supabase.storage.from('inspection-photos').getPublicUrl(storagePath);
+  const publicUrl = urlData?.publicUrl || null;
+  if (!publicUrl) return null;
+
+  const { error: updateError } = await supabase
+    .from('mantenimiento_inspections')
+    .update({ pdf_url: publicUrl, updated_at: new Date().toISOString() })
+    .eq('id', inspection.id);
+  if (updateError) throw updateError;
+
+  inspection.pdfUrl = publicUrl;
+  return publicUrl;
+};
+
 export const generateMantenimientoReport = async (inspection: MantenimientoInspection): Promise<string | null> => {
   try {
     const html = await generateMantenimientoHTML(inspection);
-    const { uri } = await Print.printToFileAsync({ html, width: 595, height: 842, base64: false });
+    const { uri, base64 } = await Print.printToFileAsync({ html, width: 595, height: 842, base64: true });
+    if (base64) {
+      try {
+        await uploadMantenimientoPdf(inspection, base64);
+      } catch (uploadError) {
+        console.error('Error al subir PDF de mantenimiento:', uploadError);
+      }
+    }
     return uri;
   } catch (error) {
     console.error('Error al generar informe de mantenimiento:', error);

@@ -33,6 +33,7 @@ export interface MantenimientoInspection {
   licensePlate: string;
   otNumber?: string;
   notes: string;
+  pdfUrl?: string;
   safetyChecklist?: SafetyChecklist | null;
   checklist: MantenimientoChecklistItem[];
   materials: MantenimientoMaterial[];
@@ -106,6 +107,7 @@ const dbRowToInspection = (row: any, checklistRows: any[], photoRows: any[], mat
     licensePlate: row.license_plate || '',
     otNumber: row.ot_number || '',
     notes: row.notes || '',
+    pdfUrl: row.pdf_url || '',
     safetyChecklist: row.safety_checklist ? parseSafetyChecklist(row.safety_checklist, 'full') : null,
     checklist,
     materials: (materialRows || []).map((material: any) => ({
@@ -174,7 +176,7 @@ export const createEmptyMantenimientoInspection = (machineType = 'otros'): Mante
     comment: '',
     photos: [],
   })));
-  return { id: generateUUID(), clientName: '', date: now.slice(0, 10), location: '', reviewedBy: '', machineType, brand: '', model: '', serialNumber: '', licensePlate: '', otNumber: '', notes: '', safetyChecklist: null, checklist, materials: [], generalPhotos: {}, createdAt: now, updatedAt: now };
+  return { id: generateUUID(), clientName: '', date: now.slice(0, 10), location: '', reviewedBy: '', machineType, brand: '', model: '', serialNumber: '', licensePlate: '', otNumber: '', notes: '', pdfUrl: '', safetyChecklist: null, checklist, materials: [], generalPhotos: {}, createdAt: now, updatedAt: now };
 };
 
 export const saveMantenimientoInspection = async (inspection: MantenimientoInspection): Promise<MantenimientoInspection> => {
@@ -196,6 +198,7 @@ export const saveMantenimientoInspection = async (inspection: MantenimientoInspe
     license_plate: saved.licensePlate || null,
     ot_number: saved.otNumber || null,
     notes: saved.notes || null,
+    pdf_url: saved.pdfUrl || null,
     safety_checklist: saved.safetyChecklist || null,
     created_at: saved.createdAt,
     updated_at: now,
@@ -283,6 +286,7 @@ export const inspectionToParams = (inspection: MantenimientoInspection): any => 
   otNumber: inspection.otNumber || '',
   notes: inspection.notes || '',
   safetyChecklist: inspection.safetyChecklist ? JSON.stringify(inspection.safetyChecklist) : '',
+  pdfUrl: inspection.pdfUrl || '',
   generalPhotos: JSON.stringify(inspection.generalPhotos || {}),
   checklist: JSON.stringify(inspection.checklist || []),
   materials: JSON.stringify(inspection.materials || []),
@@ -306,6 +310,7 @@ export const paramsToInspection = (params: any): MantenimientoInspection => {
     licensePlate: getParamString(params.licensePlate),
     otNumber: getParamString(params.otNumber),
     notes: getParamString(params.notes),
+    pdfUrl: getParamString(params.pdfUrl),
     safetyChecklist: params.safetyChecklist ? parseSafetyChecklist(getParamString(params.safetyChecklist), 'full') : null,
     checklist: parseJsonParam<MantenimientoChecklistItem[]>(params.checklist, base.checklist),
     materials: parseJsonParam<MantenimientoMaterial[]>(params.materials, []),
