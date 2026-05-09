@@ -118,15 +118,19 @@ export default function NewMachineScreen() {
       const savedMachine = await saveMachine(machine);
       const savedMachineId = savedMachine.id;
 
+      const nextPath = machine.machineType === 'otros' ? '/comments' : '/checklist';
+
       if (isEditing) {
-        router.replace({
-          pathname: '/report',
-          params: { machineId: savedMachineId },
+        router.push({
+          pathname: '/safety-checklist-form',
+          params: {
+            machineId: savedMachineId,
+            module: 'inspection',
+            nextPath,
+          },
         });
         return;
       }
-
-      const nextPath = machine.machineType === 'otros' ? '/comments' : '/checklist';
 
       router.push({
         pathname: '/safety-checklist-form',

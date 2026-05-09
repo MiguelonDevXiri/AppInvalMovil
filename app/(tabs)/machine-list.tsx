@@ -415,7 +415,7 @@ export default function MachineListScreen() {
           {userRole !== 'technician' && (
             <Menu.Item
               onPress={handleEditMachine}
-              title="Editar inspección"
+              title="Editar renove"
               leadingIcon="pencil"
             />
           )}
