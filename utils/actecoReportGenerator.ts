@@ -1,5 +1,5 @@
 import * as FileSystem from 'expo-file-system/legacy';
-import * as ImageManipulator from 'expo-image-manipulator';
+import { processImagesParallel, imageToBase64, WIDTH_EVIDENCE } from './imageProcessor';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { Alert, Platform } from 'react-native';
@@ -74,68 +74,6 @@ const generateFileName = (report: ActecoReportData): string => {
   }
 };
 
-const isRemoteUri = (uri: string): boolean => uri.startsWith('http://') || uri.startsWith('https://');
-
-const ensureLocalImageUri = async (uri: string): Promise<string> => {
-  if (!uri) return uri;
-  if (!isRemoteUri(uri)) return uri;
-
-  const targetPath = `${FileSystem.cacheDirectory || FileSystem.documentDirectory}acteco_report_img_${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`;
-  const downloadResult = await FileSystem.downloadAsync(uri, targetPath);
-  return downloadResult.uri;
-};
-
-const getImageBase64 = async (uri: string, maxWidth: number = 250): Promise<string> => {
-  try {
-    if (!uri) {
-      console.log('❌ URI vacía');
-      return '';
-    }
-    
-    // Si ya es base64, devolverla directamente
-    if (uri.startsWith('data:image')) {
-      console.log('✅ Ya es base64, devolviendo directamente');
-      return uri;
-    }
-
-    const localUri = await ensureLocalImageUri(uri);
-    
-    console.log(`📸 Procesando imagen desde file: ${uri.substring(0, 80)}...`);
-    
-    const fileInfo = await FileSystem.getInfoAsync(localUri);
-    if (!fileInfo.exists) {
-      console.warn('⚠️ La imagen no existe:', uri);
-      return '';
-    }
-
-    console.log(`✅ Imagen existe, redimensionando a ${maxWidth}px...`);
-
-    const resizedImage = await ImageManipulator.manipulateAsync(
-      localUri,
-      [{ resize: { width: maxWidth } }],
-      { compress: 0.4, format: ImageManipulator.SaveFormat.JPEG }
-    );
-
-    const base64 = await FileSystem.readAsStringAsync(resizedImage.uri, {
-      encoding: FileSystem.EncodingType.Base64
-    });
-
-    console.log(`✅ Imagen convertida a base64 (${base64.length} chars)`);
-    return `data:image/jpeg;base64,${base64}`;
-  } catch (error) {
-    console.error('❌ Error al convertir imagen:', error);
-    return '';
-  }
-};
-
-const getImagesBase64Sequential = async (uris: string[], maxWidth?: number): Promise<string[]> => {
-  const results: string[] = [];
-  for (const uri of uris) {
-    const image = await getImageBase64(uri, maxWidth).catch(() => '');
-    if (image) results.push(image);
-  }
-  return results;
-};
 
 
 export const generateActecoHTML = async (report: ActecoReportData): Promise<string> => {
@@ -148,9 +86,10 @@ export const generateActecoHTML = async (report: ActecoReportData): Promise<stri
     
     // Procesar fotos de forma secuencial para evitar picos de memoria en Android.
     const generalSources = [report.photoGeneral1, report.photoGeneral2, report.photoGeneral3, report.photoGeneral4].filter(Boolean) as string[];
-    const photosGeneral = await getImagesBase64Sequential(generalSources);
-    const photosAveria = await getImagesBase64Sequential(
-      report.averiaPhotos && Array.isArray(report.averiaPhotos) ? report.averiaPhotos : []
+    const photosGeneral = await processImagesParallel(generalSources, WIDTH_EVIDENCE);
+    const photosAveria = await processImagesParallel(
+      report.averiaPhotos && Array.isArray(report.averiaPhotos) ? report.averiaPhotos : [],
+      WIDTH_EVIDENCE
     );
 
     console.log(`📸 Fotos generales: ${photosGeneral.length}`);
@@ -172,7 +111,7 @@ export const generateActecoHTML = async (report: ActecoReportData): Promise<stri
     
     // Procesar firma técnico
     if (report.technicianSignature && report.technicianSignature.trim() !== '') {
-      firmaTenico = await getImageBase64(report.technicianSignature, 300);
+      firmaTenico = await imageToBase64(report.technicianSignature, WIDTH_EVIDENCE);
       console.log('✅ Firma técnico procesada:', firmaTenico ? `SÍ (${firmaTenico.length} chars)` : 'NO');
     } else {
       console.log('⚠️ Firma técnico vacía o no proporcionada');
@@ -180,7 +119,7 @@ export const generateActecoHTML = async (report: ActecoReportData): Promise<stri
     
     // Procesar firma cliente
     if (report.clientSignature && report.clientSignature.trim() !== '') {
-      firmaCliente = await getImageBase64(report.clientSignature, 300);
+      firmaCliente = await imageToBase64(report.clientSignature, WIDTH_EVIDENCE);
       console.log('✅ Firma cliente procesada:', firmaCliente ? `SÍ (${firmaCliente.length} chars)` : 'NO');
     } else {
       console.log('⚠️ Firma cliente vacía o no proporcionada');

@@ -10,6 +10,7 @@ import { BORDER_RADIUS, BRAND_COLORS, SHADOWS, SPACING, TYPOGRAPHY } from '../..
 import { LazyPhotoGrid } from '../../components/LazyPhotoGrid';
 import {
   getAveriaInspectionById,
+  inspectionToParams,
   paramsToInspection,
   saveAveriaInspection,
   type AveriaInspection,
@@ -124,6 +125,11 @@ export default function AveriaReportViewScreen() {
       setProgressPercent(0);
       setProgressText('');
     }
+  };
+
+  const handleEdit = () => {
+    if (!inspection) return;
+    router.push({ pathname: '/averia-machine-form' as any, params: { ...inspectionToParams(inspection), isEditing: 'true' } });
   };
 
   const handleFinish = () => { router.push('/(tabs)'); };
@@ -282,6 +288,7 @@ export default function AveriaReportViewScreen() {
       <SafeAreaView style={styles.buttonSafeArea} edges={['bottom']}>
         <View style={styles.buttonContainer}>
           <Button mode="outlined" onPress={handleFinish} style={styles.button} icon="home" textColor="#7c3aed" disabled={isGenerating || isSharing}>Inicio</Button>
+          <Button mode="outlined" onPress={handleEdit} style={styles.button} icon="pencil" textColor="#7c3aed" disabled={isGenerating || isSharing}>Editar</Button>
           <Button mode="contained" onPress={handleSharePDF} style={styles.button} icon="share-variant" buttonColor="#7c3aed" disabled={isGenerating || isSharing} loading={isSharing}>
             {isSharing ? 'Compartiendo...' : 'Compartir PDF'}
           </Button>

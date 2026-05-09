@@ -6,6 +6,7 @@ import JSZip from 'jszip';
 import { Alert, Platform } from 'react-native';
 import { decode } from 'base64-arraybuffer';
 import { getChecklistByMachineType } from '../data/machineChecklists';
+import { processImagesParallel, imageToBase64, WIDTH_EVIDENCE, WIDTH_GENERAL } from './imageProcessor';
 import { ChecklistData, GeneralPhotosData, Machine } from './storage';
 import { supabase } from './supabase';
 import { renderSafetySummaryHTML } from './safetyChecklist';
@@ -47,74 +48,23 @@ const isRemoteUri = (uri: string): boolean => uri.startsWith('http://') || uri.s
 const ensureLocalImageUri = async (uri: string): Promise<string> => {
   if (!uri) return uri;
   if (!isRemoteUri(uri)) return uri;
-
   const targetPath = `${FileSystem.cacheDirectory || FileSystem.documentDirectory}report_img_${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`;
   const downloadResult = await FileSystem.downloadAsync(uri, targetPath);
   return downloadResult.uri;
 };
 
-// Función mejorada para convertir una imagen a base64 con orientación correcta
+// Wrapper de compatibilidad — usa el procesador compartido
 const getImageBase64WithOrientation = async (
   uri: string, 
-  maxWidth: number = 800,
-  forThumbnail: boolean = false
-): Promise<string> => {
-  try {
-    const localUri = await ensureLocalImageUri(uri);
-    const fileInfo = await FileSystem.getInfoAsync(localUri);
-    if (!fileInfo.exists) {
-      console.warn('La imagen no existe en la ruta:', uri);
-      return getPlaceholderImageBase64();
-    }
+  maxWidth: number = WIDTH_EVIDENCE,
+  _forThumbnail: boolean = false
+): Promise<string> => imageToBase64(uri, maxWidth, 0.35);
 
-    let manipulations: ImageManipulator.Action[] = [];
-    
-    // Redimensionar manteniendo la proporción de aspecto
-    manipulations.push({ resize: { width: maxWidth } });
+const getImageBase64 = (uri: string) => imageToBase64(uri, WIDTH_EVIDENCE);
+const getThumbnailBase64 = (uri: string) => imageToBase64(uri, WIDTH_GENERAL, 0.4);
 
-    const resizedImage = await ImageManipulator.manipulateAsync(
-      localUri,
-      manipulations,
-      { compress: 0.5, format: ImageManipulator.SaveFormat.JPEG }
-    );
-
-    const base64 = await FileSystem.readAsStringAsync(resizedImage.uri, {
-      encoding: FileSystem.EncodingType.Base64
-    });
-
-    return `data:image/jpeg;base64,${base64}`;
-  } catch (error) {
-    console.error('Error al convertir imagen a base64:', error);
-    return getPlaceholderImageBase64();
-  }
-};
-
-// Función para convertir una imagen URI a base64 (para checklist y comentarios)
-const getImageBase64 = async (uri: string): Promise<string> => {
-  return getImageBase64WithOrientation(uri, 300, false);
-};
-
-// Función para obtener imagen thumbnail más grande para fotos generales
-const getThumbnailBase64 = async (uri: string): Promise<string> => {
-  return getImageBase64WithOrientation(uri, 400, true);
-};
-
-const resolveImagesSequential = async (
-  uris: string[],
-  resolver: (uri: string) => Promise<string>
-): Promise<string[]> => {
-  const results: string[] = [];
-  for (const uri of uris) {
-    const image = await resolver(uri).catch(() => '');
-    results.push(image);
-  }
-  return results;
-};
-
-// Función para obtener una imagen de placeholder en caso de error
-const getPlaceholderImageBase64 = (): string => {
-  return 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADIAQAAAACFI5MzAAAAA1BMVEXk5+pYdT3IAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAAFUlEQVRIie3BAQEAAACAkP6v7ggKAAAuAAGfAAEkOuFjAAAAAElFTkSuQmCC';
-};
+const getPlaceholderImageBase64 = (): string =>
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADIAQAAAACFI5MzAAAAA1BMVEXk5+pYdT3IAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAAFUlEQVRIie3BAQEAAACAkP6v7ggKAAAuAAGfAAEkOuFjAAAAAElFTkSuQmCC';
 
 // Función para obtener el logo en base64
 export const getLogoBase64 = (): string => {
@@ -282,10 +232,10 @@ const processComments = async (machine: Machine): Promise<string> => {
   let htmlContent = '';
 
   if (machine.commentsWithPhotos && machine.commentsWithPhotos.length > 0) {
-    // Procesar fotos secuencialmente para evitar picos de memoria en Android.
-    const photoResults = await resolveImagesSequential(
+    // Procesar fotos en paralelo con concurrencia limitada
+    const photoResults = await processImagesParallel(
       machine.commentsWithPhotos.map((comment) => comment.photoUri || ''),
-      (uri) => (uri ? getImageBase64(uri) : Promise.resolve(''))
+      WIDTH_EVIDENCE,
     );
 
     for (let i = 0; i < machine.commentsWithPhotos.length; i++) {
@@ -382,7 +332,7 @@ export const generateHTMLReport = async (
       photoLabels.push(generalPhotoLabelMap.right);
     }
 
-    const thumbnails = await resolveImagesSequential(photoUris, getThumbnailBase64);
+    const thumbnails = await processImagesParallel(photoUris, WIDTH_GENERAL, 0.4);
 
     generalPhotosThumbnails = `
       <div class="section">
@@ -455,7 +405,7 @@ export const generateHTMLReport = async (
           }
           photoIndexMap.push({ itemId: item.id, startIdx, count: photoArray.length, comments });
         }
-        const allPhotoResults = await resolveImagesSequential(allPhotoUris, getImageBase64);
+        const allPhotoResults = await processImagesParallel(allPhotoUris, WIDTH_EVIDENCE);
 
         // Build a lookup: itemId -> resolved photo HTML
         const photoHtmlByItemId: Record<string, string> = {};

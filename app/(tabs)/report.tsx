@@ -90,6 +90,18 @@ export default function ReportScreen() {
     }
   };
 
+  const handleEdit = () => {
+    if (!machine) return;
+    router.push({
+      pathname: '/new-machine' as any,
+      params: {
+        machineId: machine.id,
+        machineTypeId: machine.machineType || 'otros',
+        isEditing: 'true',
+      },
+    });
+  };
+
   const handleShareReport = async () => {
     try {
       if (!machine) { Alert.alert('Error', 'No hay datos de máquina para generar el informe.'); return; }
@@ -379,6 +391,9 @@ export default function ReportScreen() {
         <View style={styles.buttonsContainer}>
           <Button mode="outlined" onPress={() => router.replace('/')} style={styles.button} icon="home" textColor={BRAND_COLORS.primaryBlue}>
             Inicio
+          </Button>
+          <Button mode="outlined" onPress={handleEdit} style={styles.button} icon="pencil" textColor={BRAND_COLORS.primaryBlue} disabled={isGenerating}>
+            Editar
           </Button>
           <Button mode="contained" onPress={handleShareReport} style={styles.button} icon="share-variant" buttonColor={BRAND_COLORS.primaryOrange} disabled={isGenerating}>
             Compartir Informe

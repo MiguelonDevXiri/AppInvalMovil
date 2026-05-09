@@ -1,5 +1,5 @@
 import * as FileSystem from 'expo-file-system/legacy';
-import * as ImageManipulator from 'expo-image-manipulator';
+import { processImagesParallel, imageToBase64, WIDTH_EVIDENCE, WIDTH_GENERAL } from './imageProcessor';
 import * as Print from 'expo-print';
 import { decode } from 'base64-arraybuffer';
 import { getLogoBase64 as getInvalLogoBase64 } from './instalacionesReportGenerator';
@@ -46,52 +46,7 @@ const buildExitFileName = (report: ReparacionInspection): string => {
   return `${cleanPlate}_${cleanClient}_REPARACIONES_SALIDA_${cleanDate || Date.now()}.pdf`;
 };
 
-const isRemoteUri = (uri: string): boolean => uri.startsWith('http://') || uri.startsWith('https://');
 
-const ensureLocalImageUri = async (uri: string): Promise<string> => {
-  if (!uri || !isRemoteUri(uri)) {
-    return uri;
-  }
-
-  const targetPath = `${FileSystem.cacheDirectory || FileSystem.documentDirectory}reparaciones_exit_${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`;
-  const result = await FileSystem.downloadAsync(uri, targetPath);
-  return result.uri;
-};
-
-const getImageBase64 = async (uri: string, maxWidth: number = 260): Promise<string> => {
-  try {
-    if (!uri) return '';
-    if (uri.startsWith('data:image')) return uri;
-
-    const localUri = await ensureLocalImageUri(uri);
-    const info = await FileSystem.getInfoAsync(localUri);
-    if (!info.exists) return '';
-
-    const resized = await ImageManipulator.manipulateAsync(
-      localUri,
-      [{ resize: { width: maxWidth } }],
-      { compress: 0.5, format: ImageManipulator.SaveFormat.JPEG }
-    );
-
-    const base64 = await FileSystem.readAsStringAsync(resized.uri, {
-      encoding: FileSystem.EncodingType.Base64,
-    });
-
-    return `data:image/jpeg;base64,${base64}`;
-  } catch (error) {
-    console.error('Error al convertir imagen de salida de reparación:', error);
-    return '';
-  }
-};
-
-const getImagesBase64Sequential = async (uris: string[], maxWidth?: number): Promise<string[]> => {
-  const results: string[] = [];
-  for (const uri of uris) {
-    const image = await getImageBase64(uri, maxWidth).catch(() => '');
-    if (image) results.push(image);
-  }
-  return results;
-};
 
 const renderPhotoGrid = (photos: string[], labels: string[], emptyMessage: string): string => {
   if (photos.length === 0) {
@@ -117,15 +72,15 @@ const renderPhotoGrid = (photos: string[], labels: string[], emptyMessage: strin
 export const generateReparacionExitHTML = async (report: ReparacionInspection): Promise<string> => {
   const logoBase64 = getInvalLogoBase64();
 
-  const beforePhotos = await getImagesBase64Sequential(report.generalPhotos || [], 280);
+  const beforePhotos = await processImagesParallel(report.generalPhotos || [], WIDTH_GENERAL, 0.4);
 
-  const exitGeneralPhotos = await getImagesBase64Sequential(report.exitData?.generalPhotos || [], 280);
+  const exitGeneralPhotos = await processImagesParallel(report.exitData?.generalPhotos || [], WIDTH_GENERAL, 0.4);
 
   const exitChecks = [];
   for (const [index, repair] of (report.repairs || []).entries()) {
       const currentCheck = report.exitData?.checks.find((item) => item.repairId === repair.id);
-      const reviewPhoto = currentCheck?.photoUrl ? await getImageBase64(currentCheck.photoUrl, 260).catch(() => '') : '';
-      const originalPhotos = await getImagesBase64Sequential((repair.photos || []).slice(0, 4), 220);
+      const reviewPhoto = currentCheck?.photoUrl ? await imageToBase64(currentCheck.photoUrl, WIDTH_EVIDENCE).catch(() => '') : '';
+      const originalPhotos = await processImagesParallel((repair.photos || []).slice(0, 4), 220);
 
       exitChecks.push({
         id: repair.id,

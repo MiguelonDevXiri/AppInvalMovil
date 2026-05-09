@@ -9,6 +9,7 @@ import { LazyPhotoGrid } from '../../components/LazyPhotoGrid';
 import { BORDER_RADIUS, BRAND_COLORS, GRADIENTS, SHADOWS, SPACING, TYPOGRAPHY } from '../../constants/Colors';
 import {
     getActecoInspectionById,
+    inspectionToParams,
     paramsToInspection,
     saveActecoInspection,
     type ActecoInspection
@@ -154,6 +155,14 @@ export default function ActecoReportViewScreen() {
       setProgressPercent(0);
       setProgressText('');
     }
+  };
+
+  const handleEdit = () => {
+    if (!inspection) return;
+    router.push({
+      pathname: '/acteco-report-form' as any,
+      params: { ...inspectionToParams(inspection), isEditing: 'true' },
+    });
   };
 
   const handleFinish = () => {
@@ -434,6 +443,16 @@ export default function ActecoReportViewScreen() {
             Volver al Inicio
           </Button>
           
+          <Button
+            mode="outlined"
+            onPress={handleEdit}
+            style={styles.button}
+            icon="pencil"
+            textColor={BRAND_COLORS.primaryBlue}
+            disabled={isGenerating || isSharing}
+          >
+            Editar
+          </Button>
           <Button 
             mode="contained" 
             onPress={handleShareReport}

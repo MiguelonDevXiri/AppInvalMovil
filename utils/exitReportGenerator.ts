@@ -1,5 +1,5 @@
 import * as FileSystem from 'expo-file-system/legacy';
-import * as ImageManipulator from 'expo-image-manipulator';
+import { processImagesParallel, WIDTH_EVIDENCE, WIDTH_GENERAL } from './imageProcessor';
 import * as Print from 'expo-print';
 import { decode } from 'base64-arraybuffer';
 import { ExitCheck, ExitPhotosData, Machine } from './storage';
@@ -8,46 +8,7 @@ import { getChecklistByMachineType } from '../data/machineChecklists';
 import { sanitizePathSegment } from './photoUpload';
 import { getLogoBase64, getMachineTypeAbbreviation } from './reportGenerator';
 
-const isRemoteUri = (uri: string): boolean => uri.startsWith('http://') || uri.startsWith('https://');
 
-const ensureLocalImageUri = async (uri: string): Promise<string> => {
-  if (!uri) return uri;
-  if (!isRemoteUri(uri)) return uri;
-  const targetPath = `${FileSystem.cacheDirectory || FileSystem.documentDirectory}exit_img_${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`;
-  const downloadResult = await FileSystem.downloadAsync(uri, targetPath);
-  return downloadResult.uri;
-};
-
-const getImageBase64 = async (uri: string, maxWidth: number = 400): Promise<string> => {
-  try {
-    const localUri = await ensureLocalImageUri(uri);
-    const fileInfo = await FileSystem.getInfoAsync(localUri);
-    if (!fileInfo.exists) return '';
-
-    const resizedImage = await ImageManipulator.manipulateAsync(
-      localUri,
-      [{ resize: { width: maxWidth } }],
-      { compress: 0.5, format: ImageManipulator.SaveFormat.JPEG }
-    );
-
-    const base64 = await FileSystem.readAsStringAsync(resizedImage.uri, {
-      encoding: FileSystem.EncodingType.Base64,
-    });
-    return `data:image/jpeg;base64,${base64}`;
-  } catch (error) {
-    console.error('Error al convertir imagen a base64:', error);
-    return '';
-  }
-};
-
-const getImagesBase64Sequential = async (uris: string[], maxWidth?: number): Promise<string[]> => {
-  const results: string[] = [];
-  for (const uri of uris) {
-    const image = await getImageBase64(uri, maxWidth).catch(() => '');
-    results.push(image);
-  }
-  return results;
-};
 
 const cleanFileName = (name: string): string => {
   return name
@@ -86,7 +47,7 @@ export const generateExitPDF = async (
     let exitPhotosHtml = '';
     if (exitPhotos?.photos) {
       const photoEntries = Object.entries(exitPhotos.photos).filter(([_, url]) => url);
-      const photoBase64s = await getImagesBase64Sequential(photoEntries.map(([_, url]) => url!), 400);
+      const photoBase64s = await processImagesParallel(photoEntries.map(([_, url]) => url!), WIDTH_GENERAL, 0.4);
 
       if (photoBase64s.some(b => b)) {
         exitPhotosHtml = `
@@ -129,7 +90,7 @@ export const generateExitPDF = async (
 
     // Process all check photos in parallel
     const checksWithPhotos = checklistChecks.filter(c => c.photoUrl);
-    const checkPhotoResults = await getImagesBase64Sequential(checksWithPhotos.map(c => c.photoUrl!), 300);
+    const checkPhotoResults = await processImagesParallel(checksWithPhotos.map(c => c.photoUrl!), WIDTH_EVIDENCE);
     const checkPhotoMap: Record<string, string> = {};
     checksWithPhotos.forEach((c, i) => {
       if (checkPhotoResults[i]) checkPhotoMap[c.itemId] = checkPhotoResults[i];
@@ -137,7 +98,7 @@ export const generateExitPDF = async (
 
     // Also process comment check photos
     const commentChecksWithPhotos = commentChecks.filter(c => c.photoUrl);
-    const commentPhotoResults = await getImagesBase64Sequential(commentChecksWithPhotos.map(c => c.photoUrl!), 300);
+    const commentPhotoResults = await processImagesParallel(commentChecksWithPhotos.map(c => c.photoUrl!), WIDTH_EVIDENCE);
     const commentPhotoMap: Record<string, string> = {};
     commentChecksWithPhotos.forEach((c, i) => {
       if (commentPhotoResults[i]) commentPhotoMap[c.itemId] = commentPhotoResults[i];

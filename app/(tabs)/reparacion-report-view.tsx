@@ -14,6 +14,7 @@ import {
 } from '../../constants/Colors';
 import {
   getReparacionInspectionById,
+  inspectionToParams,
   paramsToInspection,
   saveReparacionInspection,
   type ReparacionInspection,
@@ -212,6 +213,14 @@ export default function ReparacionReportViewScreen() {
       setProgressPercent(0);
       setProgressText('');
     }
+  };
+
+  const handleEdit = () => {
+    if (!inspection) return;
+    router.push({
+      pathname: '/reparacion-machine-form' as any,
+      params: { ...inspectionToParams(inspection), isEditing: 'true' },
+    });
   };
 
   const handleFinish = () => {
@@ -419,6 +428,16 @@ export default function ReparacionReportViewScreen() {
           disabled={isGenerating || isSharing}
         >
           Volver al inicio
+        </Button>
+        <Button
+          mode="outlined"
+          onPress={handleEdit}
+          style={styles.actionButton}
+          textColor="#92400e"
+          icon="pencil"
+          disabled={isGenerating || isSharing}
+        >
+          Editar
         </Button>
         <Button
           mode="contained"

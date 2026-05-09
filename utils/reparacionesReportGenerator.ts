@@ -1,5 +1,5 @@
 import * as FileSystem from 'expo-file-system/legacy';
-import * as ImageManipulator from 'expo-image-manipulator';
+import { processImagesParallel, WIDTH_EVIDENCE, WIDTH_GENERAL } from './imageProcessor';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { Alert, Platform } from 'react-native';
@@ -46,52 +46,7 @@ const generateFileName = (report: ReparacionInspection): string => {
   }
 };
 
-const isRemoteUri = (uri: string): boolean => uri.startsWith('http://') || uri.startsWith('https://');
 
-const ensureLocalImageUri = async (uri: string): Promise<string> => {
-  if (!uri || !isRemoteUri(uri)) {
-    return uri;
-  }
-
-  const targetPath = `${FileSystem.cacheDirectory || FileSystem.documentDirectory}reparaciones_${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`;
-  const result = await FileSystem.downloadAsync(uri, targetPath);
-  return result.uri;
-};
-
-const getImageBase64 = async (uri: string, maxWidth: number = 240): Promise<string> => {
-  try {
-    if (!uri) return '';
-    if (uri.startsWith('data:image')) return uri;
-
-    const localUri = await ensureLocalImageUri(uri);
-    const fileInfo = await FileSystem.getInfoAsync(localUri);
-    if (!fileInfo.exists) return '';
-
-    const resized = await ImageManipulator.manipulateAsync(
-      localUri,
-      [{ resize: { width: maxWidth } }],
-      { compress: 0.45, format: ImageManipulator.SaveFormat.JPEG }
-    );
-
-    const base64 = await FileSystem.readAsStringAsync(resized.uri, {
-      encoding: FileSystem.EncodingType.Base64,
-    });
-
-    return `data:image/jpeg;base64,${base64}`;
-  } catch (error) {
-    console.error('Error al convertir imagen de reparación:', error);
-    return '';
-  }
-};
-
-const getImagesBase64Sequential = async (uris: string[], maxWidth?: number): Promise<string[]> => {
-  const results: string[] = [];
-  for (const uri of uris) {
-    const image = await getImageBase64(uri, maxWidth).catch(() => '');
-    if (image) results.push(image);
-  }
-  return results;
-};
 
 const renderPhotoGrid = (photos: string[], labels: string[], emptyMessage: string): string => {
   if (photos.length === 0) {
@@ -120,11 +75,11 @@ export const generateReparacionesHTML = async (report: ReparacionInspection): Pr
   for (const repair of report.repairs || []) {
     repairsWithPhotos.push({
       ...repair,
-      photos: await getImagesBase64Sequential(repair.photos || []),
+      photos: await processImagesParallel(repair.photos || [], WIDTH_EVIDENCE),
     });
   }
 
-  const beforePhotos = await getImagesBase64Sequential(report.generalPhotos || [], 280);
+  const beforePhotos = await processImagesParallel(report.generalPhotos || [], WIDTH_GENERAL, 0.4);
 
   const materialsRows = report.materials?.filter((material) => {
     return (

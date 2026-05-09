@@ -1,10 +1,10 @@
 import * as FileSystem from 'expo-file-system/legacy';
-import * as ImageManipulator from 'expo-image-manipulator';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { decode } from 'base64-arraybuffer';
 import { Alert } from 'react-native';
 import { getMachineTypeById } from '../data/machineTypes';
+import { processImagesParallel, WIDTH_GENERAL, WIDTH_EVIDENCE } from './imageProcessor';
 import { renderSafetySummaryHTML } from './safetyChecklist';
 import type { MantenimientoChecklistItem, MantenimientoInspection } from './mantenimientoStorage';
 import { getLogoBase64, getMachineTypeAbbreviation } from './reportGenerator';
@@ -17,44 +17,7 @@ const cleanFileName = (name: string): string => name
   .replace(/\s+/g, '_')
   .substring(0, 50);
 
-const isRemoteUri = (uri: string): boolean => uri.startsWith('http://') || uri.startsWith('https://');
 
-const ensureLocalImageUri = async (uri: string): Promise<string> => {
-  if (!uri || !isRemoteUri(uri)) return uri;
-  const targetPath = `${FileSystem.cacheDirectory || FileSystem.documentDirectory}mantenimiento_img_${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`;
-  const downloadResult = await FileSystem.downloadAsync(uri, targetPath);
-  return downloadResult.uri;
-};
-
-const getPlaceholderImageBase64 = (): string => 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADIAQAAAACFI5MzAAAAA1BMVEXk5+pYdT3IAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAAFUlEQVRIie3BAQEAAACAkP6v7ggKAAAuAAGfAAEkOuFjAAAAAElFTkSuQmCC';
-
-const getImageBase64WithOrientation = async (uri: string, maxWidth: number): Promise<string> => {
-  try {
-    const localUri = await ensureLocalImageUri(uri);
-    const fileInfo = await FileSystem.getInfoAsync(localUri);
-    if (!fileInfo.exists) return getPlaceholderImageBase64();
-
-    const resizedImage = await ImageManipulator.manipulateAsync(
-      localUri,
-      [{ resize: { width: maxWidth } }],
-      { compress: 0.5, format: ImageManipulator.SaveFormat.JPEG }
-    );
-
-    const base64 = await FileSystem.readAsStringAsync(resizedImage.uri, { encoding: FileSystem.EncodingType.Base64 });
-    return `data:image/jpeg;base64,${base64}`;
-  } catch (error) {
-    console.error('Error al convertir imagen a base64:', error);
-    return getPlaceholderImageBase64();
-  }
-};
-
-const resolveImagesSequential = async (uris: string[], maxWidth: number): Promise<string[]> => {
-  const results: string[] = [];
-  for (const uri of uris) {
-    results.push(await getImageBase64WithOrientation(uri, maxWidth).catch(() => ''));
-  }
-  return results;
-};
 
 const statusText = (status: string): string => {
   switch (status) {
@@ -102,7 +65,7 @@ const generateMantenimientoHTML = async (inspection: MantenimientoInspection): P
     { key: 'right', label: photoIdPrefix ? `${photoIdPrefix}_A4` : 'A4', uri: inspection.generalPhotos?.right },
   ].filter((entry): entry is { key: string; label: string; uri: string } => Boolean(entry.uri));
 
-  const generalThumbnails = await resolveImagesSequential(generalPhotoEntries.map((entry) => entry.uri), 400);
+  const generalThumbnails = await processImagesParallel(generalPhotoEntries.map((entry) => entry.uri), WIDTH_GENERAL, 0.4);
   const generalPhotosHtml = generalPhotoEntries.length ? `
       <div class="section">
         <div class="section-header">
@@ -136,7 +99,7 @@ const generateMantenimientoHTML = async (inspection: MantenimientoInspection): P
     photoIndexMap.push({ itemId: item.id, startIdx: photoUris.length, count: photos.length });
     photoUris.push(...photos);
   }
-  const checklistPhotoResults = await resolveImagesSequential(photoUris, 300);
+  const checklistPhotoResults = await processImagesParallel(photoUris, WIDTH_EVIDENCE);
   const photoHtmlByItemId: Record<string, string> = {};
   for (const entry of photoIndexMap) {
     const html = Array.from({ length: entry.count }, (_, index) => {
@@ -241,7 +204,7 @@ const generateMantenimientoHTML = async (inspection: MantenimientoInspection): P
       body { font-family: Arial, Helvetica, sans-serif; line-height: 1.5; color: #1f2937; font-size: 11px; margin: 0; padding: 0; background: #ffffff; print-color-adjust: exact; -webkit-print-color-adjust: exact; position: relative; }
       body::before { content: ""; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-45deg); background-image: url('${logoBase64}'); background-repeat: no-repeat; background-position: center; background-size: contain; width: 500px; height: 500px; opacity: 0.04; z-index: -1; pointer-events: none; }
       .page-shell { width: 100%; }
-      .header { background: linear-gradient(135deg, #0a1f3d 0%, #0f2f57 30%, #173f73 70%, #1a4a85 100%); color: white; border-radius: 12px; padding: 18px 20px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(15, 47, 87, 0.25); }
+      .header { background: linear-gradient(135deg, #0a1f3d 0%, #0f2f57 30%, #173f73 70%, #1a4a85 100%); color: white; border-radius: 12px; padding: 14px 16px; margin-bottom: 12px; box-shadow: 0 4px 12px rgba(15, 47, 87, 0.25); }
       .header-top { display: table; width: 100%; }
       .header-brand, .header-meta { display: table-cell; vertical-align: middle; }
       .header-meta { text-align: right; width: 42%; font-size: 9px; color: #c5d8ef; line-height: 1.6; }
@@ -252,17 +215,17 @@ const generateMantenimientoHTML = async (inspection: MantenimientoInspection): P
       h1 { font-size: 22px; color: #ffffff; margin: 0 0 4px 0; letter-spacing: 0.5px; }
       .header-subline { font-size: 11px; color: #c5d8ef; }
       .header-meta strong { color: #ffffff; font-size: 12px; display: block; margin-bottom: 3px; }
-      .info-grid { display: table; width: 100%; table-layout: fixed; border-spacing: 12px 0; margin: 0 -12px 20px -12px; }
+      .info-grid { display: table; width: 100%; table-layout: fixed; border-spacing: 10px 0; margin: 0 -10px 10px -10px; }
       .info-card { display: table-cell; vertical-align: top; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
       .info-card-header { padding: 8px 12px; color: white; font-size: 9px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
       .info-card-header.blue { background: linear-gradient(135deg, #0f2f57 0%, #173f73 100%); border-bottom: 3px solid #e87a20; }
       .info-card-header.coral { background: linear-gradient(135deg, #e87a20 0%, #c2410c 100%); border-bottom: 3px solid #0f2f57; }
       .info-card-body { padding: 6px 12px; }
-      .info-row { margin-bottom: 0; padding: 8px 0; border-bottom: 1px solid #eceff3; }
-      .info-row:last-child { margin-bottom: 0; padding-bottom: 6px; border-bottom: 0; }
+      .info-row { margin-bottom: 0; padding: 5px 0; border-bottom: 1px solid #eceff3; }
+      .info-row:last-child { margin-bottom: 0; padding-bottom: 4px; border-bottom: 0; }
       .info-label { font-size: 9px; color: #4b5563; text-transform: uppercase; letter-spacing: 0.7px; margin-bottom: 2px; }
       .info-value { font-size: 12px; font-weight: bold; color: #111827; }
-      .section { margin-bottom: 20px; }
+      .section { margin-bottom: 14px; }
       .section-header { display: table; width: 100%; margin-bottom: 10px; }
       .section-icon, .section-header-text { display: table-cell; vertical-align: middle; }
       .section-icon { width: 38px; height: 38px; border-radius: 10px; background: linear-gradient(135deg, #0f2f57 0%, #e87a20 100%); color: white; font-size: 11px; font-weight: bold; text-align: center; line-height: 38px; box-shadow: 0 2px 6px rgba(15, 47, 87, 0.2); }
@@ -274,11 +237,12 @@ const generateMantenimientoHTML = async (inspection: MantenimientoInspection): P
       .summary-ok { background: #16a34a; } .summary-fail { background: #e87a20; } .summary-na { background: #6b7280; } .summary-cant { background: #7c3aed; } .summary-total { background: #0f2f57; }
       .summary-value { font-size: 18px; line-height: 1; margin-bottom: 4px; }
       .summary-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.8px; }
-      .photos-grid { display: table; width: 100%; table-layout: fixed; border-spacing: 10px 10px; margin: 0 -10px; }
+      .photos-grid { display: table; width: 100%; table-layout: fixed; border-spacing: 6px 6px; margin: 0 -6px; }
       .photos-row { display: table-row; }
-      .photo-card { display: table-cell; width: 50%; vertical-align: top; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 10px; text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
-      .header-thumbnail { width: 100%; height: auto; max-height: 190px; object-fit: contain; border-radius: 8px; border: 1px solid #e2e8f0; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
-      .header-photo-label { font-size: 9px; color: #0f2f57; margin-top: 8px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; }
+      .photo-card { display: table-cell; width: 50%; vertical-align: top; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 6px; text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
+      .header-thumbnail { width: 100%; height: 120px; object-fit: contain; border-radius: 6px; border: 1px solid #e2e8f0; background: white; }
+      .header-photo-label { font-size: 8px; color: #0f2f57; margin-top: 4px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; }
+      .page-one-block { page-break-after: always; }
       .category { margin-bottom: 16px; }
       .category-banner { background: linear-gradient(90deg, #0f2f57 0%, #173f73 60%, #e87a20 100%); color: white; padding: 6px 12px; border-radius: 10px 10px 0 0; font-size: 10px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.8px; }
       .checklist-two-col { display: table; width: 100%; table-layout: fixed; border-spacing: 10px 0; margin: 0 -10px; }
@@ -295,8 +259,10 @@ const generateMantenimientoHTML = async (inspection: MantenimientoInspection): P
       .status-pill.cant { background: #f5f3ff; color: #5b21b6; border: 0.5px solid #c4b5fd; }
       .status-dot { display: inline-block; width: 5px; height: 5px; border-radius: 50%; margin-right: 4px; }
       .status-dot.ok { background: #16a34a; } .status-dot.fail { background: #e87a20; } .status-dot.na, .status-dot.pending { background: #6b7280; } .status-dot.cant { background: #7c3aed; }
-      .item-comment { background: #fff7ed; border-left: 3px solid #e87a20; padding: 4px 8px; border-radius: 4px; font-size: 9px; color: #9a3412; }
+      .item-comment { background: #fff7ed; border-left: 3px solid #e87a20; padding: 4px 8px; border-radius: 4px; font-size: 9px; color: #9a3412; page-break-inside: avoid; }
       .item-comment.cant { background: #f5f3ff; border-left-color: #7c3aed; color: #5b21b6; }
+      .checklist-table tr { page-break-inside: avoid; }
+      .category { page-break-inside: avoid; }
       .photo-cell { padding: 6px 8px !important; background: #fafbfd; }
       .evidence-photos-grid { display: block; }
       .evidence-photo-container { display: table; width: 100%; margin-bottom: 6px; page-break-inside: avoid; }
@@ -320,6 +286,7 @@ const generateMantenimientoHTML = async (inspection: MantenimientoInspection): P
   </head>
   <body>
     <div class="page-shell">
+      <div class="page-one-block">
       <div class="header">
         <div class="header-top">
           <div class="header-brand"><div class="brand-wrap"><div class="logo-badge"><img src="${logoBase64}" class="company-logo" alt="Logo Empresa" /></div><div><div class="header-kicker">Mantenimientos y reparaciones</div><h1>Informe de mantenimiento</h1><div class="header-subline">Documento técnico de revisión visual y funcional</div></div></div></div>
@@ -351,6 +318,8 @@ const generateMantenimientoHTML = async (inspection: MantenimientoInspection): P
       </div>
 
       ${generalPhotosHtml}
+      </div><!-- end page-one-block -->
+
       ${safetySummaryHtml}
       ${checklistHtml}
       ${materialsHtml}
@@ -396,10 +365,26 @@ const uploadMantenimientoPdf = async (inspection: MantenimientoInspection, pdfBa
   return publicUrl;
 };
 
+const buildShareFileName = (inspection: MantenimientoInspection): string => {
+  const client = cleanFileName(inspection.clientName || 'cliente');
+  const machineAbbr = getMachineTypeAbbreviation(inspection.machineType || 'otros');
+  const identifier = cleanFileName(inspection.licensePlate?.trim() || inspection.serialNumber?.trim() || '');
+  let name = `${client}_MANT_${machineAbbr}`;
+  if (identifier) name += `_${identifier}`;
+  return `${name}.pdf`;
+};
+
 export const generateMantenimientoReport = async (inspection: MantenimientoInspection): Promise<string | null> => {
   try {
     const html = await generateMantenimientoHTML(inspection);
     const { uri, base64 } = await Print.printToFileAsync({ html, width: 595, height: 842, base64: true });
+
+    // Renombrar el archivo para que tenga un nombre descriptivo
+    const fileName = buildShareFileName(inspection);
+    const namedUri = `${FileSystem.documentDirectory}${fileName}`;
+    await FileSystem.copyAsync({ from: uri, to: namedUri });
+    await FileSystem.deleteAsync(uri, { idempotent: true });
+
     if (base64) {
       try {
         await uploadMantenimientoPdf(inspection, base64);
@@ -407,7 +392,7 @@ export const generateMantenimientoReport = async (inspection: MantenimientoInspe
         console.error('Error al subir PDF de mantenimiento:', uploadError);
       }
     }
-    return uri;
+    return namedUri;
   } catch (error) {
     console.error('Error al generar informe de mantenimiento:', error);
     Alert.alert('Error', 'No se pudo generar el PDF de mantenimiento.');
@@ -420,6 +405,7 @@ export const shareMantenimientoReport = async (inspection: MantenimientoInspecti
   if (!uri) return;
 
   if (await Sharing.isAvailableAsync()) {
+    const fileName = buildShareFileName(inspection);
     await Sharing.shareAsync(uri, {
       mimeType: 'application/pdf',
       dialogTitle: `Compartir Mantenimiento - ${inspection.clientName}`,

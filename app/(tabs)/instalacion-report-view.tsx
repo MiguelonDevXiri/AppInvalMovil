@@ -16,6 +16,7 @@ import {
 import { LazyPhotoGrid } from '../../components/LazyPhotoGrid';
 import {
   getInstalacionInspectionById,
+  inspectionToParams,
   paramsToInspection,
   saveInstalacionInspection,
   type InstalacionInspection,
@@ -159,6 +160,14 @@ export default function InstalacionReportViewScreen() {
       setProgressPercent(0);
       setProgressText('');
     }
+  };
+
+  const handleEdit = () => {
+    if (!inspection) return;
+    router.push({
+      pathname: '/instalacion-machine-form' as any,
+      params: { ...inspectionToParams(inspection), isEditing: 'true' },
+    });
   };
 
   const handleFinish = () => {
@@ -343,6 +352,16 @@ export default function InstalacionReportViewScreen() {
             disabled={isGenerating || isSharing}
           >
             Inicio
+          </Button>
+          <Button
+            mode="outlined"
+            onPress={handleEdit}
+            style={styles.button}
+            icon="pencil"
+            textColor={INSTALLATION_PRIMARY}
+            disabled={isGenerating || isSharing}
+          >
+            Editar
           </Button>
           <Button
             mode="contained"

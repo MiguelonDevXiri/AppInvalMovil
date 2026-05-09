@@ -19,7 +19,7 @@ export default function MantenimientoFormScreen() {
   const [inspection, setInspection] = useState<MantenimientoInspection>(() => paramsToInspection({ ...params, machineType }));
   const [loading, setLoading] = useState(Boolean(inspectionId) && !getParamString(params.clientName));
   const [isSaving, setIsSaving] = useState(false);
-  const [errors, setErrors] = useState({ brand: false, clientName: false, licensePlate: false });
+  const [errors, setErrors] = useState({ brand: false, clientName: false });
 
   useEffect(() => {
     let active = true;
@@ -36,7 +36,7 @@ export default function MantenimientoFormScreen() {
 
   const setField = (field: keyof MantenimientoInspection, value: string) => {
     setInspection((prev) => ({ ...prev, [field]: value }));
-    if (field === 'brand' || field === 'clientName' || field === 'licensePlate') {
+    if (field === 'brand' || field === 'clientName') {
       setErrors((current) => ({ ...current, [field]: false }));
     }
   };
@@ -45,15 +45,14 @@ export default function MantenimientoFormScreen() {
     const nextErrors = {
       brand: !inspection.brand.trim(),
       clientName: !inspection.clientName.trim(),
-      licensePlate: !inspection.licensePlate.trim(),
     };
     setErrors(nextErrors);
-    return !nextErrors.brand && !nextErrors.clientName && !nextErrors.licensePlate;
+    return !nextErrors.brand && !nextErrors.clientName;
   };
 
   const handleContinue = () => {
     if (!validateForm()) {
-      Alert.alert('Campos obligatorios', 'Marca, cliente y matrícula son obligatorios.');
+      Alert.alert('Campos obligatorios', 'Marca y cliente son obligatorios.');
       return;
     }
     if (isSaving) return;
@@ -131,17 +130,15 @@ export default function MantenimientoFormScreen() {
               outlineStyle={styles.inputOutline}
             />
             <TextInput
-              label="Matrícula *"
+              label="Matrícula"
               value={inspection.licensePlate}
               onChangeText={(value) => setField('licensePlate', value)}
               style={styles.input}
               mode="outlined"
-              error={errors.licensePlate}
               outlineColor={BRAND_COLORS.grayMedium}
               activeOutlineColor={BRAND_COLORS.primaryBlue}
               outlineStyle={styles.inputOutline}
             />
-            {errors.licensePlate ? <HelperText type="error">La matrícula es obligatoria</HelperText> : null}
             <TextInput
               label="Nº OT"
               value={inspection.otNumber || ''}
