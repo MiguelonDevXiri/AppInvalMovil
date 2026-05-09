@@ -1,9 +1,10 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Image, Modal, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { Button, Card, Chip, Divider, Text } from 'react-native-paper';
+import { Button, Card, Chip, Divider, Menu, Text } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BORDER_RADIUS, BRAND_COLORS, GRADIENTS, SHADOWS, SPACING, TYPOGRAPHY } from '../../constants/Colors';
 import checklistData from '../../data/checklistData';
@@ -24,6 +25,7 @@ export default function ReportScreen() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [progressText, setProgressText] = useState('');
   const [progressPercent, setProgressPercent] = useState(0);
+  const [editMenuVisible, setEditMenuVisible] = useState(false);
   const generatingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -46,29 +48,32 @@ export default function ReportScreen() {
     };
   }, [isGenerating]);
 
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        if (!machineId) return;
-        setLoading(true);
+  const loadData = useCallback(async () => {
+    try {
+      if (!machineId) return;
+      setLoading(true);
 
-        const foundMachine = await getMachineById(machineId.toString());
-        if (foundMachine) setMachine(foundMachine);
+      const foundMachine = await getMachineById(machineId.toString());
+      setMachine(foundMachine ?? null);
 
-        const foundChecklist = await getChecklistByMachineId(machineId.toString());
-        if (foundChecklist) setChecklistResults(foundChecklist);
+      const foundChecklist = await getChecklistByMachineId(machineId.toString());
+      setChecklistResults(foundChecklist ?? null);
 
-        const foundPhotos = await getGeneralPhotosByMachineId(machineId.toString());
-        if (foundPhotos) setGeneralPhotos(foundPhotos);
+      const foundPhotos = await getGeneralPhotosByMachineId(machineId.toString());
+      setGeneralPhotos(foundPhotos ?? null);
 
-        setLoading(false);
-      } catch (error) {
-        console.error('Error al cargar los datos:', error);
-        setLoading(false);
-      }
-    };
-    loadData();
+      setLoading(false);
+    } catch (error) {
+      console.error('Error al cargar los datos:', error);
+      setLoading(false);
+    }
   }, [machineId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [loadData])
+  );
 
   const getStatusText = (status: string): string => {
     switch (status) {
@@ -90,16 +95,62 @@ export default function ReportScreen() {
     }
   };
 
-  const handleEdit = () => {
+  type EditSection = 'machine' | 'safety' | 'checklist' | 'materials' | 'comments' | 'photos';
+
+  const editSection = (section: EditSection) => {
     if (!machine) return;
-    router.push({
-      pathname: '/new-machine' as any,
-      params: {
-        machineId: machine.id,
-        machineTypeId: machine.machineType || 'otros',
-        isEditing: 'true',
-      },
-    });
+    setEditMenuVisible(false);
+    const machineIdStr = machine.id;
+    const machineTypeId = machine.machineType || 'otros';
+    const returnTo = '/report';
+
+    switch (section) {
+      case 'machine':
+        router.push({
+          pathname: '/new-machine' as any,
+          params: {
+            machineId: machineIdStr,
+            machineTypeId,
+            isEditing: 'true',
+            returnTo,
+          },
+        });
+        return;
+      case 'safety':
+        router.push({
+          pathname: '/safety-checklist-form' as any,
+          params: {
+            machineId: machineIdStr,
+            module: 'inspection',
+            returnTo,
+          },
+        });
+        return;
+      case 'checklist':
+        router.push({
+          pathname: '/checklist' as any,
+          params: { machineId: machineIdStr, returnTo },
+        });
+        return;
+      case 'materials':
+        router.push({
+          pathname: '/checklist-materials' as any,
+          params: { machineId: machineIdStr, returnTo },
+        });
+        return;
+      case 'comments':
+        router.push({
+          pathname: '/comments' as any,
+          params: { machineId: machineIdStr, returnTo },
+        });
+        return;
+      case 'photos':
+        router.push({
+          pathname: '/photos' as any,
+          params: { machineId: machineIdStr, returnTo },
+        });
+        return;
+    }
   };
 
   const handleShareReport = async () => {
@@ -137,6 +188,21 @@ export default function ReportScreen() {
     setSelectedPhotoUri(uri);
     setPhotoModalVisible(true);
   };
+
+  const renderSectionHeader = (title: string, section: EditSection) => (
+    <View style={styles.sectionHeaderRow}>
+      <Text style={styles.sectionTitle}>{title}</Text>
+      <TouchableOpacity
+        onPress={() => editSection(section)}
+        style={styles.editChip}
+        activeOpacity={0.8}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+      >
+        <MaterialCommunityIcons name="pencil" size={14} color="white" />
+        <Text style={styles.editChipText}>Editar</Text>
+      </TouchableOpacity>
+    </View>
+  );
 
   if (loading) {
     return (
@@ -179,7 +245,7 @@ export default function ReportScreen() {
 
         <Card style={styles.infoCard}>
           <Card.Content>
-            <Text style={styles.sectionTitle}>Información de la Máquina</Text>
+            {renderSectionHeader('Información de la Máquina', 'machine')}
             <Divider style={styles.divider} />
             {[
               { label: 'Nombre', value: machine.name },
@@ -203,7 +269,7 @@ export default function ReportScreen() {
         {isOthersMachineType ? (
           <Card style={styles.sectionCard}>
             <Card.Content>
-              <Text style={styles.sectionTitle}>Observaciones Generales</Text>
+              {renderSectionHeader('Observaciones Generales', 'comments')}
               <Divider style={styles.divider} />
               <View style={styles.commentsBlock}>
                 <Text style={styles.commentsText}>{machine.notes || 'No se han registrado observaciones.'}</Text>
@@ -214,7 +280,7 @@ export default function ReportScreen() {
           checklistResults && checklistResults.results && Object.keys(checklistResults.results).length > 0 ? (
             <Card style={styles.sectionCard}>
               <Card.Content>
-                <Text style={styles.sectionTitle}>Resultados del Checklist</Text>
+                {renderSectionHeader('Resultados del Checklist', 'checklist')}
                 <Divider style={styles.divider} />
                 {machineChecklist.map((category, index) => {
                   const hasItems = category.items.some(item => checklistResults.results[item.id] !== undefined);
@@ -280,7 +346,7 @@ export default function ReportScreen() {
           ) : (
             <Card style={[styles.sectionCard, { backgroundColor: BRAND_COLORS.grayLight }]}>
               <Card.Content>
-                <Text style={styles.sectionTitle}>Checklist no disponible</Text>
+                {renderSectionHeader('Checklist no disponible', 'checklist')}
                 <Divider style={styles.divider} />
                 <Text style={styles.emptyText}>No se encontraron datos del checklist para esta máquina.</Text>
               </Card.Content>
@@ -291,7 +357,7 @@ export default function ReportScreen() {
         {!isOthersMachineType && checklistResults?.materials && checklistResults.materials.length > 0 && (
           <Card style={styles.sectionCard}>
             <Card.Content>
-              <Text style={styles.sectionTitle}>Materiales</Text>
+              {renderSectionHeader('Materiales', 'materials')}
               <Divider style={styles.divider} />
               <View style={styles.materialsTable}>
                 <View style={styles.materialsHeaderRow}>
@@ -316,7 +382,7 @@ export default function ReportScreen() {
         {!isOthersMachineType && machine.notes && (
           <Card style={styles.sectionCard}>
             <Card.Content>
-              <Text style={styles.sectionTitle}>Comentarios Específicos</Text>
+              {renderSectionHeader('Comentarios Específicos', 'comments')}
               <Divider style={styles.divider} />
               {machine.notes.includes('=== COMENTARIOS ESPECÍFICOS ===') ? (
                 <View>
@@ -344,7 +410,7 @@ export default function ReportScreen() {
         {generalPhotos && generalPhotos.photos && (
           <Card style={styles.sectionCard}>
             <Card.Content>
-              <Text style={styles.sectionTitle}>Fotos Generales</Text>
+              {renderSectionHeader('Fotos Generales', 'photos')}
               <Divider style={styles.divider} />
               <View style={styles.photosGrid}>
                 {(['front', 'back', 'left', 'right'] as const).map((key, i) => {
@@ -392,9 +458,35 @@ export default function ReportScreen() {
           <Button mode="outlined" onPress={() => router.replace('/')} style={styles.button} icon="home" textColor={BRAND_COLORS.primaryBlue}>
             Inicio
           </Button>
-          <Button mode="outlined" onPress={handleEdit} style={styles.button} icon="pencil" textColor={BRAND_COLORS.primaryBlue} disabled={isGenerating}>
-            Editar
-          </Button>
+          <View style={styles.button}>
+            <Menu
+              visible={editMenuVisible}
+              onDismiss={() => setEditMenuVisible(false)}
+              anchor={
+                <Button
+                  mode="outlined"
+                  onPress={() => setEditMenuVisible(true)}
+                  style={styles.editAnchorButton}
+                  icon="pencil"
+                  textColor={BRAND_COLORS.primaryBlue}
+                  disabled={isGenerating}
+                >
+                  Editar
+                </Button>
+              }
+            >
+            <Menu.Item onPress={() => editSection('machine')} title="Información de la máquina" leadingIcon="cog-outline" />
+            <Menu.Item onPress={() => editSection('safety')} title="Seguridad previa" leadingIcon="shield-check-outline" />
+            {!isOthersMachineType && (
+              <>
+                <Menu.Item onPress={() => editSection('checklist')} title="Checklist" leadingIcon="format-list-checks" />
+                <Menu.Item onPress={() => editSection('materials')} title="Materiales" leadingIcon="toolbox-outline" />
+              </>
+            )}
+            <Menu.Item onPress={() => editSection('comments')} title={isOthersMachineType ? 'Observaciones' : 'Comentarios'} leadingIcon="comment-text-outline" />
+            <Menu.Item onPress={() => editSection('photos')} title="Fotos generales" leadingIcon="camera-outline" />
+            </Menu>
+          </View>
           <Button mode="contained" onPress={handleShareReport} style={styles.button} icon="share-variant" buttonColor={BRAND_COLORS.primaryOrange} disabled={isGenerating}>
             Compartir Informe
           </Button>
@@ -493,6 +585,29 @@ const styles = StyleSheet.create({
     color: BRAND_COLORS.primaryBlue,
     marginBottom: SPACING.xs,
     letterSpacing: 0.2,
+    flex: 1,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: SPACING.sm,
+  },
+  editChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: BRAND_COLORS.primaryBlue,
+    paddingHorizontal: SPACING.sm + 2,
+    paddingVertical: 4,
+    borderRadius: BORDER_RADIUS.full,
+    marginBottom: SPACING.xs,
+  },
+  editChipText: {
+    color: 'white',
+    fontSize: TYPOGRAPHY.sizes.xs,
+    fontWeight: TYPOGRAPHY.weights.bold as any,
+    letterSpacing: 0.3,
   },
   divider: {
     backgroundColor: BRAND_COLORS.lightOrange,
@@ -690,6 +805,9 @@ const styles = StyleSheet.create({
   button: {
     flex: 1,
     marginHorizontal: SPACING.sm,
+    borderRadius: BORDER_RADIUS.lg,
+  },
+  editAnchorButton: {
     borderRadius: BORDER_RADIUS.lg,
   },
   modalContainer: {

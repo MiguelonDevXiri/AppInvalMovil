@@ -18,7 +18,8 @@ interface Photos {
 }
 
 export default function PhotoScreen() {
-  const { machineId } = useLocalSearchParams();
+  const { machineId, returnTo: returnToParam } = useLocalSearchParams();
+  const returnTo = typeof returnToParam === 'string' ? returnToParam : Array.isArray(returnToParam) ? returnToParam[0] : undefined;
   const [machine, setMachine] = useState<Machine | null>(null);
   const [photos, setPhotos] = useState<Photos>({ front: null, back: null, left: null, right: null });
   const [loading, setLoading] = useState(true);
@@ -119,6 +120,14 @@ export default function PhotoScreen() {
         }
         setSavingText('Preparando informe...');
         setIsSaving(false);
+        if (returnTo) {
+          if (router.canGoBack()) {
+            router.back();
+          } else {
+            router.replace({ pathname: returnTo as any, params: { machineId: machineId.toString() } });
+          }
+          return;
+        }
         router.push({ pathname: '/report', params: { machineId: machineId.toString() } });
         return;
       }

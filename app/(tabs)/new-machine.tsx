@@ -10,8 +10,9 @@ import { getMachineTypeById } from '../../data/machineTypes';
 import { getMachineById, saveMachine } from '../../utils/storage';
 
 export default function NewMachineScreen() {
-  const { machineTypeId, machineId, isEditing: isEditingParam } = useLocalSearchParams();
+  const { machineTypeId, machineId, isEditing: isEditingParam, returnTo: returnToParam } = useLocalSearchParams();
   const isEditing = isEditingParam === 'true';
+  const returnTo = typeof returnToParam === 'string' ? returnToParam : Array.isArray(returnToParam) ? returnToParam[0] : undefined;
   const [machineType, setMachineType] = useState(getMachineTypeById(machineTypeId?.toString() || 'otros'));
 
   const [machine, setMachine] = useState({
@@ -118,19 +119,16 @@ export default function NewMachineScreen() {
       const savedMachine = await saveMachine(machine);
       const savedMachineId = savedMachine.id;
 
-      const nextPath = machine.machineType === 'otros' ? '/comments' : '/checklist';
-
-      if (isEditing) {
-        router.push({
-          pathname: '/safety-checklist-form',
-          params: {
-            machineId: savedMachineId,
-            module: 'inspection',
-            nextPath,
-          },
-        });
+      if (isEditing && returnTo) {
+        if (router.canGoBack()) {
+          router.back();
+        } else {
+          router.replace({ pathname: returnTo as any, params: { machineId: savedMachineId } });
+        }
         return;
       }
+
+      const nextPath = machine.machineType === 'otros' ? '/comments' : '/checklist';
 
       router.push({
         pathname: '/safety-checklist-form',

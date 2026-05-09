@@ -34,7 +34,8 @@ interface Photos {
 }
 
 export default function ChecklistScreen() {
-  const { machineId } = useLocalSearchParams();
+  const { machineId, returnTo: returnToParam } = useLocalSearchParams();
+  const returnTo = typeof returnToParam === 'string' ? returnToParam : Array.isArray(returnToParam) ? returnToParam[0] : undefined;
   const [machine, setMachine] = useState<Machine | null>(null);
   const [checklistCategories, setChecklistCategories] = useState<ChecklistCategory[]>([]);
   const [checklistResults, setChecklistResults] = useState<ChecklistResults>({});
@@ -253,8 +254,16 @@ export default function ChecklistScreen() {
       setSavingText('Guardando checklist...');
       setIsSaving(true);
       await saveChecklist({ machineId: machineId.toString(), results: checklistResults, photos, completedAt: new Date().toISOString(), cantDoComments, materials });
-      setSavingText('Preparando materiales...');
       setIsSaving(false);
+      if (returnTo) {
+        if (router.canGoBack()) {
+          router.back();
+        } else {
+          router.replace({ pathname: returnTo as any, params: { machineId: machineId.toString() } });
+        }
+        return;
+      }
+      setSavingText('Preparando materiales...');
       router.push({ pathname: '/checklist-materials', params: { machineId: machineId.toString() } });
     } catch (error) {
       console.error('Error al guardar el checklist:', error);

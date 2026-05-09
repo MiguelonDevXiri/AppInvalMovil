@@ -10,7 +10,8 @@ import { BORDER_RADIUS, BRAND_COLORS, GRADIENTS, SHADOWS, SPACING, TYPOGRAPHY } 
 import { CommentWithPhoto, getMachineById, Machine, saveMachineComments } from '../../utils/storage';
 
 export default function CommentsScreen() {
-  const { machineId } = useLocalSearchParams();
+  const { machineId, returnTo: returnToParam } = useLocalSearchParams();
+  const returnTo = typeof returnToParam === 'string' ? returnToParam : Array.isArray(returnToParam) ? returnToParam[0] : undefined;
   const [machine, setMachine] = useState<Machine | null>(null);
   const [comments, setComments] = useState<CommentWithPhoto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -77,8 +78,16 @@ export default function CommentsScreen() {
       }
       const saved = await saveMachineComments(machineId.toString(), fullCommentsText, comments);
       if (!saved) throw new Error('No se pudieron guardar los comentarios');
-      setSavingText('Abriendo fotos generales...');
       setIsSaving(false);
+      if (returnTo) {
+        if (router.canGoBack()) {
+          router.back();
+        } else {
+          router.replace({ pathname: returnTo as any, params: { machineId: machineId.toString() } });
+        }
+        return;
+      }
+      setSavingText('Abriendo fotos generales...');
       router.push({ pathname: '/photos', params: { machineId: machineId.toString() } });
     } catch (error) {
       console.error('Error al guardar los comentarios:', error);

@@ -17,7 +17,8 @@ const buildEmptyMaterial = (): ChecklistMaterial => ({
 });
 
 export default function ChecklistMaterialsScreen() {
-  const { machineId } = useLocalSearchParams();
+  const { machineId, returnTo: returnToParam } = useLocalSearchParams();
+  const returnTo = typeof returnToParam === 'string' ? returnToParam : Array.isArray(returnToParam) ? returnToParam[0] : undefined;
   const [machine, setMachine] = useState<Machine | null>(null);
   const [checklistData, setChecklistData] = useState<ChecklistData | null>(null);
   const [materiales, setMateriales] = useState<ChecklistMaterial[]>([buildEmptyMaterial()]);
@@ -90,6 +91,14 @@ export default function ChecklistMaterialsScreen() {
       };
 
       await saveChecklist(nextChecklist);
+      if (returnTo) {
+        if (router.canGoBack()) {
+          router.back();
+        } else {
+          router.replace({ pathname: returnTo as any, params: { machineId: machineId.toString() } });
+        }
+        return;
+      }
       router.push({ pathname: '/comments', params: { machineId: machineId.toString() } });
     } catch (error) {
       console.error('Error al guardar materiales del checklist:', error);

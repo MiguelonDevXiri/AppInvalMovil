@@ -116,6 +116,7 @@ export default function SafetyChecklistFormScreen() {
   const config = MODULE_CONFIG[moduleKey] || MODULE_CONFIG.averia;
   const machineId = getParamString(params.machineId);
   const nextPathParam = getParamString(params.nextPath);
+  const returnTo = getParamString(params.returnTo);
 
   const [checklist, setChecklist] = useState<SafetyChecklist>(() => createEmptySafetyChecklist(config.mode));
   const [loading, setLoading] = useState(moduleKey === 'inspection');
@@ -257,6 +258,16 @@ export default function SafetyChecklistFormScreen() {
         }
 
         await saveMachineSafetyChecklist(machineId, nextChecklist);
+
+        if (returnTo) {
+          if (router.canGoBack()) {
+            router.back();
+          } else {
+            router.replace({ pathname: returnTo as any, params: { machineId } });
+          }
+          return;
+        }
+
         const nextPath = nextPathParam || '/checklist';
         router.push({ pathname: nextPath as any, params: { machineId } });
         return;
