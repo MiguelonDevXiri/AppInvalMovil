@@ -35,6 +35,10 @@ export const MACHINE_TYPES: MachineType[] = [
     name: 'Prensa Vertical'
   },
   {
+    id: 'rollopacker',
+    name: 'Rollopacker'
+  },
+  {
     id: 'otros',
     name: 'Otros'
   }

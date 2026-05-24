@@ -11,7 +11,7 @@ import { MACHINE_TYPES } from '../../data/machineTypes';
 const ICONS: Record<string, string> = {
   autocompactador: 'truck-cargo-container', volteador: 'rotate-3d-variant', rotoprensa: 'cog-sync-outline',
   'compactador-estatico': 'archive-outline', contenedor: 'package-variant-closed', 'caja-estatica': 'cube-outline',
-  'prensa-vertical': 'arrow-collapse-down', otros: 'dots-horizontal-circle-outline',
+  'prensa-vertical': 'arrow-collapse-down', rollopacker: 'roller-skate', otros: 'dots-horizontal-circle-outline',
 };
 
 export default function MantenimientoMachineTypeSelectionScreen() {

@@ -306,6 +306,67 @@ export const contenedorChecklist: ChecklistCategory[] = [
   }
 ];
 
+// 8. Checklist para Rollopacker
+export const rollopackerChecklist: ChecklistCategory[] = [
+  {
+    category: 'Brazo articulado',
+    items: [
+      { id: 'roll_brazo1', text: 'Engrasar bulones del brazo articulado y soporte' },
+      { id: 'roll_brazo2', text: 'Comprobar correcto recorrido brazo articulado' },
+      { id: 'roll_brazo3', text: 'Engrasar en los apoyos del cilindro' },
+      { id: 'roll_brazo4', text: 'Comprobar desgaste de los bulones' },
+    ]
+  },
+  {
+    category: 'Electricidad',
+    items: [
+      { id: 'roll_elec1', text: 'Comprobación maniobra eléctrica. Dispone de un dispositivo que evita los arranques intempestivos. Tras un fallo de suministro, es preciso rearmar voluntariamente para que el equipo funcione' },
+      { id: 'roll_elec2', text: 'Los órganos de accionamiento son adecuados y están bien señalizados' },
+      { id: 'roll_elec3', text: 'Comprobar correcto funcionamiento de presostatos, finales de carrera y temporizadores' },
+      { id: 'roll_elec4', text: 'Comprobar estado y funcionamiento del final de carrera presencia contenedor' },
+      { id: 'roll_elec5', text: 'La instalación eléctrica está protegida del riesgo de contacto directo (mangueras alimentación en correcto estado)' },
+      { id: 'roll_elec6', text: 'Limpieza y estanqueidad del armario eléctrico. No puede haber riesgo de contacto directo (aislamiento partes activas)' },
+      { id: 'roll_elec7', text: 'Existen paros de emergencia con enclavamiento correctamente señalizados en cada una de las zonas de carga' },
+      { id: 'roll_elec8', text: 'Dispone línea tierra. Comprobar continuidad a tierra de cuadro eléctrico y toda su estructura' },
+      { id: 'roll_elec9', text: 'Reapretar conexiones del motor' },
+      { id: 'roll_elec10', text: 'Desmontar protección ventilador motor y limpiar' },
+      { id: 'roll_elec11', text: 'La zona de prensado debe estar protegida del contacto mecánico. El contenedor hace las funciones de barandilla siempre que esté situado a mínimo de 0,90 m por debajo de la cota máxima del contenedor' },
+      { id: 'roll_elec12', text: 'Existe cartel de advertencia “riesgo eléctrico” en el cuadro eléctrico' },
+      { id: 'roll_elec13', text: 'Debe tener un órgano de accionamiento que permite la parada total en condiciones de seguridad. Existe interruptor principal de consignación. Comprobar funcionamiento y estado del IPC' },
+    ]
+  },
+  {
+    category: 'Hidráulica',
+    items: [
+      { id: 'roll_hidr1', text: 'Estanqueidad del circuito hidráulico (latiguillos, válvulas, cilindro, bloque, motor hidráulico)' },
+      { id: 'roll_hidr2', text: 'Comprobar el correcto funcionamiento del rodillo. Gira en ambos sentidos' },
+      { id: 'roll_hidr3', text: 'Cuando el brazo está en posición elevada para realizar el cambio de contenedor, el brazo no debe bajar solo' },
+      { id: 'roll_hidr4', text: 'Comprobar nivel de aceite' },
+      { id: 'roll_hidr5', text: 'Comprobar estado mangueras hidráulicas' },
+      { id: 'roll_hidr6', text: 'Comprobar estado aceite hidráulico de forma visual' },
+      { id: 'roll_hidr7', text: 'Comprobar estado filtros de aceite y aire, cambiar si procede' },
+      { id: 'roll_hidr8', text: 'Limpieza del radiador (si procede)' },
+    ]
+  },
+  {
+    category: 'General',
+    items: [
+      { id: 'roll_gen1', text: 'Estado de las protecciones laterales' },
+      { id: 'roll_gen2', text: 'La máquina debe ser estable y adecuadamente fijada' },
+    ]
+  },
+  {
+    category: 'Ubicación',
+    items: [
+      { id: 'roll_ubi1', text: 'La zona de trabajo estará iluminada adecuadamente. Mínimo 100 lux' },
+      { id: 'roll_ubi2', text: 'Si hay acceso a distinto nivel (por ejemplo ubicación en muelle de carga), deberá proveerse de protecciones y accesos adecuados (altura mínima de barandilla 0,90 m, con barra intermedia)' },
+      { id: 'roll_ubi3', text: 'Dispone de extintor a una distancia máxima de 15 m, o en su defecto, de boca de incendio equipada (BIE) a una distancia máxima de 25 m' },
+      { id: 'roll_ubi4', text: 'La acometida de abastecimiento eléctrico deberá disponer de su correspondiente protección diferencial' },
+      { id: 'roll_ubi5', text: 'El establecimiento dispone de alimentación con 3 fases, neutro y tierra' },
+    ]
+  }
+];
+
 // Checklist para tipo "Otros" - Este será un checklist básico y genérico
 export const otrosChecklist: ChecklistCategory[] = [
   {
@@ -346,6 +407,8 @@ export const getChecklistByMachineType = (machineType: string): ChecklistCategor
       return autocompactadorChecklist;
     case 'prensa-vertical':
       return prensaVerticalChecklist;
+    case 'rollopacker':
+      return rollopackerChecklist;
     case 'volteador':
       return volteadorChecklist;
     case 'rotoprensa':

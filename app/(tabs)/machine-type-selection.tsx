@@ -16,6 +16,7 @@ const MACHINE_ICONS: Record<string, string> = {
   contenedor: 'package-variant-closed',
   'caja-estatica': 'cube-outline',
   'prensa-vertical': 'arrow-collapse-down',
+  rollopacker: 'roller-skate',
   otros: 'dots-horizontal-circle-outline',
 };
 
