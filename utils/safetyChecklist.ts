@@ -1,5 +1,5 @@
 export type SafetyChecklistMode = 'full' | 'fire-only';
-export type SafetyChecklistModuleKey = 'inspection' | 'averia' | 'instalacion' | 'urgencia' | 'reparacion' | 'mantenimiento';
+export type SafetyChecklistModuleKey = 'inspection' | 'averia' | 'saica' | 'instalacion' | 'urgencia' | 'reparacion' | 'mantenimiento';
 
 export interface SafetyChecklistModuleConfig {
   mode: SafetyChecklistMode;
@@ -25,6 +25,14 @@ export const SAFETY_CHECKLIST_MODULE_CONFIG: Record<SafetyChecklistModuleKey, Sa
     accent: '#7c3aed',
     gradient: ['#6d28d9', '#7c3aed', '#c4b5fd'],
     nextPath: '/(tabs)/averia-defects-form',
+  },
+  saica: {
+    mode: 'full',
+    title: 'Seguridad previa',
+    subtitle: 'Checklist rápido de seguridad antes de crear el informe Saica.',
+    accent: '#7c3aed',
+    gradient: ['#6d28d9', '#7c3aed', '#c4b5fd'],
+    nextPath: '/(tabs)/saica-photos-form',
   },
   reparacion: {
     mode: 'fire-only',

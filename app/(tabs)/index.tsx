@@ -105,6 +105,14 @@ export default function HomeScreen() {
     router.push('/averia-inspections-list');
   }, []);
 
+  const handleNavSaicaForm = useCallback(() => {
+    router.push('/saica-machine-form' as any);
+  }, []);
+
+  const handleNavSaicaList = useCallback(() => {
+    router.push('/saica-inspections-list' as any);
+  }, []);
+
   const handleNavInstalacionForm = useCallback(() => {
     router.push('/instalacion-machine-form');
   }, []);
@@ -266,6 +274,28 @@ export default function HomeScreen() {
           icon="file-document-multiple-outline"
           colors={['#6d28d9', '#8b5cf6']}
           onPress={handleNavAveriasList}
+        />
+
+        <View style={styles.sectionHeader}>
+          <View style={styles.sectionLine} />
+          <Text style={styles.sectionLabel}>Informes SAICA</Text>
+          <View style={styles.sectionLine} />
+        </View>
+
+        <ActionCard
+          title="Nuevo informe SAICA"
+          subtitle="Registrar informe de intervención SAICA"
+          icon="factory"
+          colors={['#0f172a', '#334155', '#64748b']}
+          onPress={handleNavSaicaForm}
+        />
+
+        <ActionCard
+          title="Informes SAICA registrados"
+          subtitle="Consultar, editar y compartir informes SAICA"
+          icon="file-document-multiple-outline"
+          colors={['#1f2937', '#475569', '#94a3b8']}
+          onPress={handleNavSaicaList}
         />
 
         <View style={styles.sectionHeader}>

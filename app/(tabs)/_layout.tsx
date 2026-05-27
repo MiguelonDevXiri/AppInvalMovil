@@ -61,6 +61,13 @@ export default function Layout() {
         <Stack.Screen name="averia-final-form" />
         <Stack.Screen name="averia-report-view" />
         <Stack.Screen name="averia-inspections-list" />
+        <Stack.Screen name="saica-machine-form" />
+        <Stack.Screen name="saica-photos-form" />
+        <Stack.Screen name="saica-interventions-form" />
+        <Stack.Screen name="saica-solucion-form" />
+        <Stack.Screen name="saica-materiales-form" />
+        <Stack.Screen name="saica-report-view" />
+        <Stack.Screen name="saica-inspections-list" />
         <Stack.Screen name="reparacion-machine-form" />
         <Stack.Screen name="reparacion-entry-photos-form" />
         <Stack.Screen name="reparacion-repairs-form" />
