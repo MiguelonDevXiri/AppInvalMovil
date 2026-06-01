@@ -93,6 +93,12 @@ export default function Layout() {
         <Stack.Screen name="mantenimiento-final-form" />
         <Stack.Screen name="mantenimiento-report-view" />
         <Stack.Screen name="mantenimiento-inspections-list" />
+
+        <Stack.Screen name="filters-home" />
+        <Stack.Screen name="filters-replenish" />
+        <Stack.Screen name="filters-extract" />
+        <Stack.Screen name="filters-crosses" />
+        <Stack.Screen name="filters-stock" />
         <Stack.Screen name="login" options={{ headerShown: false }} />
       </Stack>
     </PaperProvider>

@@ -145,6 +145,14 @@ export default function HomeScreen() {
     router.push('/mantenimiento-inspections-list' as any);
   }, []);
 
+  const handleNavFilters = useCallback(() => {
+    router.push('/filters-home' as any);
+  }, []);
+
+  const handleNavFilterStock = useCallback(() => {
+    router.push('/filters-stock' as any);
+  }, []);
+
   const handleLogout = async () => {
     Alert.alert(
       'Cerrar Sesión',
@@ -378,6 +386,28 @@ export default function HomeScreen() {
           icon="file-document-multiple-outline"
           colors={['#1e3a8a', '#3b82f6', '#93c5fd']}
           onPress={handleNavMantenimientoList}
+        />
+
+        <View style={styles.sectionHeader}>
+          <View style={styles.sectionLine} />
+          <Text style={styles.sectionLabel}>Filtros</Text>
+          <View style={styles.sectionLine} />
+        </View>
+
+        <ActionCard
+          title="Filtros hidráulicos"
+          subtitle="Reponer, extraer y consultar cruces"
+          icon="air-filter"
+          colors={['#0f766e', '#0891b2', '#22d3ee']}
+          onPress={handleNavFilters}
+        />
+
+        <ActionCard
+          title="Ver stock filtros"
+          subtitle="Almacén y furgoneta preventivo"
+          icon="warehouse"
+          colors={['#0f2f57', '#2563eb', '#60a5fa']}
+          onPress={handleNavFilterStock}
         />
 
         <View style={styles.footer} />
