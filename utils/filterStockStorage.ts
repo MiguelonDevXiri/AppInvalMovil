@@ -291,10 +291,36 @@ export async function searchFilterCrosses(reference: string): Promise<FilterCros
   const ref = normalizeReference(reference);
   if (!ref) return [];
 
-  const { data, error } = await supabase
+  const { data: matchedRows, error: matchError } = await supabase
     .from('filters_crosses')
     .select('*')
     .or(`reference.ilike.%${ref}%,equivalent_reference.ilike.%${ref}%`)
+    .order('reference', { ascending: true });
+
+  if (matchError) throw matchError;
+
+  const matched = ((matchedRows || []) as FilterCrossRowDb[]).map(rowToCrossItem);
+  const matchedReferences = Array.from(new Set(matched.map((row) => row.reference)));
+
+  const { data: stockRows, error: stockError } = await supabase
+    .from('filters_stock')
+    .select('reference')
+    .ilike('reference', `%${ref}%`);
+
+  if (stockError) throw stockError;
+
+  for (const row of (stockRows || []) as Pick<FilterStockRow, 'reference'>[]) {
+    if (!matchedReferences.includes(row.reference)) {
+      matchedReferences.push(row.reference);
+    }
+  }
+
+  if (matchedReferences.length === 0) return [];
+
+  const { data, error } = await supabase
+    .from('filters_crosses')
+    .select('*')
+    .in('reference', matchedReferences)
     .order('reference', { ascending: true });
 
   if (error) throw error;

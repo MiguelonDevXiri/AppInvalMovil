@@ -1,6 +1,6 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Button, Text, TextInput } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -11,6 +11,19 @@ export default function FiltersCrossesScreen() {
   const [reference, setReference] = useState('');
   const [results, setResults] = useState<FilterCrossRow[]>([]);
   const [loading, setLoading] = useState(false);
+
+  const groupedResults = useMemo(() => {
+    const groups = new Map<string, FilterCrossRow[]>();
+    for (const item of results) {
+      const current = groups.get(item.reference) || [];
+      current.push(item);
+      groups.set(item.reference, current);
+    }
+    return Array.from(groups.entries()).map(([mainReference, crosses]) => ({
+      mainReference,
+      alternatives: Array.from(new Set(crosses.map((item) => item.equivalentReference))).sort(),
+    }));
+  }, [results]);
 
   const handleSearch = async () => {
     try {
@@ -31,18 +44,23 @@ export default function FiltersCrossesScreen() {
         <View style={styles.card}>
           <MaterialCommunityIcons name="swap-horizontal-bold" size={38} color={BRAND_COLORS.primaryOrange} />
           <Text style={styles.title}>Buscador preparado</Text>
-          <Text style={styles.text}>De momento queda la pantalla creada. Cuando pases la lista de cruces, aquí saldrán las referencias equivalentes.</Text>
+          <Text style={styles.text}>Busca por referencia principal o por cualquier alternativa. La app te enseña la fila completa del catálogo.</Text>
           <TextInput label="Referencia" value={reference} onChangeText={setReference} autoCapitalize="characters" mode="outlined" style={styles.input} />
           <Button mode="contained" loading={loading} onPress={handleSearch} style={styles.button}>Buscar cruce</Button>
         </View>
-        {results.map((item) => (
-          <View key={item.id} style={styles.resultCard}>
-            <Text style={styles.resultRef}>{item.reference} → {item.equivalentReference}</Text>
-            {item.brand ? <Text style={styles.text}>{item.brand}</Text> : null}
-            {item.notes ? <Text style={styles.text}>{item.notes}</Text> : null}
+        {groupedResults.map((group) => (
+          <View key={group.mainReference} style={styles.resultCard}>
+            <Text style={styles.resultLabel}>Referencia principal</Text>
+            <Text style={styles.resultRef}>{group.mainReference}</Text>
+            <Text style={styles.resultLabel}>Alternativas</Text>
+            {group.alternatives.length > 0 ? (
+              group.alternatives.map((alternative) => <Text key={alternative} style={styles.alternativeRef}>{alternative}</Text>)
+            ) : (
+              <Text style={styles.text}>Sin alternativas cargadas.</Text>
+            )}
           </View>
         ))}
-        {!loading && reference.trim() && results.length === 0 ? <Text style={styles.empty}>Sin cruces cargados para esta referencia.</Text> : null}
+        {!loading && reference.trim() && groupedResults.length === 0 ? <Text style={styles.empty}>Sin cruces cargados para esta referencia.</Text> : null}
       </ScrollView>
     </SafeAreaView>
   );
@@ -65,6 +83,8 @@ const styles = StyleSheet.create({
   input: { marginTop: SPACING.lg, backgroundColor: 'white' },
   button: { marginTop: SPACING.md, borderRadius: 12 },
   resultCard: { marginHorizontal: SPACING.md, marginBottom: SPACING.sm, backgroundColor: 'white', borderRadius: 16, padding: SPACING.md, ...SHADOWS.soft },
-  resultRef: { color: '#0f172a', fontWeight: '900', fontSize: 17 },
+  resultLabel: { color: BRAND_COLORS.grayText, marginTop: 6, fontWeight: '800', textTransform: 'uppercase', fontSize: 11 },
+  resultRef: { color: '#0f172a', fontWeight: '900', fontSize: 20, marginTop: 2 },
+  alternativeRef: { color: BRAND_COLORS.primaryBlue, fontWeight: '900', fontSize: 16, marginTop: 6 },
   empty: { color: BRAND_COLORS.grayText, textAlign: 'center', marginTop: SPACING.md },
 });
