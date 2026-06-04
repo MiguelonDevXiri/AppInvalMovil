@@ -10,6 +10,7 @@ export interface FilterStockItem {
   vanQty: number;
   minimumQty?: number | null;
   recommendedQty?: number | null;
+  equivalents?: string[];
   updatedAt?: string | null;
 }
 
@@ -121,6 +122,35 @@ export async function getFilterStock(): Promise<FilterStockItem[]> {
 
   if (error) throw error;
   return ((data || []) as FilterStockRow[]).map(rowToStockItem);
+}
+
+
+export async function getFilterCatalogStock(): Promise<FilterStockItem[]> {
+  const [stock, crosses] = await Promise.all([getFilterStock(), getAllFilterCrosses()]);
+  const equivalentsByReference = new Map<string, string[]>();
+
+  for (const cross of crosses) {
+    const list = equivalentsByReference.get(cross.reference) || [];
+    if (!list.includes(cross.equivalentReference)) {
+      list.push(cross.equivalentReference);
+    }
+    equivalentsByReference.set(cross.reference, list);
+  }
+
+  return stock.map((item) => ({
+    ...item,
+    equivalents: equivalentsByReference.get(item.reference) || [],
+  }));
+}
+
+async function getAllFilterCrosses(): Promise<FilterCrossRow[]> {
+  const { data, error } = await supabase
+    .from('filters_crosses')
+    .select('*')
+    .order('reference', { ascending: true });
+
+  if (error) throw error;
+  return ((data || []) as FilterCrossRowDb[]).map(rowToCrossItem);
 }
 
 export async function getFilterReferences(): Promise<string[]> {

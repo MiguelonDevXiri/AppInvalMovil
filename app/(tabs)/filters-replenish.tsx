@@ -7,7 +7,7 @@ import { Alert, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-nat
 import { Button, Chip, Text, TextInput } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BRAND_COLORS, SHADOWS, SPACING } from '../../constants/Colors';
-import { getFilterErrorMessage, getFilterStock, replenishFilterStock, type FilterLocation, type FilterStockItem } from '../../utils/filterStockStorage';
+import { getFilterErrorMessage, getFilterCatalogStock, replenishFilterStock, type FilterLocation, type FilterStockItem } from '../../utils/filterStockStorage';
 
 export default function FiltersReplenishScreen() {
   const [location, setLocation] = useState<FilterLocation>('almacen');
@@ -19,7 +19,7 @@ export default function FiltersReplenishScreen() {
 
   const loadStock = useCallback(async () => {
     try {
-      setStockItems(await getFilterStock());
+      setStockItems(await getFilterCatalogStock());
     } catch (error: unknown) {
       console.error(error);
     }
@@ -31,14 +31,17 @@ export default function FiltersReplenishScreen() {
 
   const normalizedReference = reference.trim().toUpperCase();
   const selectedItem = useMemo(
-    () => stockItems.find((item) => item.reference === normalizedReference),
+    () => stockItems.find((item) => item.reference === normalizedReference || item.equivalents?.includes(normalizedReference)),
     [normalizedReference, stockItems],
   );
 
   const suggestions = useMemo(() => {
     if (!normalizedReference) return stockItems.slice(0, 8);
     return stockItems
-      .filter((item) => item.reference.includes(normalizedReference) || item.description?.toUpperCase().includes(normalizedReference))
+      .filter((item) => {
+        const searchable = [item.reference, item.description || '', ...(item.equivalents || [])].join(' ').toUpperCase();
+        return searchable.includes(normalizedReference);
+      })
       .slice(0, 8);
   }, [normalizedReference, stockItems]);
 
@@ -53,7 +56,7 @@ export default function FiltersReplenishScreen() {
       const technicianJson = await AsyncStorage.getItem('current_technician');
       const technician = technicianJson ? (JSON.parse(technicianJson) as { name?: string | null }) : null;
       await replenishFilterStock({
-        reference,
+        reference: selectedItem?.reference || reference,
         description,
         quantity: Number(quantity),
         location,
@@ -88,7 +91,7 @@ export default function FiltersReplenishScreen() {
             <View style={styles.suggestions}>
               {suggestions.map((item) => (
                 <Chip key={item.reference} compact onPress={() => handleSelectSuggestion(item)} style={styles.suggestionChip}>
-                  {item.reference}
+                  {item.reference}{item.equivalents?.length ? ` · ${item.equivalents.slice(0, 2).join(' / ')}` : ''}
                 </Chip>
               ))}
             </View>
@@ -98,6 +101,8 @@ export default function FiltersReplenishScreen() {
               <Text style={styles.stockHintTitle}>Stock actual</Text>
               <Text style={styles.stockHintText}>Almacén: {selectedItem.warehouseQty} uds · Furgoneta: {selectedItem.vanQty} uds</Text>
               {selectedItem.description ? <Text style={styles.stockHintText}>{selectedItem.description}</Text> : null}
+              {selectedItem.reference !== normalizedReference ? <Text style={styles.stockHintEmphasis}>Se guardará como referencia principal: {selectedItem.reference}</Text> : null}
+              {selectedItem.equivalents?.length ? <Text style={styles.stockHintText}>Alternativas: {selectedItem.equivalents.join(' / ')}</Text> : null}
               <Text style={styles.stockHintText}>Mínimo: {selectedItem.minimumQty ?? 2} uds · Recomendado: {selectedItem.recommendedQty ?? 4} uds</Text>
               {location === 'furgoneta' ? <Text style={styles.stockHintEmphasis}>Disponible para cargar desde almacén: {selectedItem.warehouseQty} uds</Text> : null}
             </View>

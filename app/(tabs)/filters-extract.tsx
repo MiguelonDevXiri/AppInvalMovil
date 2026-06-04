@@ -7,7 +7,7 @@ import { Alert, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-nat
 import { Button, Chip, Text, TextInput } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BRAND_COLORS, SHADOWS, SPACING } from '../../constants/Colors';
-import { extractFilterStock, getFilterErrorMessage, getFilterStock, type FilterExtractionDestination, type FilterLocation, type FilterStockItem } from '../../utils/filterStockStorage';
+import { extractFilterStock, getFilterErrorMessage, getFilterCatalogStock, type FilterExtractionDestination, type FilterLocation, type FilterStockItem } from '../../utils/filterStockStorage';
 
 export default function FiltersExtractScreen() {
   const [destination, setDestination] = useState<FilterExtractionDestination>('taller');
@@ -19,7 +19,7 @@ export default function FiltersExtractScreen() {
 
   const loadStock = useCallback(async () => {
     try {
-      setStockItems(await getFilterStock());
+      setStockItems(await getFilterCatalogStock());
     } catch (error: unknown) {
       console.error(error);
     }
@@ -31,14 +31,17 @@ export default function FiltersExtractScreen() {
 
   const normalizedReference = reference.trim().toUpperCase();
   const selectedItem = useMemo(
-    () => stockItems.find((item) => item.reference === normalizedReference),
+    () => stockItems.find((item) => item.reference === normalizedReference || item.equivalents?.includes(normalizedReference)),
     [normalizedReference, stockItems],
   );
 
   const suggestions = useMemo(() => {
     if (!normalizedReference) return stockItems.slice(0, 8);
     return stockItems
-      .filter((item) => item.reference.includes(normalizedReference) || item.description?.toUpperCase().includes(normalizedReference))
+      .filter((item) => {
+        const searchable = [item.reference, item.description || '', ...(item.equivalents || [])].join(' ').toUpperCase();
+        return searchable.includes(normalizedReference);
+      })
       .slice(0, 8);
   }, [normalizedReference, stockItems]);
 
@@ -47,7 +50,7 @@ export default function FiltersExtractScreen() {
       setSaving(true);
       const technicianJson = await AsyncStorage.getItem('current_technician');
       const technician = technicianJson ? (JSON.parse(technicianJson) as { name?: string | null }) : null;
-      await extractFilterStock({ reference, quantity: Number(quantity), location, destination, technicianName: technician?.name });
+      await extractFilterStock({ reference: selectedItem?.reference || reference, quantity: Number(quantity), location, destination, technicianName: technician?.name });
       Alert.alert('Extracción registrada', 'Se ha descontado del stock seleccionado.');
       setReference('');
       setQuantity('');
@@ -81,7 +84,7 @@ export default function FiltersExtractScreen() {
             <View style={styles.suggestions}>
               {suggestions.map((item) => (
                 <Chip key={item.reference} compact onPress={() => setReference(item.reference)} style={styles.suggestionChip}>
-                  {item.reference}
+                  {item.reference}{item.equivalents?.length ? ` · ${item.equivalents.slice(0, 2).join(' / ')}` : ''}
                 </Chip>
               ))}
             </View>
@@ -93,6 +96,8 @@ export default function FiltersExtractScreen() {
                 {location === 'almacen' ? 'Almacén' : 'Furgoneta'}: {location === 'almacen' ? selectedItem.warehouseQty : selectedItem.vanQty} uds
               </Text>
               <Text style={styles.stockHintText}>Total referencia: {selectedItem.warehouseQty + selectedItem.vanQty} uds</Text>
+              {selectedItem.reference !== normalizedReference ? <Text style={styles.stockHintEmphasis}>Se guardará como referencia principal: {selectedItem.reference}</Text> : null}
+              {selectedItem.equivalents?.length ? <Text style={styles.stockHintText}>Alternativas: {selectedItem.equivalents.join(' / ')}</Text> : null}
               <Text style={styles.stockHintText}>Mínimo: {selectedItem.minimumQty ?? 2} uds · Recomendado: {selectedItem.recommendedQty ?? 4} uds</Text>
               {selectedItem.description ? <Text style={styles.stockHintText}>{selectedItem.description}</Text> : null}
             </View>
@@ -130,6 +135,7 @@ const styles = StyleSheet.create({
   stockHintCard: { marginTop: SPACING.md, borderRadius: 14, padding: SPACING.md, backgroundColor: BRAND_COLORS.tertiaryOrange },
   stockHintTitle: { color: '#0f172a', fontWeight: '900' },
   stockHintText: { color: BRAND_COLORS.grayText, marginTop: 4, lineHeight: 20 },
+  stockHintEmphasis: { color: BRAND_COLORS.primaryBlue, marginTop: 8, fontWeight: '800' },
   warningCard: { marginTop: SPACING.md, borderRadius: 14, padding: SPACING.md, backgroundColor: '#fff7ed' },
   warningText: { color: BRAND_COLORS.primaryOrange, fontWeight: '800', lineHeight: 20 },
   button: { marginTop: SPACING.lg, borderRadius: 12, paddingVertical: 4, backgroundColor: BRAND_COLORS.primaryOrange },
