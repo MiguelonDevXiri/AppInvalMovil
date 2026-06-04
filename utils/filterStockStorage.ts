@@ -72,6 +72,17 @@ export interface FilterCrossRow {
 }
 
 const normalizeReference = (reference: string) => reference.trim().toUpperCase();
+const normalizeSearchToken = (value: string) => normalizeReference(value).replace(/[^A-Z0-9]/g, '');
+
+const referenceMatchesSearch = (value: string | null | undefined, search: string) => {
+  if (!value) return false;
+  const normalizedValue = normalizeReference(value);
+  const normalizedSearch = normalizeReference(search);
+  const compactValue = normalizeSearchToken(value);
+  const compactSearch = normalizeSearchToken(search);
+
+  return normalizedValue.includes(normalizedSearch) || (!!compactSearch && compactValue.includes(compactSearch));
+};
 
 const rowToStockItem = (row: FilterStockRow): FilterStockItem => ({
   reference: row.reference,
@@ -291,38 +302,22 @@ export async function searchFilterCrosses(reference: string): Promise<FilterCros
   const ref = normalizeReference(reference);
   if (!ref) return [];
 
-  const { data: matchedRows, error: matchError } = await supabase
-    .from('filters_crosses')
-    .select('*')
-    .or(`reference.ilike.%${ref}%,equivalent_reference.ilike.%${ref}%`)
-    .order('reference', { ascending: true });
+  const [crosses, stock] = await Promise.all([getAllFilterCrosses(), getFilterStock()]);
+  const matchedReferences = new Set<string>();
 
-  if (matchError) throw matchError;
-
-  const matched = ((matchedRows || []) as FilterCrossRowDb[]).map(rowToCrossItem);
-  const matchedReferences = Array.from(new Set(matched.map((row) => row.reference)));
-
-  const { data: stockRows, error: stockError } = await supabase
-    .from('filters_stock')
-    .select('reference')
-    .ilike('reference', `%${ref}%`);
-
-  if (stockError) throw stockError;
-
-  for (const row of (stockRows || []) as Pick<FilterStockRow, 'reference'>[]) {
-    if (!matchedReferences.includes(row.reference)) {
-      matchedReferences.push(row.reference);
+  for (const item of crosses) {
+    if (referenceMatchesSearch(item.reference, ref) || referenceMatchesSearch(item.equivalentReference, ref)) {
+      matchedReferences.add(item.reference);
     }
   }
 
-  if (matchedReferences.length === 0) return [];
+  for (const item of stock) {
+    if (referenceMatchesSearch(item.reference, ref)) {
+      matchedReferences.add(item.reference);
+    }
+  }
 
-  const { data, error } = await supabase
-    .from('filters_crosses')
-    .select('*')
-    .in('reference', matchedReferences)
-    .order('reference', { ascending: true });
+  if (matchedReferences.size === 0) return [];
 
-  if (error) throw error;
-  return ((data || []) as FilterCrossRowDb[]).map(rowToCrossItem);
+  return crosses.filter((item) => matchedReferences.has(item.reference));
 }
