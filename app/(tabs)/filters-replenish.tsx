@@ -1,44 +1,71 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { router } from 'expo-router';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Button, Chip, Text, TextInput } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BRAND_COLORS, SHADOWS, SPACING } from '../../constants/Colors';
-import { getFilterReferences, replenishFilterStock, type FilterLocation } from '../../utils/filterStockStorage';
+import { getFilterErrorMessage, getFilterStock, replenishFilterStock, type FilterLocation, type FilterStockItem } from '../../utils/filterStockStorage';
 
 export default function FiltersReplenishScreen() {
   const [location, setLocation] = useState<FilterLocation>('almacen');
   const [reference, setReference] = useState('');
+  const [description, setDescription] = useState('');
   const [quantity, setQuantity] = useState('');
-  const [references, setReferences] = useState<string[]>([]);
+  const [stockItems, setStockItems] = useState<FilterStockItem[]>([]);
   const [saving, setSaving] = useState(false);
 
-  const loadReferences = useCallback(async () => {
-    try { setReferences(await getFilterReferences()); } catch (error) { console.error(error); }
+  const loadStock = useCallback(async () => {
+    try {
+      setStockItems(await getFilterStock());
+    } catch (error: unknown) {
+      console.error(error);
+    }
   }, []);
 
-  useEffect(() => { loadReferences(); }, [loadReferences]);
+  useFocusEffect(useCallback(() => {
+    void loadStock();
+  }, [loadStock]));
+
+  const normalizedReference = reference.trim().toUpperCase();
+  const selectedItem = useMemo(
+    () => stockItems.find((item) => item.reference === normalizedReference),
+    [normalizedReference, stockItems],
+  );
 
   const suggestions = useMemo(() => {
-    const query = reference.trim().toUpperCase();
-    if (!query) return references.slice(0, 8);
-    return references.filter((item) => item.includes(query)).slice(0, 8);
-  }, [reference, references]);
+    if (!normalizedReference) return stockItems.slice(0, 8);
+    return stockItems
+      .filter((item) => item.reference.includes(normalizedReference) || item.description?.toUpperCase().includes(normalizedReference))
+      .slice(0, 8);
+  }, [normalizedReference, stockItems]);
+
+  const handleSelectSuggestion = (item: FilterStockItem) => {
+    setReference(item.reference);
+    setDescription(item.description || '');
+  };
 
   const handleSave = async () => {
     try {
       setSaving(true);
       const technicianJson = await AsyncStorage.getItem('current_technician');
-      const technician = technicianJson ? JSON.parse(technicianJson) : null;
-      await replenishFilterStock({ reference, quantity: Number(quantity), location, technicianName: technician?.name });
+      const technician = technicianJson ? (JSON.parse(technicianJson) as { name?: string | null }) : null;
+      await replenishFilterStock({
+        reference,
+        description,
+        quantity: Number(quantity),
+        location,
+        technicianName: technician?.name,
+      });
       Alert.alert('Stock actualizado', location === 'furgoneta' ? 'Se ha descontado del almacén y añadido a furgoneta.' : 'Se ha añadido al almacén.');
       setReference('');
+      setDescription('');
       setQuantity('');
-      await loadReferences();
-    } catch (error: any) {
-      Alert.alert('No se pudo guardar', error?.message || 'Revisa los datos e inténtalo de nuevo.');
+      await loadStock();
+    } catch (error: unknown) {
+      Alert.alert('No se pudo guardar', getFilterErrorMessage(error, 'Revisa los datos e inténtalo de nuevo.'));
     } finally {
       setSaving(false);
     }
@@ -58,8 +85,31 @@ export default function FiltersReplenishScreen() {
 
           <TextInput label="Referencia" value={reference} onChangeText={setReference} autoCapitalize="characters" mode="outlined" style={styles.input} />
           {suggestions.length > 0 && (
-            <View style={styles.suggestions}>{suggestions.map((item) => <Chip key={item} compact onPress={() => setReference(item)} style={styles.suggestionChip}>{item}</Chip>)}</View>
+            <View style={styles.suggestions}>
+              {suggestions.map((item) => (
+                <Chip key={item.reference} compact onPress={() => handleSelectSuggestion(item)} style={styles.suggestionChip}>
+                  {item.reference}
+                </Chip>
+              ))}
+            </View>
           )}
+          {selectedItem ? (
+            <View style={styles.stockHintCard}>
+              <Text style={styles.stockHintTitle}>Stock actual</Text>
+              <Text style={styles.stockHintText}>Almacén: {selectedItem.warehouseQty} uds · Furgoneta: {selectedItem.vanQty} uds</Text>
+              {selectedItem.description ? <Text style={styles.stockHintText}>{selectedItem.description}</Text> : null}
+              {location === 'furgoneta' ? <Text style={styles.stockHintEmphasis}>Disponible para cargar desde almacén: {selectedItem.warehouseQty} uds</Text> : null}
+            </View>
+          ) : null}
+          {!selectedItem?.description ? (
+            <TextInput
+              label="Descripción (opcional)"
+              value={description}
+              onChangeText={setDescription}
+              mode="outlined"
+              style={styles.input}
+            />
+          ) : null}
           <TextInput label="Cantidad" value={quantity} onChangeText={setQuantity} keyboardType="numeric" mode="outlined" style={styles.input} />
           <Button mode="contained" loading={saving} disabled={saving} onPress={handleSave} style={styles.button}>Guardar reposición</Button>
         </View>
@@ -87,5 +137,9 @@ const styles = StyleSheet.create({
   input: { marginTop: SPACING.md, backgroundColor: 'white' },
   suggestions: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: SPACING.sm },
   suggestionChip: { marginRight: 4, marginBottom: 4 },
+  stockHintCard: { marginTop: SPACING.md, borderRadius: 14, padding: SPACING.md, backgroundColor: BRAND_COLORS.tertiaryBlue },
+  stockHintTitle: { color: '#0f172a', fontWeight: '900' },
+  stockHintText: { color: BRAND_COLORS.grayText, marginTop: 4, lineHeight: 20 },
+  stockHintEmphasis: { color: BRAND_COLORS.primaryBlue, marginTop: 8, fontWeight: '800' },
   button: { marginTop: SPACING.lg, borderRadius: 12, paddingVertical: 4 },
 });

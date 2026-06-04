@@ -1,44 +1,59 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { router } from 'expo-router';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Button, Chip, Text, TextInput } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BRAND_COLORS, SHADOWS, SPACING } from '../../constants/Colors';
-import { extractFilterStock, getFilterReferences, type FilterExtractionDestination, type FilterLocation } from '../../utils/filterStockStorage';
+import { extractFilterStock, getFilterErrorMessage, getFilterStock, type FilterExtractionDestination, type FilterLocation, type FilterStockItem } from '../../utils/filterStockStorage';
 
 export default function FiltersExtractScreen() {
   const [destination, setDestination] = useState<FilterExtractionDestination>('taller');
   const [location, setLocation] = useState<FilterLocation>('almacen');
   const [reference, setReference] = useState('');
   const [quantity, setQuantity] = useState('');
-  const [references, setReferences] = useState<string[]>([]);
+  const [stockItems, setStockItems] = useState<FilterStockItem[]>([]);
   const [saving, setSaving] = useState(false);
 
-  const loadReferences = useCallback(async () => {
-    try { setReferences(await getFilterReferences()); } catch (error) { console.error(error); }
+  const loadStock = useCallback(async () => {
+    try {
+      setStockItems(await getFilterStock());
+    } catch (error: unknown) {
+      console.error(error);
+    }
   }, []);
 
-  useEffect(() => { loadReferences(); }, [loadReferences]);
+  useFocusEffect(useCallback(() => {
+    void loadStock();
+  }, [loadStock]));
+
+  const normalizedReference = reference.trim().toUpperCase();
+  const selectedItem = useMemo(
+    () => stockItems.find((item) => item.reference === normalizedReference),
+    [normalizedReference, stockItems],
+  );
 
   const suggestions = useMemo(() => {
-    const query = reference.trim().toUpperCase();
-    if (!query) return references.slice(0, 8);
-    return references.filter((item) => item.includes(query)).slice(0, 8);
-  }, [reference, references]);
+    if (!normalizedReference) return stockItems.slice(0, 8);
+    return stockItems
+      .filter((item) => item.reference.includes(normalizedReference) || item.description?.toUpperCase().includes(normalizedReference))
+      .slice(0, 8);
+  }, [normalizedReference, stockItems]);
 
   const handleSave = async () => {
     try {
       setSaving(true);
       const technicianJson = await AsyncStorage.getItem('current_technician');
-      const technician = technicianJson ? JSON.parse(technicianJson) : null;
+      const technician = technicianJson ? (JSON.parse(technicianJson) as { name?: string | null }) : null;
       await extractFilterStock({ reference, quantity: Number(quantity), location, destination, technicianName: technician?.name });
       Alert.alert('Extracción registrada', 'Se ha descontado del stock seleccionado.');
       setReference('');
       setQuantity('');
-    } catch (error: any) {
-      Alert.alert('No se pudo extraer', error?.message || 'Revisa los datos e inténtalo de nuevo.');
+      await loadStock();
+    } catch (error: unknown) {
+      Alert.alert('No se pudo extraer', getFilterErrorMessage(error, 'Revisa los datos e inténtalo de nuevo.'));
     } finally {
       setSaving(false);
     }
@@ -63,8 +78,24 @@ export default function FiltersExtractScreen() {
 
           <TextInput label="Referencia" value={reference} onChangeText={setReference} autoCapitalize="characters" mode="outlined" style={styles.input} />
           {suggestions.length > 0 && (
-            <View style={styles.suggestions}>{suggestions.map((item) => <Chip key={item} compact onPress={() => setReference(item)} style={styles.suggestionChip}>{item}</Chip>)}</View>
+            <View style={styles.suggestions}>
+              {suggestions.map((item) => (
+                <Chip key={item.reference} compact onPress={() => setReference(item.reference)} style={styles.suggestionChip}>
+                  {item.reference}
+                </Chip>
+              ))}
+            </View>
           )}
+          {selectedItem ? (
+            <View style={styles.stockHintCard}>
+              <Text style={styles.stockHintTitle}>Disponible para extraer</Text>
+              <Text style={styles.stockHintText}>
+                {location === 'almacen' ? 'Almacén' : 'Furgoneta'}: {location === 'almacen' ? selectedItem.warehouseQty : selectedItem.vanQty} uds
+              </Text>
+              <Text style={styles.stockHintText}>Total referencia: {selectedItem.warehouseQty + selectedItem.vanQty} uds</Text>
+              {selectedItem.description ? <Text style={styles.stockHintText}>{selectedItem.description}</Text> : null}
+            </View>
+          ) : null}
           <TextInput label="Cantidad usada" value={quantity} onChangeText={setQuantity} keyboardType="numeric" mode="outlined" style={styles.input} />
           <Button mode="contained" loading={saving} disabled={saving} onPress={handleSave} style={styles.button}>Registrar extracción</Button>
         </View>
@@ -91,5 +122,8 @@ const styles = StyleSheet.create({
   input: { marginTop: SPACING.md, backgroundColor: 'white' },
   suggestions: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: SPACING.sm },
   suggestionChip: { marginRight: 4, marginBottom: 4 },
+  stockHintCard: { marginTop: SPACING.md, borderRadius: 14, padding: SPACING.md, backgroundColor: BRAND_COLORS.tertiaryOrange },
+  stockHintTitle: { color: '#0f172a', fontWeight: '900' },
+  stockHintText: { color: BRAND_COLORS.grayText, marginTop: 4, lineHeight: 20 },
   button: { marginTop: SPACING.lg, borderRadius: 12, paddingVertical: 4, backgroundColor: BRAND_COLORS.primaryOrange },
 });

@@ -1,23 +1,23 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
-import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Button, Text, TextInput } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BRAND_COLORS, SHADOWS, SPACING } from '../../constants/Colors';
-import { searchFilterCrosses } from '../../utils/filterStockStorage';
+import { getFilterErrorMessage, searchFilterCrosses, type FilterCrossRow } from '../../utils/filterStockStorage';
 
 export default function FiltersCrossesScreen() {
   const [reference, setReference] = useState('');
-  const [results, setResults] = useState<any[]>([]);
+  const [results, setResults] = useState<FilterCrossRow[]>([]);
   const [loading, setLoading] = useState(false);
 
   const handleSearch = async () => {
     try {
       setLoading(true);
       setResults(await searchFilterCrosses(reference));
-    } catch (error) {
-      console.error(error);
+    } catch (error: unknown) {
+      Alert.alert('No se pudo buscar el cruce', getFilterErrorMessage(error, 'Revisa la conexión e inténtalo de nuevo.'));
       setResults([]);
     } finally {
       setLoading(false);
@@ -37,7 +37,7 @@ export default function FiltersCrossesScreen() {
         </View>
         {results.map((item) => (
           <View key={item.id} style={styles.resultCard}>
-            <Text style={styles.resultRef}>{item.reference} → {item.equivalent_reference}</Text>
+            <Text style={styles.resultRef}>{item.reference} → {item.equivalentReference}</Text>
             {item.brand ? <Text style={styles.text}>{item.brand}</Text> : null}
             {item.notes ? <Text style={styles.text}>{item.notes}</Text> : null}
           </View>

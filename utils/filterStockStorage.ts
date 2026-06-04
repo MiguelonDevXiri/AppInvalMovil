@@ -8,6 +8,7 @@ export interface FilterStockItem {
   description?: string | null;
   warehouseQty: number;
   vanQty: number;
+  minimumQty?: number | null;
   updatedAt?: string | null;
 }
 
@@ -23,12 +24,48 @@ export interface FilterMovement {
   createdAt: string;
 }
 
+export interface FilterStockCountDraft {
+  reference: string;
+  expectedWarehouseQty: number;
+  expectedVanQty: number;
+  countedWarehouseQty: number;
+  countedVanQty: number;
+  notes?: string | null;
+}
+
+export interface FilterStockCount extends FilterStockCountDraft {
+  id: string;
+  warehouseDifference: number;
+  vanDifference: number;
+  technicianName?: string | null;
+  countedAt: string;
+}
+
 interface FilterStockRow {
   reference: string;
   description: string | null;
   warehouse_qty: number | null;
   van_qty: number | null;
+  minimum_qty?: number | null;
   updated_at: string | null;
+}
+
+interface FilterCrossRowDb {
+  id: string;
+  reference: string;
+  equivalent_reference: string;
+  brand: string | null;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface FilterCrossRow {
+  id: string;
+  reference: string;
+  equivalentReference: string;
+  brand?: string | null;
+  notes?: string | null;
+  createdAt: string;
 }
 
 const normalizeReference = (reference: string) => reference.trim().toUpperCase();
@@ -38,8 +75,37 @@ const rowToStockItem = (row: FilterStockRow): FilterStockItem => ({
   description: row.description,
   warehouseQty: row.warehouse_qty ?? 0,
   vanQty: row.van_qty ?? 0,
+  minimumQty: typeof row.minimum_qty === 'number' ? row.minimum_qty : null,
   updatedAt: row.updated_at,
 });
+
+const rowToCrossItem = (row: FilterCrossRowDb): FilterCrossRow => ({
+  id: row.id,
+  reference: row.reference,
+  equivalentReference: row.equivalent_reference,
+  brand: row.brand,
+  notes: row.notes,
+  createdAt: row.created_at,
+});
+
+export function getFilterErrorMessage(error: unknown, fallback = 'Ha ocurrido un error al trabajar con filtros.') {
+  if (error instanceof Error) {
+    const message = error.message.trim();
+    if (message.includes('filters_stock_counts')) {
+      return 'Falta aplicar el SQL de recuentos físicos (`20260603_filters_stock_counts.sql`).';
+    }
+    if (message.includes('filters_stock') || message.includes('filters_movements') || message.includes('filters_crosses')) {
+      return 'Falta aplicar el SQL base del módulo de filtros (`20260601_filters_stock.sql`).';
+    }
+    return message || fallback;
+  }
+
+  if (typeof error === 'string' && error.trim()) {
+    return error;
+  }
+
+  return fallback;
+}
 
 export async function getFilterStock(): Promise<FilterStockItem[]> {
   const { data, error } = await supabase
@@ -73,6 +139,7 @@ export async function replenishFilterStock(params: {
   quantity: number;
   location: FilterLocation;
   technicianName?: string | null;
+  description?: string | null;
 }) {
   const reference = normalizeReference(params.reference);
   const quantity = Number(params.quantity);
@@ -91,10 +158,13 @@ export async function replenishFilterStock(params: {
     throw new Error(`No hay stock suficiente en almacén. Disponible: ${current?.warehouseQty ?? 0}.`);
   }
 
+  const nextDescription = current?.description?.trim() || params.description?.trim() || null;
+
   const { error: upsertError } = await supabase.from('filters_stock').upsert({
     reference,
     warehouse_qty: nextWarehouseQty,
     van_qty: nextVanQty,
+    description: nextDescription,
   });
   if (upsertError) throw upsertError;
 
@@ -149,7 +219,31 @@ export async function extractFilterStock(params: {
   if (movementError) throw movementError;
 }
 
-export async function searchFilterCrosses(reference: string) {
+export async function saveFilterStockCounts(params: {
+  counts: FilterStockCountDraft[];
+  technicianName?: string | null;
+}) {
+  const rows = params.counts
+    .map((count) => ({
+      reference: normalizeReference(count.reference),
+      expected_warehouse_qty: Number(count.expectedWarehouseQty) || 0,
+      expected_van_qty: Number(count.expectedVanQty) || 0,
+      counted_warehouse_qty: Number(count.countedWarehouseQty) || 0,
+      counted_van_qty: Number(count.countedVanQty) || 0,
+      notes: count.notes?.trim() || null,
+      technician_name: params.technicianName || null,
+    }))
+    .filter((count) => count.reference);
+
+  if (rows.length === 0) throw new Error('No hay referencias para guardar.');
+  const invalid = rows.find((count) => count.counted_warehouse_qty < 0 || count.counted_van_qty < 0);
+  if (invalid) throw new Error('Las cantidades reales no pueden ser negativas.');
+
+  const { error } = await supabase.from('filters_stock_counts').insert(rows);
+  if (error) throw error;
+}
+
+export async function searchFilterCrosses(reference: string): Promise<FilterCrossRow[]> {
   const ref = normalizeReference(reference);
   if (!ref) return [];
 
@@ -160,5 +254,5 @@ export async function searchFilterCrosses(reference: string) {
     .order('reference', { ascending: true });
 
   if (error) throw error;
-  return data || [];
+  return ((data || []) as FilterCrossRowDb[]).map(rowToCrossItem);
 }

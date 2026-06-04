@@ -1,6 +1,6 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
+import { router, type Href } from 'expo-router';
 import React, { useCallback } from 'react';
 import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Text } from 'react-native-paper';
@@ -13,33 +13,40 @@ const actions = [
     subtitle: 'Entrada de filtros nuevos o carga de furgoneta',
     icon: 'package-variant-plus',
     colors: ['#15803d', '#16a34a', '#22c55e'],
-    route: '/filters-replenish',
+    route: '/filters-replenish' as Href,
   },
   {
     title: 'Extraer',
     subtitle: 'Salida para taller o preventivos',
     icon: 'package-variant-minus',
     colors: ['#ea580c', '#f97316', '#fb923c'],
-    route: '/filters-extract',
+    route: '/filters-extract' as Href,
   },
   {
     title: 'Cruces',
     subtitle: 'Buscar equivalencias de referencias (preparado)',
     icon: 'swap-horizontal-bold',
     colors: ['#7c3aed', '#8b5cf6', '#a78bfa'],
-    route: '/filters-crosses',
+    route: '/filters-crosses' as Href,
+  },
+  {
+    title: 'Comprobar stock',
+    subtitle: 'Recuento físico y descuadres no apuntados',
+    icon: 'clipboard-check-outline',
+    colors: ['#b45309', '#d97706', '#f59e0b'],
+    route: '/filters-audit' as Href,
   },
   {
     title: 'Ver stock',
     subtitle: 'Almacén y furgoneta preventivo',
     icon: 'warehouse',
     colors: ['#0f2f57', '#2563eb', '#60a5fa'],
-    route: '/filters-stock',
+    route: '/filters-stock' as Href,
   },
 ] as const;
 
 export default function FiltersHomeScreen() {
-  const navigate = useCallback((route: string) => router.push(route as any), []);
+  const navigate = useCallback((route: Href) => router.push(route), []);
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
