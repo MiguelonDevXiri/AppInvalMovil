@@ -98,7 +98,12 @@ export default function FiltersReplenishScreen() {
               <Text style={styles.stockHintTitle}>Stock actual</Text>
               <Text style={styles.stockHintText}>Almacén: {selectedItem.warehouseQty} uds · Furgoneta: {selectedItem.vanQty} uds</Text>
               {selectedItem.description ? <Text style={styles.stockHintText}>{selectedItem.description}</Text> : null}
+              <Text style={styles.stockHintText}>Mínimo: {selectedItem.minimumQty ?? 2} uds · Recomendado: {selectedItem.recommendedQty ?? 4} uds</Text>
               {location === 'furgoneta' ? <Text style={styles.stockHintEmphasis}>Disponible para cargar desde almacén: {selectedItem.warehouseQty} uds</Text> : null}
+            </View>
+          ) : normalizedReference ? (
+            <View style={styles.warningCard}>
+              <Text style={styles.warningText}>Referencia no permitida. Elige una referencia de las sugerencias para evitar errores al escribir.</Text>
             </View>
           ) : null}
           {!selectedItem?.description ? (
@@ -111,7 +116,7 @@ export default function FiltersReplenishScreen() {
             />
           ) : null}
           <TextInput label="Cantidad" value={quantity} onChangeText={setQuantity} keyboardType="numeric" mode="outlined" style={styles.input} />
-          <Button mode="contained" loading={saving} disabled={saving} onPress={handleSave} style={styles.button}>Guardar reposición</Button>
+          <Button mode="contained" loading={saving} disabled={saving || !selectedItem} onPress={handleSave} style={styles.button}>Guardar reposición</Button>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -141,5 +146,7 @@ const styles = StyleSheet.create({
   stockHintTitle: { color: '#0f172a', fontWeight: '900' },
   stockHintText: { color: BRAND_COLORS.grayText, marginTop: 4, lineHeight: 20 },
   stockHintEmphasis: { color: BRAND_COLORS.primaryBlue, marginTop: 8, fontWeight: '800' },
+  warningCard: { marginTop: SPACING.md, borderRadius: 14, padding: SPACING.md, backgroundColor: '#fff7ed' },
+  warningText: { color: BRAND_COLORS.primaryOrange, fontWeight: '800', lineHeight: 20 },
   button: { marginTop: SPACING.lg, borderRadius: 12, paddingVertical: 4 },
 });

@@ -93,11 +93,16 @@ export default function FiltersExtractScreen() {
                 {location === 'almacen' ? 'Almacén' : 'Furgoneta'}: {location === 'almacen' ? selectedItem.warehouseQty : selectedItem.vanQty} uds
               </Text>
               <Text style={styles.stockHintText}>Total referencia: {selectedItem.warehouseQty + selectedItem.vanQty} uds</Text>
+              <Text style={styles.stockHintText}>Mínimo: {selectedItem.minimumQty ?? 2} uds · Recomendado: {selectedItem.recommendedQty ?? 4} uds</Text>
               {selectedItem.description ? <Text style={styles.stockHintText}>{selectedItem.description}</Text> : null}
+            </View>
+          ) : normalizedReference ? (
+            <View style={styles.warningCard}>
+              <Text style={styles.warningText}>Referencia no permitida. Elige una referencia de las sugerencias para evitar errores al escribir.</Text>
             </View>
           ) : null}
           <TextInput label="Cantidad usada" value={quantity} onChangeText={setQuantity} keyboardType="numeric" mode="outlined" style={styles.input} />
-          <Button mode="contained" loading={saving} disabled={saving} onPress={handleSave} style={styles.button}>Registrar extracción</Button>
+          <Button mode="contained" loading={saving} disabled={saving || !selectedItem} onPress={handleSave} style={styles.button}>Registrar extracción</Button>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -125,5 +130,7 @@ const styles = StyleSheet.create({
   stockHintCard: { marginTop: SPACING.md, borderRadius: 14, padding: SPACING.md, backgroundColor: BRAND_COLORS.tertiaryOrange },
   stockHintTitle: { color: '#0f172a', fontWeight: '900' },
   stockHintText: { color: BRAND_COLORS.grayText, marginTop: 4, lineHeight: 20 },
+  warningCard: { marginTop: SPACING.md, borderRadius: 14, padding: SPACING.md, backgroundColor: '#fff7ed' },
+  warningText: { color: BRAND_COLORS.primaryOrange, fontWeight: '800', lineHeight: 20 },
   button: { marginTop: SPACING.lg, borderRadius: 12, paddingVertical: 4, backgroundColor: BRAND_COLORS.primaryOrange },
 });

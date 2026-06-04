@@ -9,6 +9,7 @@ import { BRAND_COLORS, SHADOWS, SPACING } from '../../constants/Colors';
 import { getFilterErrorMessage, getFilterStock, type FilterStockItem } from '../../utils/filterStockStorage';
 
 const DEFAULT_LOW_STOCK_THRESHOLD = 2;
+const DEFAULT_RECOMMENDED_STOCK_THRESHOLD = 4;
 
 export default function FiltersStockScreen() {
   const [items, setItems] = useState<FilterStockItem[]>([]);
@@ -39,7 +40,8 @@ export default function FiltersStockScreen() {
     warehouse: acc.warehouse + item.warehouseQty,
     van: acc.van + item.vanQty,
     low: acc.low + ((item.warehouseQty + item.vanQty) <= (item.minimumQty ?? DEFAULT_LOW_STOCK_THRESHOLD) ? 1 : 0),
-  }), { warehouse: 0, van: 0, low: 0 }), [items]);
+    recommended: acc.recommended + ((item.warehouseQty + item.vanQty) > (item.minimumQty ?? DEFAULT_LOW_STOCK_THRESHOLD) && (item.warehouseQty + item.vanQty) <= (item.recommendedQty ?? DEFAULT_RECOMMENDED_STOCK_THRESHOLD) ? 1 : 0),
+  }), { warehouse: 0, van: 0, low: 0, recommended: 0 }), [items]);
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
@@ -49,6 +51,7 @@ export default function FiltersStockScreen() {
           <Summary title="Almacén" value={totals.warehouse} icon="warehouse" />
           <Summary title="Furgoneta" value={totals.van} icon="van-utility" />
           <Summary title="Stock bajo" value={totals.low} icon="alert-outline" />
+          <Summary title="Bajo recomendado" value={totals.recommended} icon="alert-circle-outline" />
         </View>
         <TextInput label="Buscar referencia" value={query} onChangeText={setQuery} autoCapitalize="characters" mode="outlined" style={styles.search} />
         {loading ? <ActivityIndicator style={{ marginTop: 40 }} color={BRAND_COLORS.primaryOrange} /> : filteredItems.length === 0 ? (
@@ -70,7 +73,9 @@ function Summary({ title, value, icon }: { title: string; value: number; icon: s
 function StockCard({ item }: { item: FilterStockItem }) {
   const total = item.warehouseQty + item.vanQty;
   const minimumQty = item.minimumQty ?? DEFAULT_LOW_STOCK_THRESHOLD;
+  const recommendedQty = Math.max(item.recommendedQty ?? DEFAULT_RECOMMENDED_STOCK_THRESHOLD, minimumQty);
   const isLow = total <= minimumQty;
+  const isUnderRecommended = !isLow && total <= recommendedQty;
 
   return (
     <View style={styles.stockCard}>
@@ -81,11 +86,12 @@ function StockCard({ item }: { item: FilterStockItem }) {
         </View>
         <View style={{ alignItems: 'flex-end' }}>
           <Text style={styles.total}>{total} uds</Text>
-          <View style={[styles.badge, isLow ? styles.badgeWarning : styles.badgeInfo]}>
-            <Text style={[styles.badgeText, isLow ? styles.badgeWarningText : styles.badgeInfoText]}>
-              {isLow ? 'Stock bajo' : `Mín. ${minimumQty}`}
+          <View style={[styles.badge, isLow ? styles.badgeWarning : isUnderRecommended ? styles.badgeRecommended : styles.badgeInfo]}>
+            <Text style={[styles.badgeText, isLow ? styles.badgeWarningText : isUnderRecommended ? styles.badgeRecommendedText : styles.badgeInfoText]}>
+              {isLow ? 'Stock mínimo' : isUnderRecommended ? 'Bajo recomendado' : 'Correcto'}
             </Text>
           </View>
+          <Text style={styles.thresholdText}>Mín. {minimumQty} · Rec. {recommendedQty}</Text>
         </View>
       </View>
       <View style={styles.qtyRow}>
@@ -120,9 +126,12 @@ const styles = StyleSheet.create({
   badge: { marginTop: 8, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 },
   badgeInfo: { backgroundColor: '#dbeafe' },
   badgeWarning: { backgroundColor: '#fff7ed' },
+  badgeRecommended: { backgroundColor: '#fef9c3' },
   badgeText: { fontSize: 12, fontWeight: '900' },
   badgeInfoText: { color: BRAND_COLORS.primaryBlue },
   badgeWarningText: { color: BRAND_COLORS.primaryOrange },
+  badgeRecommendedText: { color: '#a16207' },
+  thresholdText: { marginTop: 4, color: BRAND_COLORS.grayText, fontSize: 11, fontWeight: '800' },
   empty: { margin: SPACING.md, backgroundColor: 'white', borderRadius: 18, padding: SPACING.lg, alignItems: 'center' },
   emptyTitle: { fontSize: 20, fontWeight: '900', color: '#0f172a' },
   emptyText: { color: BRAND_COLORS.grayText, marginTop: 6, textAlign: 'center' },

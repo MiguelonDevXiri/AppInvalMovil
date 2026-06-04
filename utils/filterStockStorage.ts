@@ -9,6 +9,7 @@ export interface FilterStockItem {
   warehouseQty: number;
   vanQty: number;
   minimumQty?: number | null;
+  recommendedQty?: number | null;
   updatedAt?: string | null;
 }
 
@@ -47,6 +48,7 @@ interface FilterStockRow {
   warehouse_qty: number | null;
   van_qty: number | null;
   minimum_qty?: number | null;
+  recommended_qty?: number | null;
   updated_at: string | null;
 }
 
@@ -76,6 +78,7 @@ const rowToStockItem = (row: FilterStockRow): FilterStockItem => ({
   warehouseQty: row.warehouse_qty ?? 0,
   vanQty: row.van_qty ?? 0,
   minimumQty: typeof row.minimum_qty === 'number' ? row.minimum_qty : null,
+  recommendedQty: typeof row.recommended_qty === 'number' ? row.recommended_qty : null,
   updatedAt: row.updated_at,
 });
 
@@ -91,6 +94,9 @@ const rowToCrossItem = (row: FilterCrossRowDb): FilterCrossRow => ({
 export function getFilterErrorMessage(error: unknown, fallback = 'Ha ocurrido un error al trabajar con filtros.') {
   if (error instanceof Error) {
     const message = error.message.trim();
+    if (message.includes('recommended_qty')) {
+      return 'Falta aplicar el SQL de stock recomendado (`20260604_filters_stock_recommended_qty.sql`).';
+    }
     if (message.includes('filters_stock_counts')) {
       return 'Falta aplicar el SQL de recuentos físicos (`20260603_filters_stock_counts.sql`).';
     }
@@ -134,6 +140,15 @@ async function getStockRow(reference: string): Promise<FilterStockItem | null> {
   return data ? rowToStockItem(data as FilterStockRow) : null;
 }
 
+
+async function assertKnownReference(reference: string): Promise<FilterStockItem> {
+  const current = await getStockRow(reference);
+  if (!current) {
+    throw new Error('Referencia no permitida. Elige una referencia de la tabla de filtros para evitar errores de escritura.');
+  }
+  return current;
+}
+
 export async function replenishFilterStock(params: {
   reference: string;
   quantity: number;
@@ -146,7 +161,7 @@ export async function replenishFilterStock(params: {
   if (!reference) throw new Error('Inserta una referencia.');
   if (!Number.isFinite(quantity) || quantity <= 0) throw new Error('Inserta una cantidad válida.');
 
-  const current = await getStockRow(reference);
+  const current = await assertKnownReference(reference);
   const nextWarehouseQty = params.location === 'almacen'
     ? (current?.warehouseQty ?? 0) + quantity
     : (current?.warehouseQty ?? 0) - quantity;
@@ -191,8 +206,7 @@ export async function extractFilterStock(params: {
   if (!reference) throw new Error('Inserta una referencia.');
   if (!Number.isFinite(quantity) || quantity <= 0) throw new Error('Inserta una cantidad válida.');
 
-  const current = await getStockRow(reference);
-  if (!current) throw new Error('Esta referencia no existe en stock.');
+  const current = await assertKnownReference(reference);
 
   const available = params.location === 'almacen' ? current.warehouseQty : current.vanQty;
   if (available < quantity) {
