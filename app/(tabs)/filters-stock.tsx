@@ -6,7 +6,7 @@ import { ActivityIndicator, Alert, RefreshControl, ScrollView, StyleSheet, Touch
 import { Text, TextInput } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BRAND_COLORS, SHADOWS, SPACING } from '../../constants/Colors';
-import { getFilterErrorMessage, getFilterStock, type FilterStockItem } from '../../utils/filterStockStorage';
+import { getFilterCatalogStock, getFilterErrorMessage, type FilterStockItem } from '../../utils/filterStockStorage';
 
 const DEFAULT_LOW_STOCK_THRESHOLD = 2;
 const DEFAULT_RECOMMENDED_STOCK_THRESHOLD = 4;
@@ -19,7 +19,7 @@ export default function FiltersStockScreen() {
 
   const loadStock = useCallback(async () => {
     try {
-      setItems(await getFilterStock());
+      setItems(await getFilterCatalogStock());
     } catch (error: unknown) {
       Alert.alert('No se pudo cargar el stock', getFilterErrorMessage(error, 'Revisa la conexión e inténtalo de nuevo.'));
     } finally {
@@ -33,7 +33,10 @@ export default function FiltersStockScreen() {
   const filteredItems = useMemo(() => {
     const value = query.trim().toUpperCase();
     if (!value) return items;
-    return items.filter((item) => item.reference.includes(value) || item.description?.toUpperCase().includes(value));
+    return items.filter((item) => {
+      const searchable = [item.reference, item.description || '', ...(item.codes || []), ...(item.equivalents || [])].join(' ').toUpperCase();
+      return searchable.includes(value);
+    });
   }, [items, query]);
 
   const totals = useMemo(() => items.reduce((acc, item) => ({
@@ -70,21 +73,36 @@ function Summary({ title, value, icon }: { title: string; value: number; icon: s
   return <View style={styles.summaryCard}><MaterialCommunityIcons name={icon as any} size={24} color={BRAND_COLORS.primaryOrange} /><Text style={styles.summaryValue}>{value}</Text><Text style={styles.summaryTitle}>{title}</Text></View>;
 }
 
+function getCleanDescription(item: FilterStockItem) {
+  const description = item.description?.trim();
+  if (!description) return null;
+  return description
+    .replace(/\s*·\s*Código:\s*[^·]+/i, '')
+    .replace(/^Código:\s*[^·]+\s*·\s*/i, '')
+    .replace(/^Código:\s*[^·]+$/i, '')
+    .trim() || null;
+}
+
 function StockCard({ item }: { item: FilterStockItem }) {
   const total = item.warehouseQty + item.vanQty;
   const minimumQty = item.minimumQty ?? DEFAULT_LOW_STOCK_THRESHOLD;
   const recommendedQty = Math.max(item.recommendedQty ?? DEFAULT_RECOMMENDED_STOCK_THRESHOLD, minimumQty);
   const isLow = total <= minimumQty;
   const isUnderRecommended = !isLow && total <= recommendedQty;
+  const description = getCleanDescription(item);
+  const codes = item.codes || [];
+  const alternatives = item.equivalents || [];
 
   return (
     <View style={styles.stockCard}>
       <View style={styles.stockHeader}>
-        <View style={{ flex: 1 }}>
+        <View style={styles.stockInfo}>
           <Text style={styles.reference}>{item.reference}</Text>
-          {item.description ? <Text style={styles.description}>{item.description}</Text> : null}
+          {alternatives.length > 0 ? <Text style={styles.alternatives}>Alt. {alternatives.join(' / ')}</Text> : null}
+          {codes.length > 0 ? <Text style={styles.code}>Código: {codes.join(' / ')}</Text> : null}
+          {description ? <Text style={styles.description}>{description}</Text> : null}
         </View>
-        <View style={{ alignItems: 'flex-end' }}>
+        <View style={styles.totalBox}>
           <Text style={styles.total}>{total} uds</Text>
           <View style={[styles.badge, isLow ? styles.badgeWarning : isUnderRecommended ? styles.badgeRecommended : styles.badgeInfo]}>
             <Text style={[styles.badgeText, isLow ? styles.badgeWarningText : isUnderRecommended ? styles.badgeRecommendedText : styles.badgeInfoText]}>
@@ -115,8 +133,12 @@ const styles = StyleSheet.create({
   summaryTitle: { color: BRAND_COLORS.grayText, fontWeight: '700' },
   search: { marginHorizontal: SPACING.md, marginBottom: SPACING.md, backgroundColor: 'white' },
   stockCard: { marginHorizontal: SPACING.md, marginBottom: SPACING.md, backgroundColor: 'white', borderRadius: 18, padding: SPACING.md, ...SHADOWS.soft },
-  stockHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: SPACING.md },
+  stockHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: SPACING.md, marginBottom: SPACING.md },
+  stockInfo: { flex: 1 },
+  totalBox: { alignItems: 'flex-end' },
   reference: { color: '#0f172a', fontSize: 19, fontWeight: '900' },
+  alternatives: { color: BRAND_COLORS.primaryBlue, marginTop: 2, fontSize: 12, fontWeight: '800', lineHeight: 17 },
+  code: { color: '#334155', marginTop: 8, fontSize: 13, fontWeight: '900' },
   description: { color: BRAND_COLORS.grayText, marginTop: 4, lineHeight: 20 },
   total: { color: BRAND_COLORS.primaryOrange, fontWeight: '900' },
   qtyRow: { flexDirection: 'row', gap: SPACING.sm },

@@ -31,7 +31,7 @@ export default function FiltersExtractScreen() {
 
   const normalizedReference = reference.trim().toUpperCase();
   const selectedItem = useMemo(
-    () => stockItems.find((item) => item.reference === normalizedReference || item.equivalents?.includes(normalizedReference)),
+    () => stockItems.find((item) => item.reference === normalizedReference || item.codes?.includes(normalizedReference) || item.equivalents?.includes(normalizedReference)),
     [normalizedReference, stockItems],
   );
 
@@ -39,7 +39,7 @@ export default function FiltersExtractScreen() {
     if (!normalizedReference) return stockItems.slice(0, 8);
     return stockItems
       .filter((item) => {
-        const searchable = [item.reference, item.description || '', ...(item.equivalents || [])].join(' ').toUpperCase();
+        const searchable = [item.reference, item.description || '', ...(item.codes || []), ...(item.equivalents || [])].join(' ').toUpperCase();
         return searchable.includes(normalizedReference);
       })
       .slice(0, 8);
@@ -84,7 +84,7 @@ export default function FiltersExtractScreen() {
             <View style={styles.suggestions}>
               {suggestions.map((item) => (
                 <Chip key={item.reference} compact onPress={() => setReference(item.reference)} style={styles.suggestionChip}>
-                  {item.reference}{item.equivalents?.length ? ` · ${item.equivalents.slice(0, 2).join(' / ')}` : ''}
+                  {item.reference}{item.equivalents?.length ? ` · ${item.equivalents.slice(0, 2).join(' / ')}` : item.codes?.length ? ` · ${item.codes[0]}` : ''}
                 </Chip>
               ))}
             </View>
@@ -97,6 +97,7 @@ export default function FiltersExtractScreen() {
               </Text>
               <Text style={styles.stockHintText}>Total referencia: {selectedItem.warehouseQty + selectedItem.vanQty} uds</Text>
               {selectedItem.reference !== normalizedReference ? <Text style={styles.stockHintEmphasis}>Se guardará como referencia principal: {selectedItem.reference}</Text> : null}
+              {selectedItem.codes?.length ? <Text style={styles.stockHintText}>Código: {selectedItem.codes.join(' / ')}</Text> : null}
               {selectedItem.equivalents?.length ? <Text style={styles.stockHintText}>Alternativas: {selectedItem.equivalents.join(' / ')}</Text> : null}
               <Text style={styles.stockHintText}>Mínimo: {selectedItem.minimumQty ?? 2} uds · Recomendado: {selectedItem.recommendedQty ?? 4} uds</Text>
               {selectedItem.description ? <Text style={styles.stockHintText}>{selectedItem.description}</Text> : null}

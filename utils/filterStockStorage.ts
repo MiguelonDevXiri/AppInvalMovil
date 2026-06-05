@@ -10,6 +10,7 @@ export interface FilterStockItem {
   vanQty: number;
   minimumQty?: number | null;
   recommendedQty?: number | null;
+  codes?: string[];
   equivalents?: string[];
   updatedAt?: string | null;
 }
@@ -138,18 +139,22 @@ export async function getFilterStock(): Promise<FilterStockItem[]> {
 
 export async function getFilterCatalogStock(): Promise<FilterStockItem[]> {
   const [stock, crosses] = await Promise.all([getFilterStock(), getAllFilterCrosses()]);
+  const codesByReference = new Map<string, string[]>();
   const equivalentsByReference = new Map<string, string[]>();
 
   for (const cross of crosses) {
-    const list = equivalentsByReference.get(cross.reference) || [];
+    const isCode = cross.brand === 'Código INVAL';
+    const targetMap = isCode ? codesByReference : equivalentsByReference;
+    const list = targetMap.get(cross.reference) || [];
     if (!list.includes(cross.equivalentReference)) {
       list.push(cross.equivalentReference);
     }
-    equivalentsByReference.set(cross.reference, list);
+    targetMap.set(cross.reference, list);
   }
 
   return stock.map((item) => ({
     ...item,
+    codes: codesByReference.get(item.reference) || [],
     equivalents: equivalentsByReference.get(item.reference) || [],
   }));
 }
