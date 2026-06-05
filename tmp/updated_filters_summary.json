@@ -1,0 +1,181 @@
+{
+  "stock_rows": 48,
+  "cross_rows": 127,
+  "skipped_count": 7,
+  "samples": [
+    {
+      "reference": "A105C10",
+      "description": "Jovisa mini aire",
+      "warehouse_qty": 7,
+      "van_qty": 3,
+      "minimum_qty": 2,
+      "recommended_qty": 4
+    },
+    {
+      "reference": "ADH 93641",
+      "description": "SUPECO Strauman",
+      "warehouse_qty": 2,
+      "van_qty": 0,
+      "minimum_qty": 2,
+      "recommended_qty": 4
+    },
+    {
+      "reference": "A110C25",
+      "description": null,
+      "warehouse_qty": 8,
+      "van_qty": 1,
+      "minimum_qty": 1,
+      "recommended_qty": 4
+    },
+    {
+      "reference": "A110C10",
+      "description": null,
+      "warehouse_qty": 0,
+      "van_qty": 0,
+      "minimum_qty": 2,
+      "recommended_qty": 4
+    },
+    {
+      "reference": "A111C10",
+      "description": "KIGGEN",
+      "warehouse_qty": 0,
+      "van_qty": 0,
+      "minimum_qty": 2,
+      "recommended_qty": 4
+    },
+    {
+      "reference": "A111C25",
+      "description": "KIGGEN",
+      "warehouse_qty": 4,
+      "van_qty": 3,
+      "minimum_qty": 6,
+      "recommended_qty": 6
+    },
+    {
+      "reference": "A120C10",
+      "description": null,
+      "warehouse_qty": 2,
+      "van_qty": 2,
+      "minimum_qty": 2,
+      "recommended_qty": 4
+    },
+    {
+      "reference": "A120C25",
+      "description": "aire grande PC Jovisa",
+      "warehouse_qty": 4,
+      "van_qty": 2,
+      "minimum_qty": 2,
+      "recommended_qty": 4
+    }
+  ],
+  "cross_samples": [
+    {
+      "reference": "A105C10",
+      "equivalent_reference": "2626014",
+      "brand": "Código INVAL",
+      "notes": "Excel filtros actualizado 2026-06-05"
+    },
+    {
+      "reference": "ADH 93641",
+      "equivalent_reference": "2626133",
+      "brand": "Código INVAL",
+      "notes": "Excel filtros actualizado 2026-06-05"
+    },
+    {
+      "reference": "ADH 93641",
+      "equivalent_reference": "MFX1002P25NBP01",
+      "brand": "Alternativa 1",
+      "notes": "Excel filtros actualizado 2026-06-05"
+    },
+    {
+      "reference": "A110C25",
+      "equivalent_reference": "2626091",
+      "brand": "Código INVAL",
+      "notes": "Excel filtros actualizado 2026-06-05"
+    },
+    {
+      "reference": "A110C25",
+      "equivalent_reference": "CS050P25",
+      "brand": "Alternativa 1",
+      "notes": "Excel filtros actualizado 2026-06-05"
+    },
+    {
+      "reference": "A110C25",
+      "equivalent_reference": "HYD16332",
+      "brand": "Alternativa 1",
+      "notes": "Excel filtros actualizado 2026-06-05"
+    },
+    {
+      "reference": "A110C25",
+      "equivalent_reference": "HF35102",
+      "brand": "Alternativa 2",
+      "notes": "Excel filtros actualizado 2026-06-05"
+    },
+    {
+      "reference": "A111C10",
+      "equivalent_reference": "2626080",
+      "brand": "Código INVAL",
+      "notes": "Excel filtros actualizado 2026-06-05"
+    },
+    {
+      "reference": "A111C10",
+      "equivalent_reference": "CS07000P10A",
+      "brand": "Alternativa 1",
+      "notes": "Excel filtros actualizado 2026-06-05"
+    },
+    {
+      "reference": "A111C10",
+      "equivalent_reference": "WD10018 21,58",
+      "brand": "Alternativa 2",
+      "notes": "Excel filtros actualizado 2026-06-05"
+    },
+    {
+      "reference": "A111C25",
+      "equivalent_reference": "2626090",
+      "brand": "Código INVAL",
+      "notes": "Excel filtros actualizado 2026-06-05"
+    },
+    {
+      "reference": "A111C25",
+      "equivalent_reference": "CS070P25A",
+      "brand": "Alternativa 1",
+      "notes": "Excel filtros actualizado 2026-06-05"
+    },
+    {
+      "reference": "A111C25",
+      "equivalent_reference": "WD10005",
+      "brand": "Alternativa 2",
+      "notes": "Excel filtros actualizado 2026-06-05"
+    },
+    {
+      "reference": "A120C10",
+      "equivalent_reference": "2626084",
+      "brand": "Código INVAL",
+      "notes": "Excel filtros actualizado 2026-06-05"
+    },
+    {
+      "reference": "A120C10",
+      "equivalent_reference": "A120C25",
+      "brand": "Alternativa 1",
+      "notes": "Excel filtros actualizado 2026-06-05"
+    },
+    {
+      "reference": "A120C10",
+      "equivalent_reference": "HID4672",
+      "brand": "Alternativa 1",
+      "notes": "Excel filtros actualizado 2026-06-05"
+    },
+    {
+      "reference": "A120C10",
+      "equivalent_reference": "CS100P10A",
+      "brand": "Alternativa 2",
+      "notes": "Excel filtros actualizado 2026-06-05"
+    },
+    {
+      "reference": "A120C10",
+      "equivalent_reference": "WD12002",
+      "brand": "Alternativa 2",
+      "notes": "Excel filtros actualizado 2026-06-05"
+    }
+  ]
+}

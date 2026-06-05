@@ -144,6 +144,7 @@ export async function getFilterCatalogStock(): Promise<FilterStockItem[]> {
   const equivalentsByReference = new Map<string, string[]>();
 
   for (const cross of crosses) {
+    if (cross.brand === 'Obsoleto') continue;
     const isCode = cross.brand === 'Código INVAL';
     const targetMap = isCode ? codesByReference : equivalentsByReference;
     const list = targetMap.get(cross.reference) || [];
@@ -167,7 +168,9 @@ async function getAllFilterCrosses(): Promise<FilterCrossRow[]> {
     .order('reference', { ascending: true });
 
   if (error) throw error;
-  return ((data || []) as FilterCrossRowDb[]).map(rowToCrossItem);
+  return ((data || []) as FilterCrossRowDb[])
+    .map(rowToCrossItem)
+    .filter((item) => item.brand !== 'Obsoleto');
 }
 
 export async function getFilterReferences(): Promise<string[]> {

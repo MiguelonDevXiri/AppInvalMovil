@@ -1,0 +1,50 @@
+{
+  "backup": "/home/miguel/Documents/Mis proyectos /Prroyecto APP/Inval/tmp/filters_sync_updated_backup_20260605_1226.json",
+  "stock_loaded": 48,
+  "crosses_loaded": 117,
+  "skipped_count": 7,
+  "current_stock_count": 48,
+  "current_cross_count": 149,
+  "samples": [
+    {
+      "reference": "A105C10",
+      "description": "Jovisa mini aire",
+      "warehouse_qty": 7,
+      "van_qty": 3,
+      "minimum_qty": 2,
+      "recommended_qty": 4
+    },
+    {
+      "reference": "ADH 93641",
+      "description": "SUPECO Strauman",
+      "warehouse_qty": 2,
+      "van_qty": 0,
+      "minimum_qty": 2,
+      "recommended_qty": 4
+    },
+    {
+      "reference": "A110C25",
+      "description": null,
+      "warehouse_qty": 8,
+      "van_qty": 1,
+      "minimum_qty": 1,
+      "recommended_qty": 4
+    },
+    {
+      "reference": "A110C10",
+      "description": null,
+      "warehouse_qty": 0,
+      "van_qty": 0,
+      "minimum_qty": 2,
+      "recommended_qty": 4
+    },
+    {
+      "reference": "A111C10",
+      "description": "KIGGEN",
+      "warehouse_qty": 0,
+      "van_qty": 0,
+      "minimum_qty": 2,
+      "recommended_qty": 4
+    }
+  ]
+}
