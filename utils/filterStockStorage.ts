@@ -23,6 +23,7 @@ export interface FilterMovement {
   destination?: FilterExtractionDestination | null;
   quantity: number;
   notes?: string | null;
+  machineType?: string | null;
   technicianName?: string | null;
   createdAt: string;
 }
@@ -245,6 +246,7 @@ export async function extractFilterStock(params: {
   quantity: number;
   location: FilterLocation;
   destination: FilterExtractionDestination;
+  machineType?: string | null;
   technicianName?: string | null;
 }) {
   const reference = normalizeReference(params.reference);
@@ -268,15 +270,34 @@ export async function extractFilterStock(params: {
     .eq('reference', reference);
   if (updateError) throw updateError;
 
-  const { error: movementError } = await supabase.from('filters_movements').insert({
+  const cleanMachineType = params.machineType?.trim() || null;
+  const movementPayload = {
     reference,
     movement_type: 'extraer',
     location: params.location,
     destination: params.destination,
     quantity,
+    machine_type: cleanMachineType,
     technician_name: params.technicianName || null,
-  });
-  if (movementError) throw movementError;
+  };
+
+  const { error: movementError } = await supabase.from('filters_movements').insert(movementPayload);
+  if (movementError) {
+    const message = movementError.message || '';
+    const missingMachineTypeColumn = message.includes('machine_type') || message.includes('schema cache');
+    if (!missingMachineTypeColumn) throw movementError;
+
+    const { error: fallbackMovementError } = await supabase.from('filters_movements').insert({
+      reference,
+      movement_type: 'extraer',
+      location: params.location,
+      destination: params.destination,
+      quantity,
+      technician_name: params.technicianName || null,
+      notes: cleanMachineType ? `Máquina: ${cleanMachineType}` : null,
+    });
+    if (fallbackMovementError) throw fallbackMovementError;
+  }
 }
 
 export async function saveFilterStockCounts(params: {

@@ -14,6 +14,7 @@ export default function FiltersExtractScreen() {
   const [location, setLocation] = useState<FilterLocation>('almacen');
   const [reference, setReference] = useState('');
   const [quantity, setQuantity] = useState('');
+  const [machineType, setMachineType] = useState('');
   const [stockItems, setStockItems] = useState<FilterStockItem[]>([]);
   const [saving, setSaving] = useState(false);
 
@@ -50,10 +51,11 @@ export default function FiltersExtractScreen() {
       setSaving(true);
       const technicianJson = await AsyncStorage.getItem('current_technician');
       const technician = technicianJson ? (JSON.parse(technicianJson) as { name?: string | null }) : null;
-      await extractFilterStock({ reference: selectedItem?.reference || reference, quantity: Number(quantity), location, destination, technicianName: technician?.name });
+      await extractFilterStock({ reference: selectedItem?.reference || reference, quantity: Number(quantity), location, destination, machineType, technicianName: technician?.name });
       Alert.alert('Extracción registrada', 'Se ha descontado del stock seleccionado.');
       setReference('');
       setQuantity('');
+      setMachineType('');
       await loadStock();
     } catch (error: unknown) {
       Alert.alert('No se pudo extraer', getFilterErrorMessage(error, 'Revisa los datos e inténtalo de nuevo.'));
@@ -108,6 +110,15 @@ export default function FiltersExtractScreen() {
             </View>
           ) : null}
           <TextInput label="Cantidad usada" value={quantity} onChangeText={setQuantity} keyboardType="numeric" mode="outlined" style={styles.input} />
+          <TextInput
+            label="Tipo de máquina donde se usa"
+            value={machineType}
+            onChangeText={setMachineType}
+            autoCapitalize="sentences"
+            mode="outlined"
+            style={styles.input}
+            placeholder="Ej: carretilla, transpaleta, apilador..."
+          />
           <Button mode="contained" loading={saving} disabled={saving || !selectedItem} onPress={handleSave} style={styles.button}>Registrar extracción</Button>
         </View>
       </ScrollView>
